@@ -1,0 +1,55 @@
+package com.changyou.mgp.sdk.mbi.account.utils;
+
+import java.util.Date;
+
+import android.app.Activity;
+import android.os.Bundle;
+
+import com.changyou.mgp.sdk.mbi.account.id.AccResource;
+import com.changyou.mgp.sdk.mbi.account.ui.CYMGMainDialogFragmentActivity;
+import com.changyou.mgp.sdk.mbi.common.CYMGCallbackHelper;
+import com.changyou.mgp.sdk.mbi.config.CYMGPrompt;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolKeys;
+import com.changyou.mgp.sdk.mbi.config.SDKConfig;
+import com.changyou.mgp.sdk.mbi.db.CYMGAccBean;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.utils.NetWorkUtils;
+import com.changyou.mgp.sdk.mbi.utils.SystemUtils;
+import com.changyou.mgp.sdk.mbi.utils.UserInfoSPUtil;
+
+public class CYMGLoginResultUtil {
+	
+	private static CYLog log = CYLog.getInstance();
+	
+	public static void loginCallback(Activity mActivity,String acc,String uid,String token,String type){
+		try {
+			CYMGAccBean bean=new CYMGAccBean();
+			bean.setmAcc(acc);
+			bean.setmUID(uid);
+			bean.setmToken(token);
+			bean.setmState(1);
+			bean.setmTimeStamp(new Date(System.currentTimeMillis()).getTime()/1000);
+			((CYMGMainDialogFragmentActivity)mActivity).getmCYMGDBMaster().login(bean);
+		} catch (Exception e) {
+			log.e(e);
+		} finally{
+			UserInfoSPUtil.setUsername(mActivity, acc);
+			UserInfoSPUtil.setUid(mActivity, uid);
+			UserInfoSPUtil.setType(mActivity, type);
+			String userIp = NetWorkUtils.getLocalIpAddress(mActivity);
+			String deviceid = SystemUtils.getDeviceId(mActivity);
+			Bundle bundle = new Bundle();
+			bundle.putString(CYMGProtocolKeys.UID, uid);
+			bundle.putString(CYMGProtocolKeys.TOKEN, token);
+			bundle.putString(CYMGProtocolKeys.TYPE, type);
+			bundle.putString(CYMGProtocolKeys.USERIP, userIp);
+			bundle.putString(CYMGProtocolKeys.DEVICEID, deviceid);
+			bundle.putString(CYMGProtocolKeys.ISDEBUG, SDKConfig.DEBUG ? "true" : "false");
+			bundle.putString(CYMGProtocolKeys.CHANNEL_ID,mActivity.getString(AccResource.getInstance(mActivity).mgp_channel_cy));
+			bundle.putString(CYMGProtocolKeys.OPCODE, "10001");
+			CYMGCallbackHelper.callbackResult(CYMGCallbackHelper.getLoginResult(CYMGPrompt.CODE_LOGIN_SUCCESS, bundle,mActivity));
+			mActivity.finish();
+		}
+	}
+
+}

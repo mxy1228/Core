@@ -1,0 +1,55 @@
+package com.changyou.mgp.sdk.mbi.pay.weixin;
+
+
+import android.content.Context;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.PackageManager.NameNotFoundException;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+
+public class MetaDataValueUtils {  
+	private static final String KEY_APP_ID_WEIXIN="APP_ID_WEIXIN";
+	private static final String KEY_APP_KEY_WEIXIN="APP_KEY_WEIXIN";
+	private static final String KEY_SECRET_WEIXIN="SECRET_WEIXIN";
+	
+	private static CYLog log = CYLog.getInstance();
+	
+	private static String getMetaDataValue(Context context, String key, String defValue) {
+		String value = getMetaDataValue(context,key);
+		return (value == null) ? defValue : value;
+	}
+
+	private static String getMetaDataValue(Context context,String key) {
+		Object value = null;
+		PackageManager packageManager = context.getPackageManager();
+		ApplicationInfo applicationInfo;
+		try {
+			applicationInfo = packageManager.getApplicationInfo(
+					context.getPackageName(), PackageManager.GET_META_DATA);
+			if (applicationInfo != null && applicationInfo.metaData != null) {
+				value = applicationInfo.metaData.get(key);
+				log.d("key = "+key+",value = "+value);
+			}
+		} catch (NameNotFoundException e) {
+		}
+		if (value == null) {
+			value="";
+		}
+		return String.valueOf(value);
+	}
+	
+
+
+	public static String getWeixinAppKey(Context context) {
+		return getMetaDataValue(context,KEY_APP_KEY_WEIXIN,"");
+	}
+	public static String getWeixinAppSecret(Context context) {
+		return getMetaDataValue(context,KEY_SECRET_WEIXIN,"");
+	}
+	public static String getWeixinAppId(Context context){
+		return getMetaDataValue(context,KEY_APP_ID_WEIXIN,"");
+	}
+
+
+	
+}

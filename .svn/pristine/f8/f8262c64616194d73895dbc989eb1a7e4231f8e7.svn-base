@@ -1,0 +1,522 @@
+package com.changyou.mgp.sdk.mbi.channel.impl;
+
+import java.text.NumberFormat;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.json.JSONObject;
+
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.ProgressDialog;
+import android.content.Context;
+import android.content.DialogInterface;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
+import android.util.Log;
+
+import com.android.huawei.pay.plugin.IHuaweiPay;
+import com.android.huawei.pay.util.HuaweiPayUtil;
+import com.android.huawei.pay.util.Rsa;
+import com.changyou.mgp.sdk.mbi.R;
+import com.changyou.mgp.sdk.mbi.account.id.AccResource;
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannel;
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannelEntity;
+import com.changyou.mgp.sdk.mbi.config.CYMGPrompt;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolKeys;
+import com.changyou.mgp.sdk.mbi.config.HttpContants;
+import com.changyou.mgp.sdk.mbi.config.Params;
+import com.changyou.mgp.sdk.mbi.config.SDKConfig;
+import com.changyou.mgp.sdk.mbi.entity.GoodsItem;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.platform.CYMGInitHelper;
+import com.changyou.mgp.sdk.mbi.platform.CYMGLoginHelper;
+import com.changyou.mgp.sdk.mbi.platform.CYMGLoginOutHelpr;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPayHelper;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPlatformConfiguration;
+import com.huawei.deviceCloud.microKernel.core.MicroKernelFramework;
+import com.huawei.deviceCloud.microKernel.manager.update.IUpdateNotifier;
+import com.huawei.deviceCloud.microKernel.manager.update.info.ComponentInfo;
+import com.huawei.hwid.openapi.out.IHwIDCallBack;
+import com.huawei.hwid.openapi.out.microkernel.IHwIDOpenSDK;
+
+public class CYMGHuaweiImpl implements CYMGChannel {
+
+	private CYLog mLog = CYLog.getInstance();
+	
+	//插件名称
+	public static final String HWID_PLUS_NAME = "hwIDOpenSDK";
+	public static final String  HiAnalytics_PLUS_NAME = "HiAnalytics";
+	public static final String HuaweiPayPlugin = "HuaweiPaySDK";
+	
+	//Message标识
+	public  static final  int REQUEST_CODE = 100;
+	public  static final  int PAY_RESULT = 1000;
+
+	//华为账号、支付核心类
+	private MicroKernelFramework mFramework = null;
+	private IHwIDOpenSDK mHWIDInstance = null;
+	private IHuaweiPay mPayHelper;
+	
+	//全局变量
+	private String mUid;
+	private GoodsItem mGoodsItem;
+	private String mOrderId;
+	
+	@Override
+	public void init(CYMGPlatformConfiguration config) {
+		Context context = config.getmContext();
+		if(initAccountService(context)){
+			CYMGInitHelper.getInstance().onInitResult(CYMGPrompt.CODE_INIT_SUCCESS,null);
+		}else {
+			CYMGInitHelper.getInstance().onInitResult(CYMGPrompt.CODE_INIT_FAILED,null);
+		}
+	}
+
+	/**
+	 * 
+	 * 功能描述: 初始化账号服务
+	 * @param @param context
+	 * @param @return  
+	 * @return boolean    返回类型 
+	 * @author 欧阳海冰(OuyangHaibing)
+	 * @date 2014-4-16 下午12:00:12
+	 */
+	private boolean initAccountService(Context context) {
+		try {
+			mFramework = MicroKernelFramework.getInstance(context);
+			mFramework.start();
+
+			// 检查插件是否有更新时调用的方法，同时传递handler,框架SDK会用此handler发送状态信息
+			mFramework.checkSinglePlugin(HWID_PLUS_NAME, new UpdateNotifierHandler((Activity)context, mFramework));
+
+			List<Object> services = mFramework.getService(HWID_PLUS_NAME);
+			if (null != services) {
+				mLog.d("-------------->>CYMGHuaweiImpl:get " + HWID_PLUS_NAME + " services size:" + services.size());
+			} else {
+				mLog.d("-------------->>CYMGHuaweiImpl:get empty " + HWID_PLUS_NAME + " services");
+			}
+			if (null == services || services.size() == 0) {
+				mLog.d("-------------->>CYMGHuaweiImpl:begin to load " + HWID_PLUS_NAME);
+				mFramework.loadPlugin(HWID_PLUS_NAME);
+				services = mFramework.getService(HWID_PLUS_NAME);
+			}
+			if (null != services && !services.isEmpty()) {
+				mHWIDInstance = (IHwIDOpenSDK) (services.get(0));
+			}
+			if (null == mHWIDInstance) {
+				mLog.e("-------------->>CYMGHuaweiImpl:no " + HWID_PLUS_NAME + " find!!");
+				return false;
+			}
+			return true;
+		} catch (Exception e) {
+			mLog.e(e);
+			return false;
+		}
+	}
+
+	@Override
+	public void doLogin(final CYMGChannelEntity entity) {
+		final Context context = entity.getmContext();
+		if (context == null) {
+			mLog.e("CYMGHuaweiImpl---->>context is null !!");
+			return;
+		}
+		if (mHWIDInstance == null) {
+			mLog.e("CYMGHuaweiImpl---->>hwIDOpenSDKInstance is null !!");
+			return;
+		}
+		//META-DATA中获取
+		String appId = "";
+		//初始化IHwIDCallBack对象
+        IHwIDCallBack callback = new IHwIDCallBack() {
+             @Override
+             public void onUserInfo(HashMap userInfo) {
+            	 if(null == userInfo || !userInfo.containsKey("userName")){
+            		 //登录失败
+            		 CYMGLoginHelper.getInstance().loginResult(CYMGPrompt.CODE_LOGIN_FAILED, null,context);
+                     return;
+            	 }
+            	 int userValidStatus = (Integer) userInfo.get("userValidStatus");
+            	 if (userValidStatus == 1) {//1 正常  2 暂停  3 销户
+            		 String token = (String) userInfo.get("accesstoken");
+            		 String userId = (String) userInfo.get("userID");
+            		 Bundle b = new Bundle();
+            		 b.putString(CYMGProtocolKeys.UID, userId);
+            		 b.putString(CYMGProtocolKeys.TOKEN, token);
+            		 b.putString(CYMGProtocolKeys.CHANNEL_ID,context.getString(AccResource.getInstance(context).mgp_channel_huawei));
+					 CYMGLoginHelper.getInstance().loginResult(CYMGPrompt.CODE_LOGIN_SUCCESS, b ,context);
+            	 }else {
+            		 CYMGLoginHelper.getInstance().loginResult(CYMGPrompt.CODE_LOGIN_FAILED, null,context);
+            	 }
+            	 
+             }
+        };
+        
+        //设置proxy，初始化登录代理
+        mHWIDInstance.setLoginProxy((Activity)context, appId, callback, new Bundle());
+        //Login方法调用
+        mHWIDInstance.login(new Bundle());
+        
+	}
+
+	@Override
+	public void doPay(CYMGChannelEntity entity) {
+		final Bundle b = entity.getBundle();
+		mUid = b.getString(Params.UID);
+		mOrderId = b.getString(Params.ORDER_ID);
+		String uid = b.getString(CYMGProtocolKeys.TOKEN);
+		mGoodsItem = (GoodsItem)b.getSerializable(Params.GOODSITEM);
+		Context context = entity.getmContext();
+		mPayHelper = initPayService(context);
+		if (mPayHelper == null) {
+			CYMGPayHelper.getInstance().payException(CYMGPrompt.CODE_PAY_FAILED);
+			return;
+		}
+		
+		//生成订单签名
+		Map<String, String> params = new HashMap<String, String>();
+		
+		//META-DATA中获取
+		String userID = "";
+		String applicationID = "";
+		String rsa_private = "";
+		
+		params.put("userID", userID);
+		params.put("applicationID", applicationID);
+		params.put("amount", mGoodsItem.getGoods_price());
+		params.put("productName", mGoodsItem.getGoods_name());
+		params.put("productDesc", mGoodsItem.getGoods_describe());
+		params.put("requestId", mOrderId);
+		
+		String noSign = HuaweiPayUtil.getSignData(params);
+		String	sign = Rsa.sign(noSign, rsa_private);
+		
+		mLog.e("rsa sign--->>:pre noSign: "+noSign + ",  sign: "+sign);
+		
+		//封装订单数据
+		Map<String, Object> payInfo = new HashMap<String, Object>();
+		payInfo.put("amount", mGoodsItem.getGoods_price());
+		payInfo.put("productName", mGoodsItem.getGoods_name());
+		payInfo.put("requestId", mOrderId);
+		payInfo.put("productDesc", mGoodsItem.getGoods_describe());
+		payInfo.put("userName", "");
+		payInfo.put("applicationID", applicationID);
+		payInfo.put("userID", userID);
+		payInfo.put("sign", sign);
+		payInfo.put("notifyUrl", HttpContants.getHuaweiNotifyUrl());
+//		payInfo.put("environment", environment);//选填
+//		payInfo.put("accessToken","BFIUhdi0ZQZ44trTDvARG4hnBu7K9SLnqTAG2bYRU15N/kJGMUM=");//选填
+//		调试期可打开日志，发布时注释掉
+		payInfo.put("showLog", true);
+	
+		mLog.d("---->>:all parameters : "+payInfo.toString());
+		
+		/**
+		 * 开始支付
+		 */
+		mPayHelper.startPay((Activity) context, payInfo, handler, PAY_RESULT);
+	}
+	
+	private Handler handler = new Handler(){
+		public void handleMessage(Message msg) {
+			try {
+				switch (msg.what) {
+					case PAY_RESULT: {
+						
+						//处理支付结果
+						String pay = "支付失败！";
+						String payResult = (String)msg.obj;
+						mLog.d("---->>HUAWEI:GET PAY RESULT "+ payResult);
+						JSONObject jsonObject = new JSONObject(payResult);
+						String returnCode = jsonObject.getString("returnCode");
+						if(returnCode.equals("0")){
+							String errMsg = jsonObject.getString("errMsg");
+							if(errMsg.equals("success")){
+								//支付成功，验证信息的安全性
+								String amount = jsonObject.getString("amount");
+								String sign = jsonObject.getString("sign");
+								String orderID = jsonObject.getString("orderID");
+								String requestId = jsonObject.getString("requestId");
+								String userName = jsonObject.getString("userName");
+								String time = jsonObject.getString("time");
+								Map<String, String> paramsa = new HashMap<String, String>();
+								paramsa.put("userName", userName);
+								paramsa.put("orderID",orderID);
+								paramsa.put("amount", amount);
+								paramsa.put("errMsg", errMsg);
+								paramsa.put("time", time);
+								paramsa.put("requestId", requestId);
+	
+								String noSigna = HuaweiPayUtil.getSignData(paramsa);
+							
+								//META-DATA获取
+								String rsa_public = "";
+								boolean s = Rsa.doCheck(noSigna, sign, rsa_public);
+								
+								if(s){
+									CYMGPayHelper.getInstance().paySuccess(mUid, mGoodsItem, mOrderId);
+								}else{
+									CYMGPayHelper.getInstance().payException(CYMGPrompt.CODE_PAY_FAILED);
+								}
+							}
+						}else if(returnCode.equals("30002")){
+							CYMGPayHelper.getInstance().payException(CYMGPrompt.CODE_PAY_FAILED);
+						}
+					}
+				}
+			}catch(Exception e){
+				mLog.e(e);
+				CYMGPayHelper.getInstance().payException(CYMGPrompt.CODE_PAY_FAILED);
+			}
+		}
+	};
+	
+	/**
+	 * 
+	 * 功能描述: 获取华为支付核心类
+	 * @param @param context
+	 * @param @return  
+	 * @return IHuaweiPay    返回类型 
+	 * @author 欧阳海冰(OuyangHaibing)
+	 * @date 2014-4-16 下午1:56:48
+	 */
+	private IHuaweiPay initPayService(Context context){
+		try {
+	        mFramework = MicroKernelFramework.getInstance(context);
+			mFramework.start();
+						
+		    //检查插件是否有更新时调用的方法，同时传递handler,框架SDK会用此handler发送状态信息
+            mFramework.checkSinglePlugin(HuaweiPayPlugin, new UpdateNotifierHandler((Activity)context, mFramework));
+
+            List<Object> services = mFramework.getService(HuaweiPayPlugin);
+			if(null != services){
+				mLog.e("-------------->>CYMGHuaweiImpl:get " + HuaweiPayPlugin + " services size:" + services.size());
+			} else {
+				mLog.e("-------------->>CYMGHuaweiImpl:get empty " + HuaweiPayPlugin + " services");
+			}
+			if(null == services || services.size() == 0){
+				mLog.e("-------------->>CYMGHuaweiImpl:begin to load " + HuaweiPayPlugin);
+				mFramework.loadPlugin(HuaweiPayPlugin);
+			}
+			
+			Object payObject =  mFramework.getPluginContext().getService(IHuaweiPay.interfaceName).get(0);
+			
+			if(payObject == null)
+			{
+				mLog.e("-------------->>CYMGHuaweiImpl:no huaweipay  interface " + IHuaweiPay.interfaceName);
+				return null;
+			}
+			
+			return (IHuaweiPay)payObject;
+		
+		} catch (Exception e) {
+			mLog.e(e);
+			return null;
+		}
+    }
+
+	@Override
+	public void doLogout(CYMGChannelEntity entity) {
+		if (mHWIDInstance == null) {
+			CYMGLoginOutHelpr.getInstance().logoutResult(CYMGPrompt.CODE_LOGOUT_FAILED);
+			return;
+		}
+		mHWIDInstance.logout();
+		CYMGLoginOutHelpr.getInstance().logoutResult(CYMGPrompt.CODE_LOGOUT_SUCCESS);
+	}
+
+	@Override
+	public void doDestroy(CYMGChannelEntity entity) {
+		mLog.i("enter onDestroy");
+		if(null != mHWIDInstance){
+			mHWIDInstance.releaseResouce();
+			mHWIDInstance = null;
+		}
+		mFramework = null;
+	}
+
+	@Override
+	public void doCustomerService(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+		
+	}
+	
+	/**
+	 * 
+	 * 功能描述: 提供插件下载功能
+	 * @author 欧阳海冰(OuyangHaibing)
+	 * @date 2014-4-16 下午1:39:00
+	 */
+	public class UpdateNotifierHandler implements IUpdateNotifier {
+	    private final String TAG = UpdateNotifierHandler.class.getSimpleName();
+		public HashMap<String, String> allPluginName = new HashMap<String, String>()
+		{
+			{
+				put(HWID_PLUS_NAME, "华为帐号");
+				put(HiAnalytics_PLUS_NAME, "华为统计");
+				put(HuaweiPayPlugin, "华为支付");
+			}
+		};
+	    
+	    private Activity context = null;
+	    private ProgressDialog progressDialog = null;
+	    private MicroKernelFramework framework = null;
+	    
+	    private NumberFormat nf  =  NumberFormat.getPercentInstance();
+	     
+	    public UpdateNotifierHandler(Activity context, MicroKernelFramework framework) {
+	        this.context = context;
+	        this.framework = framework;
+	        nf.setMaximumFractionDigits(1);
+	    }
+	    
+	    /**
+	     * 通知某个插件有新版本
+	     * @param ci 插件信息
+	     * @param existsOldVersion 是否存在老版本的插件，如果存在，由应用决定是否立即加载
+	     * 在调用checkSinglePlugin的线程中运行
+	     */
+	    public void thereAreNewVersion(final ComponentInfo ci, final Runnable downloadHandler, boolean existsOldVersion) {
+	        Log.d(TAG, "thereAreNewVersion:" + ci.getPackageName() + ", versionCode:" + ci.getVersionCode()+" existsOldVersion:"+existsOldVersion);
+	        DialogInterface.OnClickListener update = new DialogInterface.OnClickListener() {
+	            public void onClick(DialogInterface dialog, int which) {
+	                /**
+	                 * 当用户确定下载时，开始下载，其他的都不要调用此函数
+	                 * 非阻塞，会启动新的线程下载
+	                 */
+	                downloadHandler.run();
+	                dialog.dismiss();
+	            }
+	        };        
+	        
+	        DialogInterface.OnClickListener cancel = new DialogInterface.OnClickListener() {
+	            public void onClick(DialogInterface dialog, int which) {
+	                dialog.dismiss();
+//	                runService(ci.getPackageName());
+	            }
+	        };
+	        
+	        new AlertDialog.Builder(context)
+	            .setTitle("插件更新：" + allPluginName.get(ci.getPackageName()))
+	            .setMessage(allPluginName.get(ci.getPackageName()) + " 有新版本： " + ci.getVersionName() + "， 点击“确定”更新")
+	            .setCancelable(false)
+	            .setNegativeButton("取消", cancel)
+	            .setPositiveButton("确定", update)
+	            .show();
+	    }
+	    
+	    /**
+	     * 开始下载插件，可以在这里显示一个进度条
+	     * @param ci 插件信息
+	     * 在调用checkSinglePlugin的线程中运行
+	     */
+	    public void startDownload(ComponentInfo ci) {
+	        Log.d(TAG, "startDownload:" + ci.getPackageName() + ", versionCode:" + ci.getVersionCode());
+	        progressDialog = new ProgressDialog(context);
+	        progressDialog.setTitle("插件 " + allPluginName.get(ci.getPackageName()));
+	        progressDialog.setMessage("正在下载...");
+	        progressDialog.setIndeterminate(false);
+	        progressDialog.setCancelable(false);
+	        progressDialog.setOnCancelListener(new DialogInterface.OnCancelListener() {
+	            public void onCancel(DialogInterface dialog) {
+	                framework.cancelDownload();
+	                progressDialog.dismiss();
+	            }
+	        });
+	        progressDialog.show();
+	    }
+	    
+	    /**
+	     * 开始下载插件
+	     * @param ci 插件信息
+	     * 在下载线程中运行，所以要注意，使用ui线程运行界面操作
+	     */
+	    public void downloading(final ComponentInfo ci, final long downloadedSize, final long totalSize) {
+	        Log.d(TAG, "downloading:" + ci.getPackageName() + ", versionCode:" + ci.getVersionCode());
+	        context.runOnUiThread(new Runnable() {
+	            public void run(){ 
+	                progressDialog.setMessage("Load..." + nf.format(((double)downloadedSize / totalSize)));
+	            }
+	        });
+	    }
+	    
+	    /**
+	     * 插件下载完成
+	     * @param ci 插件信息
+	     * 在下载线程中运行，所以要注意，使用ui线程运行界面操作
+	     */
+	    public void downloaded(final ComponentInfo ci) {
+	        Log.d(TAG, "downloaded:" + ci.getPackageName() + ", versionCode:" + ci.getVersionCode());
+	        context.runOnUiThread(new Runnable() {
+	            public void run(){ 
+	                progressDialog.dismiss();
+//	                Toast.makeText(context, "Success to download " + ci.getPackageName(), Toast.LENGTH_LONG).show();
+	            }
+	        });
+//	        runService(ci.getPackageName());
+	    }
+	    
+	    /**
+	     * 插件下载失败
+	     * @param ci 插件信息
+	     * 在下载线程中运行，所以要注意，使用ui线程运行界面操作
+	     */
+	    public void downloadFailed(final ComponentInfo ci, boolean existsOldVersion, int errorCode) {
+	        Log.d(TAG, "downloadFailed:" + ci.getPackageName() + ", versionCode:" + ci.getVersionCode() + ",errorCode:" + errorCode);
+	        context.runOnUiThread(new Runnable() {
+	            public void run(){ 
+	                progressDialog.dismiss();
+//	                Toast.makeText(context, "Fail to download " + ci.getPackageName(), Toast.LENGTH_LONG).show();
+	            }
+	        });
+	        
+	        runService(ci.getPackageName());
+	    }
+
+	    /**
+	     * 插件未更新，本地插件仍然有效
+	     * @param ci 插件信息
+	     * 在调用checkSinglePlugin的线程中运行
+	     */
+	    public void localIsRecent(ComponentInfo ci) {
+	        Log.d(TAG, "localIsRecent:" + ci.getPackageName() + ", versionCode:" + ci.getVersionCode());
+//	        Toast.makeText(context, "Local plugin " + ci.getPackageName() + " is recent", Toast.LENGTH_LONG).show();
+	        
+//	        runService(ci.getPackageName());
+	    }
+	    
+	    private void runService(String packageName) {
+	        Log.d(TAG, "runService, load plugin " + packageName);
+	        framework.loadPlugin(packageName);
+	        
+	    }
+	}
+
+	@Override
+	public void doShowUserCenter(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void doResume(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void doPause(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void doStop(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+		
+	}
+
+}

@@ -1,0 +1,194 @@
+package com.changyou.mgp.sdk.mbi.ui.widget;
+
+import com.changyou.mgp.sdk.mbi.entity.FlowWinCloseAnimEvent;
+import com.changyou.mgp.sdk.mbi.entity.FlowWinExpandAnimEvent;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+
+import de.greenrobot.event.EventBus;
+import android.content.Context;
+import android.graphics.PixelFormat;
+import android.view.Gravity;
+import android.view.View;
+import android.view.WindowManager;
+
+public class CYMGFlowWinManager {
+
+	private static CYMGFlowWinManager mManager;
+	
+	public static WindowManager.LayoutParams mParams;
+	
+	/**
+	 * 处于收缩状态的悬浮窗
+	 */
+	private CYMGFlowWindowClose mCloseWin;
+	
+	/**
+	 * 处于展开状态的悬浮窗
+	 */
+	private CYMGFlowWindowExpand mExpandWin;
+	
+	private Context mContext;
+	
+	private WindowManager mWM;
+	
+	private static boolean mCloseShown;
+	
+	private static boolean mExpandShown;
+	
+	/**
+	 * CYMGFlowWinManager类是否已经注册了EventBus
+	 */
+	private boolean mHadRegistEventBus;
+	
+	private CYLog log = CYLog.getInstance();
+	
+	private CYMGFlowWinManager(){
+		init();
+	}
+	
+	public static CYMGFlowWinManager getInstance(){
+		if(mManager == null){
+			mManager = new CYMGFlowWinManager();
+		}
+		return mManager;
+	}
+	
+	/**
+	 * 设置上下文，这里传入的一定要是Application的上下文，否则会出现悬浮窗无法正常显示或更新的异常
+	 * @param context
+	 */
+	public void setContext(Context context){
+		log.v("setContext");
+		if(mContext == null){
+			this.mContext = context;
+			this.mWM = (WindowManager)mContext.getSystemService(Context.WINDOW_SERVICE);
+			initParam();
+			mCloseWin = new CYMGFlowWindowClose(mContext);
+			mExpandWin = new CYMGFlowWindowExpand(mContext);
+			mCloseShown = false;
+			mExpandShown = false;
+			//注册EnventBus，以监听Expand动画的开始和结束
+			if(!mHadRegistEventBus){
+				EventBus.getDefault().register(this);
+				mHadRegistEventBus = true;
+			}
+		}
+	}
+	
+	private void init(){
+		
+	}
+	
+	/**
+	 * 初始化WindowManager.LayoutParam
+	 */
+	private void initParam(){
+		mParams = new WindowManager.LayoutParams();
+		mParams.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL | WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+		mParams.format = PixelFormat.TRANSPARENT;
+		mParams.width = WindowManager.LayoutParams.WRAP_CONTENT;
+		mParams.height = WindowManager.LayoutParams.WRAP_CONTENT;
+		mParams.gravity = Gravity.LEFT | Gravity.TOP;
+		mParams.type = WindowManager.LayoutParams.TYPE_SYSTEM_ALERT;
+	}
+	
+	/**
+	 * 显示悬浮窗
+	 */
+	public void show(){
+		try {
+			log.i("show");
+			if(mCloseShown){
+				log.e("flow win had attached");
+				mCloseShown = true;
+				return;
+			}
+			mWM.addView(mCloseWin, mParams);
+			mCloseShown = true;
+		} catch (Exception e) {
+			log.e(e);
+		}
+	}
+	
+	/**
+	 * 显示展开状态的悬浮窗
+	 */
+	public void showExpandWin(){
+		try {
+			mExpandWin = new CYMGFlowWindowExpand(mContext);
+			mWM.addView(mExpandWin, mParams);
+			mExpandShown = true;
+			mExpandWin.exeExpandOrClose();
+		} catch (Exception e) {
+			log.e(e);
+		}
+	}
+	
+	/**
+	 * 显示收缩状态的悬浮窗
+	 */
+	public void showCloseWin(){
+		try {
+			mWM.removeViewImmediate(mExpandWin);
+			mExpandShown = false;
+			if(mCloseShown){
+				mWM.addView(mCloseWin, mParams);
+				mCloseShown = true;
+				mCloseWin.startCountDownTimer();
+			}
+		} catch (Exception e) {
+			log.e(e);
+		}
+	}
+	
+	/**
+	 * 移除悬浮窗
+	 */
+	public void gone(){
+		try {
+			log.i("gone");
+			if(mCloseShown){
+				mWM.removeView(mCloseWin);
+				mCloseShown = false;
+			}
+			if(mExpandWin != null){
+				if(mExpandShown){
+					mWM.removeView(mExpandWin);
+					mExpandShown = false;
+				}
+			}
+		} catch (Exception e) {
+			log.e(e);
+		}
+	}
+	
+	/**
+	 * 监听悬浮窗的收缩动画
+	 * @param e
+	 */
+	public void onEventMainThread(FlowWinCloseAnimEvent e){
+		if(e.getState() == FlowWinCloseAnimEvent.START){
+		}else{
+			mCloseWin.startCountDownTimer();
+			mWM.addView(mCloseWin, mParams);
+			mCloseShown = true;
+			mWM.removeView(mExpandWin);
+			mExpandShown = false;
+			mExpandWin.animEnd();
+		}
+	}
+	
+	/**
+	 * 监听悬浮窗的展开动画
+	 * @param e
+	 */
+	public void onEventMainThread(FlowWinExpandAnimEvent e){
+		if(e.getState() == FlowWinExpandAnimEvent.START){
+			mCloseWin.setVisibility(View.GONE);
+		}else{
+			mWM.removeView(mCloseWin);
+			mCloseShown = false;
+			mCloseWin.setVisibility(View.VISIBLE);
+		}
+	}
+}

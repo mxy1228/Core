@@ -1,0 +1,67 @@
+package com.changyou.mgp.sdk.mbi.account.adapter;
+
+import java.util.ArrayList;
+
+import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentManager;
+import android.support.v4.app.FragmentStatePagerAdapter;
+import android.view.ViewGroup;
+
+import com.changyou.mgp.sdk.mbi.account.ui.CYMGRegistForMailFragment;
+import com.changyou.mgp.sdk.mbi.account.ui.CYMGRegistForTelFragment;
+import com.changyou.mgp.sdk.mbi.account.ui.CYMGRegistOnekeyFragment;
+/**
+ * 
+ * 功能描述: 注册界面ViewPager的适配器
+ * @author 欧阳海冰(OuyangHaibing) 
+ * @date 2014-2-17 上午10:34:47 
+ *
+ */
+public class RegisterViewPagerAdapter extends FragmentStatePagerAdapter{
+
+	/** 存储Fragment的集合*/
+	public ArrayList<Fragment> mFragments = new ArrayList<Fragment>();
+	
+	public RegisterViewPagerAdapter(FragmentManager manager) {
+		super(manager);
+		mFragments.add(new CYMGRegistOnekeyFragment());
+		mFragments.add(new CYMGRegistForTelFragment());
+	}
+//	public RegisterViewPagerAdapter(FragmentActivity activity, ArrayList<Fragment> fragmentLst) {
+//		super(activity.getSupportFragmentManager());
+//		mFragments = fragmentLst;
+//	}
+
+	@Override
+	public Fragment getItem(int arg0) {
+		return mFragments.get(arg0);
+	}
+
+	@Override
+	public int getCount() {
+		return mFragments.size();
+	}
+	
+	@Override
+	public int getItemPosition(Object object) {
+		return POSITION_NONE;
+	}
+
+	@Override
+	public void destroyItem(ViewGroup container, int position, Object object) {
+		super.destroyItem(container, position, object);
+	}
+	
+	/**
+	 * 功能描述: 将Fragment动态加入集合中
+	 * @author 欧阳海冰(OuyangHaibing)
+	 * @param @param fragment 
+	 * @return void
+	 * @throws
+	 */
+	public void addTab(Fragment fragment) {
+		mFragments.add(fragment);
+		notifyDataSetChanged();
+	}
+
+}

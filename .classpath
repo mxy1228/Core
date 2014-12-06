@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="con" path="com.android.ide.eclipse.adt.ANDROID_FRAMEWORK"/>
+	<classpathentry exported="true" kind="con" path="com.android.ide.eclipse.adt.DEPENDENCIES"/>
+	<classpathentry excluding="com/changyou/mgp/sdk/mbi/channel/impl/CYMGDangLeImpl.java|com/changyou/mgp/sdk/mbi/channel/impl/CYMGGfanImpl.java|com/changyou/mgp/sdk/mbi/channel/impl/CYMGHuaweiImpl.java|com/changyou/mgp/sdk/mbi/channel/impl/CYMGLenovoImpl.java|com/changyou/mgp/sdk/mbi/channel/impl/CYMGAnZhiImpl.java|com/changyou/mgp/sdk/mbi/channel/impl/CYMGMiImpl.java|com/changyou/mgp/sdk/mbi/channel/impl/CYMGOppoImpl.java|com/changyou/mgp/sdk/mbi/channel/impl/CYMG91Impl.java|com/changyou/mgp/sdk/mbi/channel/impl/CYMGUCImpl.java|com/changyou/mgp/sdk/mbi/channel/impl/CYMGWdjImpl.java|com/changyou/mgp/sdk/mbi/utils/MGP91ToolBar.java|com/changyou/mgp/sdk/mbi/channel/impl/CYMGDownJoyImpl.java|com/changyou/mgp/sdk/mbi/channel/impl/CYMGDuokuImpl.java" kind="src" path="src"/>
+	<classpathentry kind="src" path="gen"/>
+	<classpathentry exported="true" kind="con" path="com.android.ide.eclipse.adt.LIBRARIES"/>
+	<classpathentry kind="output" path="bin/classes"/>
+</classpath>

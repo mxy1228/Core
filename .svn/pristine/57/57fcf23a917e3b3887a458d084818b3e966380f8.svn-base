@@ -1,0 +1,72 @@
+package com.changyou.mgp.sdk.mbi.account.widget;
+
+import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
+import android.text.Spannable;
+import android.text.SpannableString;
+import android.text.TextUtils;
+import android.text.style.ForegroundColorSpan;
+import android.view.Gravity;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import com.changyou.mgp.sdk.mbi.account.id.AccResource;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+
+public class CYMGLoginToast {
+	
+	private static CYLog log = CYLog.getInstance();
+	
+    private static Toast mToast;
+    private static View mView;
+    private static TextView mAccountTv;
+ 
+    private CYMGLoginToast() {
+    }
+ 
+    private static void getToast(Context context) {
+        if (mToast == null) {
+        	mToast = new Toast(context);
+        }
+        if (mView == null) {
+        	mView = LayoutInflater.from(context).inflate(AccResource.getInstance(context).mgp_login_success_custom_dialog_109, null);
+    		mAccountTv = (TextView) mView.findViewById(AccResource.getInstance(context).mgp_auto_login_success_account_tv);
+        }
+        mToast.setView(mView);
+    }
+    
+    private static void showToast(Context context,String account,int duration) {
+        try {
+            getToast(context);
+//    		if (!TextUtils.isEmpty(account)&&account.length()>13) {
+//    			String subAccTv = account.substring(0, 13);
+//    			String showTv = subAccTv+"...,"+ context.getString(AccResource.getInstance(context).mgp_login_success_info);
+//    			mAccountTv.setText(initSString(context,showTv, AccResource.getInstance(context).mgp_login_success_info_color));
+//    		}else {
+//    			String showTv = account+","+ context.getString(AccResource.getInstance(context).mgp_login_success_info);
+//    			mAccountTv.setText(initSString(context,showTv, AccResource.getInstance(context).mgp_login_success_info_color));
+//    		}
+            mAccountTv.setText(account);
+            mToast.setGravity(Gravity.CENTER, 0, 60);
+            mToast.setDuration(duration);
+            mToast.show();
+        } catch (Exception e) {
+        	log.e(e);
+        }
+    }
+    
+    public static void showLongToast(Context context, String account) {
+        showToast(context.getApplicationContext(), account,Toast.LENGTH_LONG);
+    }
+    
+	private static SpannableString initSString(Context context,String str,int colorID){
+		SpannableString sstr = new SpannableString(str);
+		ForegroundColorSpan span = new ForegroundColorSpan(context.getResources().getColor(colorID));
+		sstr.setSpan(span, str.indexOf(","), str.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+		return sstr;
+	}
+
+}

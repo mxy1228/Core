@@ -1,0 +1,83 @@
+package com.changyou.mgp.sdk.mbi.cts.ui;
+
+import android.os.Bundle;
+import android.support.v4.app.FragmentManager;
+import android.support.v4.app.FragmentTransaction;
+import android.view.KeyEvent;
+
+import com.changyou.mgp.sdk.mbi.R;
+import com.changyou.mgp.sdk.mbi.config.Contants;
+import com.changyou.mgp.sdk.mbi.ui.base.BaseActivity;
+/**
+ * 
+ * 功能描述：在线客服Activity 包含：客服反馈、工单查询功能
+ *
+ * @author 严峥(yanzheng)
+ * @date 2014-3-26 下午1:54:27
+ * 修改历史：(修改人，修改时间，修改原因/内容)
+ */
+public class CYMGCustomerServiceActivity extends BaseActivity{
+	
+	private FragmentManager mFragmentManager;//fragment管理器
+	private CYMGCustomerServiceFeedbackFragment mMGPOlineServerFeedbackFragment;
+	private Bundle mBundle;
+	
+	@Override
+	protected void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		setContentView(R.layout.mgp_onlineserver_root_1_03);
+		initView();
+		initData();
+		initEvent();
+	}
+	
+	@Override
+	protected void initView() {
+		intoMGPOlineServerFeedbackFragment();
+	}
+
+	@Override
+	protected void initData() {
+		
+	}
+
+	@Override
+	protected void initEvent() {
+		
+	}
+	
+	@Override
+	public boolean onKeyDown(int keyCode, KeyEvent event) {
+		if(keyCode==KeyEvent.KEYCODE_BACK){//判断是否是后退键
+			if(this.mFragmentManager.getBackStackEntryCount()==0){
+				this.finish();
+			}else{
+				this.mFragmentManager.popBackStack();
+			}
+			return true;
+		}
+		return super.onKeyDown(keyCode, event);
+	}
+	
+	/**
+	 * 
+	 * 功能描述：进入客服反馈页面
+	 *
+	 * @author 严峥(yanzheng)
+	 * @param @param content
+	 * @return void
+	 * @date 2014-3-26 下午1:56:09
+	 *
+	 * 修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void intoMGPOlineServerFeedbackFragment(){
+		mBundle=getIntent().getExtras();
+		mFragmentManager=getSupportFragmentManager();
+		FragmentTransaction mFT=mFragmentManager.beginTransaction();
+		mMGPOlineServerFeedbackFragment=new CYMGCustomerServiceFeedbackFragment();
+		mMGPOlineServerFeedbackFragment.setArguments(mBundle);
+		mFT.replace(R.id.mgp_onlineserver_root_layout, mMGPOlineServerFeedbackFragment,Contants.FragmentTag.ONLINESERVER_FEEDBACK_FRAGMENT);
+		mFT.commit();
+	}
+
+}

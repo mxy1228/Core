@@ -1,0 +1,78 @@
+package com.changyou.mgp.sdk.mbi.pay.adapter;
+
+import android.content.Context;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.BaseAdapter;
+
+import com.changyou.mgp.sdk.mbi.R;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.pay.viewcache.PaymentViewCache;
+
+public class PaymentAdapter extends BaseAdapter {
+
+	private CYLog log = CYLog.getInstance();
+	
+	private int[] mPicsWithoutMDO = {R.drawable.mgp_credit_card_pic
+			,R.drawable.mgp_union_pay_pic
+			,R.drawable.mgp_alipay_logo
+			,R.drawable.mgp_quick_pay_pic};
+	private int[] mPicsWithMDO = {R.drawable.mgp_pay_way_mdo_pic
+			,R.drawable.mgp_credit_card_pic
+			,R.drawable.mgp_union_pay_pic
+			,R.drawable.mgp_alipay_logo
+			,R.drawable.mgp_quick_pay_pic};
+	private int[] mPics = null;
+	
+	private Context mContext;
+	private String[] mData;
+	private LayoutInflater mInflater;
+	
+	public PaymentAdapter(Context context,String[] data){
+		this.mContext = context;
+		this.mData = data;
+		this.mInflater = (LayoutInflater)mContext.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+		if(data.length == 4){
+			mPics = mPicsWithoutMDO;
+		}else{
+			mPics = mPicsWithMDO;
+		}
+	}
+	
+	@Override
+	public int getCount() {
+		return mData.length;
+	}
+
+	@Override
+	public Object getItem(int position) {
+		return mData[position];
+	}
+
+	@Override
+	public long getItemId(int position) {
+		return position;
+	}
+
+	@Override
+	public View getView(int position, View convertView, ViewGroup parent) {
+		PaymentViewCache viewCache = null;
+		if(convertView == null){
+			convertView = mInflater.inflate(R.layout.mgp_payment_way_item, null);
+			viewCache = new PaymentViewCache(convertView);
+			convertView.setTag(viewCache);
+		}else{
+			viewCache = (PaymentViewCache)convertView.getTag();
+		}
+		String item = mData[position];
+		if(item == null){
+			log.e("item is null");
+		}else{
+			viewCache.getmNameTV().setText(item);
+			viewCache.getmLogoIV().setImageResource(mPics[position]);
+		}
+		return convertView;
+	}
+
+}

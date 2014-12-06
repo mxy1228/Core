@@ -1,0 +1,59 @@
+package com.changyou.mgp.sdk.mbi.platform;
+
+import java.util.Set;
+
+import org.json.JSONObject;
+
+import android.os.Bundle;
+
+import com.changyou.mgp.sdk.mbi.channel.CYMGFunHelper;
+import com.changyou.mgp.sdk.mbi.common.CYMGCallBackManager;
+import com.changyou.mgp.sdk.mbi.config.CYMGFunID;
+import com.changyou.mgp.sdk.mbi.config.CYMGPrompt;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolKeys;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+
+public class CYMGInitHelper implements CYMGFunHelper {
+
+	private CYLog log = CYLog.getInstance();
+	
+	public static CYMGInitHelper mInstance;
+	
+	private CYMGInitHelper(){
+		
+	}
+	
+	public static CYMGInitHelper getInstance(){
+		if(mInstance == null){
+			mInstance = new CYMGInitHelper();
+		}
+		return mInstance;	
+	}
+	
+	
+	public void onInitResult(int error_code,Bundle b){
+		try {
+			JSONObject obj = new JSONObject();
+			obj.put(CYMGProtocolKeys.STATE_CODE, error_code);
+			obj.put(CYMGProtocolKeys.MSG, CYMGPrompt.getContentByCode(error_code));
+			JSONObject data = new JSONObject();
+			if(b != null){
+				Set<String> keys = b.keySet();
+				for(String key : keys){
+					data.put(key, b.get(key));
+				}
+			}
+			obj.put(CYMGProtocolKeys.DATA, data);
+			CYMGCallBackManager.getAndRemoveCallBack(CYMGFunID.INIT).onFinished(obj.toString());
+		} catch (Exception e) {
+			log.e(e);
+		}
+	}
+
+	@Override
+	public boolean checkNesessaryParam(Bundle b) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+}

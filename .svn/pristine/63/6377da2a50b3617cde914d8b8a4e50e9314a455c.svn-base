@@ -1,0 +1,249 @@
+package com.changyou.mgp.sdk.mbi.pay.ui;
+
+import android.content.Intent;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.text.TextUtils;
+import android.view.KeyEvent;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.widget.Toast;
+
+import com.changyou.mgp.sdk.mbi.config.CYMGPrompt;
+import com.changyou.mgp.sdk.mbi.config.Contants;
+import com.changyou.mgp.sdk.mbi.config.Params;
+import com.changyou.mgp.sdk.mbi.config.SDKConfig;
+import com.changyou.mgp.sdk.mbi.entity.GoodsItem;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.pay.id.PayResource;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPayHelper;
+import com.changyou.mgp.sdk.mbi.ui.base.BaseActivity;
+/**
+ * 
+ * 功能描述：支付Activity，承�?个Fragment：MGPPaymentFragment、MGPPaymentWayFragment、MGPCyouProtocolFragment、MGPChargeRecorderFragment
+ *
+ * @author 严峥(yanzheng)
+ * @date 2014-1-20 上午10:25:38
+ * 修改历史�?修改人，修改时间，修改原�?内容)
+ */
+public class CYMGPaymentActivity extends BaseActivity implements OnClickListener{
+	
+	private CYLog log = CYLog.getInstance();
+	
+	private String mUID;
+	private int mMenuClickCount;//记录物理Menu键按下次数，若等于十次则Toast显示版本号，该功能非产品经理设计，为隐藏的查看版本号的方法
+	private String mCurrentF;//标记当前显示的是哪个Fragment
+	
+	private Bundle mBundle;
+	private Bundle mData;
+	
+	@Override
+	protected void onCreate(Bundle savedInstanceState) {
+		log.i("MGPPaymentActivity:onCreate");
+		super.onCreate(savedInstanceState);
+		if (savedInstanceState != null) {
+	        savedInstanceState.remove("android:support:fragments");
+	    }
+		setContentView(PayResource.getInstance(this).mgp_payment_root);
+		initView();
+		initData();
+		initEvent();
+	}
+	
+	@Override
+	protected void onDestroy() {
+		super.onDestroy();
+		log.i("MGPPaymentActivity:onDestroy");
+	}
+	
+	@Override
+	protected void initView() {
+		log.i("initView");
+		this.mUID = getIntent().getStringExtra(Params.UID);
+		if(TextUtils.isEmpty(this.mUID) || this.mUID == null){
+			throw new IllegalAccessError("uid is null");
+		}
+	}
+
+	@Override
+	protected void initData() {
+		log.i("initData");
+		CYMGPayHelper.getInstance().setContext(this);
+		CYMGPaymentFragment f =new CYMGPaymentFragment();
+		this.mBundle=getIntent().getExtras();
+		f.setArguments(mBundle);
+		getSupportFragmentManager().beginTransaction().replace(PayResource.getInstance(CYMGPaymentActivity.this).payment_root_layout, f,Contants.FragmentTag.PAYMENT_FRAGMENT_TAG).commit();
+		this.mCurrentF=Contants.FragmentTag.PAYMENT_WAY_FRAGMENT_TAG;
+	}
+
+	@Override
+	protected void initEvent() {
+		
+	}
+
+	@Override
+	public void onClick(View v) {
+		if(v.getId()==PayResource.getInstance(CYMGPaymentActivity.this).mgp_title_left_ibtn){
+			goback();
+		} 
+	}
+	
+	@Override
+	protected void onSaveInstanceState(Bundle outState) {
+		//复写onSaveInstanceState，阻止自动调用super.onSaveInstanceState,这么做是为了解决某机型上快捷支付后奇葩的崩溃问题
+		//解决方案见http://stackoverflow.com/questions/7469082/getting-exception-illegalstateexception-can-not-perform-this-action-after-onsa/10261438#10261438
+	}
+	
+	public void goback(){
+		log.d("getSupportFragmentManager().getBackStackEntryCount()="+getSupportFragmentManager().getBackStackEntryCount());
+		if(getSupportFragmentManager().getBackStackEntryCount() == 0){
+			this.finish();
+		}else{
+			log.d("popBackStack");
+			getSupportFragmentManager().popBackStack();
+		}
+	}
+	
+	@Override
+	public void onBackPressed() {
+		log.d("onBackPressed");
+		if(mCurrentF.equals(Contants.FragmentTag.PAYMENT_SUCCESS_FRAGMENT_TAG)){
+			back2PaymentFragment();
+			this.mCurrentF=Contants.FragmentTag.PAYMENT_WAY_FRAGMENT_TAG;
+		}else{
+			goback();
+		}
+	}
+	
+	public void changeFragment(String target,Bundle bundle){
+		mCurrentF = target;
+		if(target.equals(Contants.FragmentTag.PAYMENT_WAY_FRAGMENT_TAG)){
+			this.mData=bundle;
+			CYMGPaymentWayFragment  paymentWayFragment = new CYMGPaymentWayFragment ();
+			paymentWayFragment.setArguments(bundle);
+			getSupportFragmentManager().beginTransaction().replace(PayResource.getInstance(CYMGPaymentActivity.this).payment_root_layout, paymentWayFragment
+					,Contants.FragmentTag.PAYMENT_WAY_FRAGMENT_TAG).addToBackStack(Contants.FragmentTag.PAYMENT_WAY_FRAGMENT_TAG).commit();
+		}else if(target.endsWith(Contants.FragmentTag.PAYMENT_ORDER_FRAGMENT_TAG)){
+			CYMGChargeRecorderFragment  chargeRecorderFragment = new CYMGChargeRecorderFragment();
+			Bundle b = new Bundle();
+			b.putString(Params.UID, mUID);
+			chargeRecorderFragment.setArguments(b);
+			getSupportFragmentManager().beginTransaction().replace(PayResource.getInstance(CYMGPaymentActivity.this).payment_root_layout, chargeRecorderFragment,
+					Contants.FragmentTag.PAYMENT_ORDER_FRAGMENT_TAG).addToBackStack(Contants.FragmentTag.PAYMENT_ORDER_FRAGMENT_TAG).commit();
+		}else if(target.equals(Contants.FragmentTag.PAYMENT_RECHARGE_CENTER_FRAGMENT_TAG)){
+			CYMGRechargeCenterFragment cymgRechargeCenterFragment=new CYMGRechargeCenterFragment();
+			cymgRechargeCenterFragment.setArguments(bundle);
+			getSupportFragmentManager().beginTransaction().replace(PayResource.getInstance(CYMGPaymentActivity.this).payment_root_layout, cymgRechargeCenterFragment
+					,Contants.FragmentTag.PAYMENT_RECHARGE_CENTER_FRAGMENT_TAG).addToBackStack(Contants.FragmentTag.PAYMENT_RECHARGE_CENTER_FRAGMENT_TAG).commit();
+		}else if(target.equals(Contants.FragmentTag.PAYMENT_WAY_PHONE_CARD_FRAGMENT_TAG)){
+			CYMGPaymentWayPhoneCardFragment cymgPaymentWayPhoneCardFragment=new CYMGPaymentWayPhoneCardFragment();
+			cymgPaymentWayPhoneCardFragment.setArguments(bundle);
+			getSupportFragmentManager().beginTransaction().replace(PayResource.getInstance(CYMGPaymentActivity.this).payment_root_layout, cymgPaymentWayPhoneCardFragment
+					,Contants.FragmentTag.PAYMENT_WAY_PHONE_CARD_FRAGMENT_TAG).addToBackStack(Contants.FragmentTag.PAYMENT_WAY_PHONE_CARD_FRAGMENT_TAG).commit();
+		}else if(target.equals(Contants.FragmentTag.PAYMENT_WAY_GAME_CARD_FRAGMENT_TAG)){
+			CYMGPaymentWayGameCardFragment cymgPaymentWayGameCardFragment=new CYMGPaymentWayGameCardFragment();
+			cymgPaymentWayGameCardFragment.setArguments(bundle);
+			getSupportFragmentManager().beginTransaction().replace(PayResource.getInstance(CYMGPaymentActivity.this).payment_root_layout, cymgPaymentWayGameCardFragment
+					,Contants.FragmentTag.PAYMENT_WAY_GAME_CARD_FRAGMENT_TAG).addToBackStack(Contants.FragmentTag.PAYMENT_WAY_GAME_CARD_FRAGMENT_TAG).commit();
+		}else if(target.equals(Contants.FragmentTag.PAYMENT_SUCCESS_FRAGMENT_TAG)){
+			CYMGPaymentSuccessFragment cymgPaymentWayCardPromptFragment=new CYMGPaymentSuccessFragment();
+			cymgPaymentWayCardPromptFragment.setArguments(bundle);
+			getSupportFragmentManager().beginTransaction().replace(PayResource.getInstance(CYMGPaymentActivity.this).payment_root_layout, cymgPaymentWayCardPromptFragment
+					,Contants.FragmentTag.PAYMENT_SUCCESS_FRAGMENT_TAG).addToBackStack(Contants.FragmentTag.PAYMENT_SUCCESS_FRAGMENT_TAG).commit();
+		}else if(target.equals(Contants.FragmentTag.PAYMENT_MO9_FRAGMENT_TAG)){
+			CYMGMo9PayFragment cymgMo9PayFragment=new CYMGMo9PayFragment();
+			cymgMo9PayFragment.setArguments(bundle);
+			getSupportFragmentManager().beginTransaction().replace(PayResource.getInstance(CYMGPaymentActivity.this).payment_root_layout, cymgMo9PayFragment
+					,Contants.FragmentTag.PAYMENT_MO9_FRAGMENT_TAG).addToBackStack(Contants.FragmentTag.PAYMENT_MO9_FRAGMENT_TAG).commit();
+		}
+	}
+	
+	/**
+	 * 返回到商品列表页面，然后PayHelper会在该页面进行订单验证
+	 */
+	public void back2PaymentFragment(){
+		int stackCount = getSupportFragmentManager().getBackStackEntryCount();
+		while(stackCount > 0){
+			log.d("stackCount = "+stackCount);
+			getSupportFragmentManager().popBackStack();
+			stackCount--;
+		}
+	}
+	
+	@Override
+	public boolean onKeyDown(int keyCode, KeyEvent event) {
+		if(keyCode == KeyEvent.KEYCODE_MENU){
+			mMenuClickCount++;
+			if(mMenuClickCount == 9){
+				Toast.makeText(CYMGPaymentActivity.this, SDKConfig.VERSION, Toast.LENGTH_LONG).show();
+				mMenuClickCount=0;
+			}
+		}
+		return super.onKeyDown(keyCode, event);
+	}
+	
+	@Override
+	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+		switch (requestCode) {
+		case CYMGPaymentWayFragment.RESULT_FOR_ALIPAY_CODE:
+			
+			break;
+//		case CYMGPaymentWayFragment.RESULT_FOR_MO9_CODE:
+//			log.d("RESULT_FOR_MO9_CODE,resultCode:"+resultCode);
+//			if(resultCode==10){
+//				log.d("onActivityResult,MO9支付成功");
+//				paySuccess(mData);
+//			}
+//			break;
+		default:
+	        if (data == null) {
+	        	payException();
+	            return;
+	        }
+	        String str = data.getExtras().getString("pay_result");
+	        if (str.equalsIgnoreCase("success")) {
+	        	log.d("onActivityResult,银联支付成功");
+	        	paySuccess(mData);
+	        } else if (str.equalsIgnoreCase("fail")) {
+	        	log.d("onActivityResult,银联支付失败");
+	        	payException();
+	        } else if (str.equalsIgnoreCase("cancel")) {
+	        	log.d("onActivityResult,银联支付取消");
+	        	payException();
+	        }
+			break;
+		}
+	}
+	
+	private void paySuccess(final Bundle data){
+		new Handler(Looper.getMainLooper()).post(new Runnable() {
+			
+			@Override
+			public void run() {
+				GoodsItem goodsItem = (GoodsItem)data.getSerializable(Params.GOODSITEM);
+				CYMGPayHelper.getInstance().paySuccess(mUID,goodsItem, data.getString(Params.ORDER_ID));
+				Bundle b = new Bundle();
+				b.putInt("type", CYMGPaymentSuccessFragment.SUCCESS);
+				changeFragment(Contants.FragmentTag.PAYMENT_SUCCESS_FRAGMENT_TAG, b);
+//				back2PaymentFragment();
+			}
+		});
+	}
+	
+	private void payException(){
+		new Handler(Looper.getMainLooper()).post(new Runnable() {
+			
+			@Override
+			public void run() {
+				CYMGPayHelper.getInstance().payException(CYMGPrompt.CODE_PAY_FAILED);
+				Bundle b = new Bundle();
+				b.putInt("type", CYMGPaymentSuccessFragment.FAILED);
+				changeFragment(Contants.FragmentTag.PAYMENT_SUCCESS_FRAGMENT_TAG, b);
+//		    	goback();
+			}
+		});
+
+	}
+	
+}

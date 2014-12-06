@@ -1,0 +1,109 @@
+package com.changyou.mgp.sdk.mbi.platform;
+
+import com.changyou.mgp.sdk.mbi.config.SDKConfig;
+import com.changyou.mgp.sdk.mbi.ui.widget.CYMGFlowWinManager;
+
+import android.content.Context;
+
+public class CYMGPlatformConfiguration {
+	
+	private static final String ERROR_CONTEXT_IS_NULL = "Builder Config";
+	
+	private final int mScreenOrientation;//SDK显示方向
+	private Context mContext;
+
+	private CYMGPlatformConfiguration(Builder builder){
+		this.mScreenOrientation = builder.orientation;
+		this.mContext = builder.getContext();
+	}
+	
+	public Context getmContext(){
+		return this.mContext;
+	}
+	
+	/**
+	 * 
+	 * 功能描述：获取屏幕显示方向
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param @return
+	 * @return int
+	 * @date 2014-2-19 下午2:10:28
+	 *
+	 */
+	public int getmScreenOrientation() {
+		return this.mScreenOrientation;
+	}
+	
+	
+	public static class Builder{
+		
+		private int orientation;
+		private Context context;
+		private CYMGCaptureHandler captureHandler;
+		
+		public Builder(Context context){
+			this.context = context;
+		}
+		
+		public Context getContext(){
+			return this.context;
+		}
+		
+		/**
+		 * 
+		 * 功能描述：设置SDK屏幕显示型式。默认竖屏显示。
+		 *
+		 * @author 徐萌阳(xumengyang)
+		 * @param orientation MGPPlatformConfiguration.VERTICAL：竖屏显示；MGPPlatformConfiguration.HORIZONTAL：横屏显示
+		 * @return Builder
+		 * @date 2014-1-26 上午10:14:54
+		 *
+		 */
+		public Builder setScreenOrientation(int orientation){
+			this.orientation = orientation;
+			return this;
+		}
+		
+		/**
+		 * 是否打开Debug模式，默认为false，若打开Debug，则接口的调用地址和渠道支付的回调地址会自动匹配到测试服上，否则自动匹配到正式服上
+		 * @param isDebug
+		 * @return
+		 */
+		public Builder setDebug(boolean isDebug){
+			SDKConfig.DEBUG = isDebug;
+			return this;
+		}
+		
+		public Builder setCaptureHandler(CYMGCaptureHandler handler){
+			this.captureHandler = handler;
+			CYMGFlowWinManager.getInstance().setCaptureHandler(captureHandler);
+			return this;
+		}
+		
+		public CYMGPlatformConfiguration build(){
+			initEmptyDefaulValues();
+			return new CYMGPlatformConfiguration(this);
+		}
+		
+		public Builder setInfoHandler(CYMGGameParamsHandler handler){
+			CYMGGameParams.getInstance().setHandler(handler);
+			return this;
+		}
+		
+		/**
+		 * 
+		 * 功能描述：为参数设置默认值
+		 *
+		 * @author 徐萌阳(xumengyang)
+		 * @param 
+		 * @return void
+		 * @date 2014-1-26 上午10:16:32
+		 *
+		 */
+		private void initEmptyDefaulValues(){
+			//TODO
+		}
+		
+	}
+}

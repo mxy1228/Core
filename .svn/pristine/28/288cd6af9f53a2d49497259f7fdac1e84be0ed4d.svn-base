@@ -1,0 +1,311 @@
+package com.changyou.mgp.sdk.mbi.account.ui;
+
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.codehaus.jackson.type.TypeReference;
+import org.json.JSONObject;
+
+import android.app.Activity;
+import android.content.Intent;
+import android.net.Uri;
+import android.os.Bundle;
+import android.support.v4.app.DialogFragment;
+import android.support.v4.app.FragmentActivity;
+import android.support.v4.app.FragmentTransaction;
+import android.text.TextUtils;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.Toast;
+
+import com.changyou.mgp.sdk.mbi.account.id.AccResource;
+import com.changyou.mgp.sdk.mbi.account.utils.CYMGLoginTokenVerifyUtil;
+import com.changyou.mgp.sdk.mbi.account.utils.CYMGLoginTokenVerifyUtil.MyLoginTokenVerifyListener;
+import com.changyou.mgp.sdk.mbi.common.CYMGCallbackHelper;
+import com.changyou.mgp.sdk.mbi.config.CYMGPrompt;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolKeys;
+import com.changyou.mgp.sdk.mbi.config.Contants;
+import com.changyou.mgp.sdk.mbi.config.HttpContants;
+import com.changyou.mgp.sdk.mbi.config.Params;
+import com.changyou.mgp.sdk.mbi.config.SDKConfig;
+import com.changyou.mgp.sdk.mbi.db.CYMGAccBean;
+import com.changyou.mgp.sdk.mbi.entity.ErrorInfo;
+import com.changyou.mgp.sdk.mbi.http.MyAsyncResponseHandler;
+import com.changyou.mgp.sdk.mbi.http.MyHttpClient;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.mbi.manager.CMBILogManager;
+import com.changyou.mgp.sdk.mbi.utils.DesUtil;
+import com.changyou.mgp.sdk.mbi.utils.JSONUtil;
+import com.changyou.mgp.sdk.mbi.utils.NetWorkUtils;
+import com.changyou.mgp.sdk.mbi.utils.SystemUtils;
+import com.changyou.mgp.sdk.mbi.utils.UserInfoSPUtil;
+
+public class CYMGLoginChengYouDialogFragment extends BaseDialogFragment implements OnClickListener{
+	
+	private CYLog log = CYLog.getInstance();
+	
+	private static final int ACC_MIN = 6;
+	private static final int PSWD_MIN = 8;
+	
+	private static Activity mActivity;
+	
+	private ImageButton mBackBtn;
+	private ImageButton mCloseBtn;
+	private ImageButton mForgetBtn;
+	private EditText mAccountET;
+	private EditText mPasswordET;
+	private Button mRegisterBtn;
+	private Button mLoginBtn;
+	
+	private CYMGLoadingDialogFragment mLoadingDialog;
+	
+	private String mAccountStr;
+	private String mPasswordStr;
+	
+	private boolean isRequest = false;
+	
+	@Override
+	public View onCreateView(LayoutInflater inflater, ViewGroup container,
+			Bundle savedInstanceState) {
+		View view=inflater.inflate(AccResource.getInstance(mActivity).mgp_sdk_2_0_dialog_chengyou_login, container,false);
+		initView(view);
+		initData();
+		initEvent();
+		return view;
+	}
+	
+
+	@Override
+	protected void initView(View view) {
+		mBackBtn=(ImageButton) view.findViewById(AccResource.getInstance(mActivity).mgp_sdk_2_0_login_chengyou_back_ImageButton);
+		mCloseBtn=(ImageButton) view.findViewById(AccResource.getInstance(mActivity).mgp_sdk_2_0_login_chengyou_close_ImageButton);
+		mForgetBtn=(ImageButton) view.findViewById(AccResource.getInstance(mActivity).mgp_sdk_2_0_login_chengyou_forget_ImageButton);
+		mAccountET=(EditText) view.findViewById(AccResource.getInstance(mActivity).mgp_sdk_2_0_login_chengyou_account_EditText);
+		mPasswordET=(EditText) view.findViewById(AccResource.getInstance(mActivity).mgp_sdk_2_0_login_chengyou_password_EditText);
+		mRegisterBtn=(Button) view.findViewById(AccResource.getInstance(mActivity).mgp_sdk_2_0_login_chengyou_register_Button);
+		mLoginBtn=(Button) view.findViewById(AccResource.getInstance(mActivity).mgp_sdk_2_0_login_chengyou_login_Button);
+		mLoadingDialog=CYMGLoadingDialogFragment.newInewInstance(mActivity);
+		CMBILogManager.printEventLog(mActivity, "0", "130003", "");
+	}
+
+	@Override
+	protected void initData() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	protected void initEvent() {
+		mBackBtn.setOnClickListener(this);
+		mCloseBtn.setOnClickListener(this);
+		mForgetBtn.setOnClickListener(this);
+		mRegisterBtn.setOnClickListener(this);
+		mLoginBtn.setOnClickListener(this);
+		mAccountET.setOnClickListener(this);
+		mPasswordET.setOnClickListener(this);
+	}
+	
+	public static CYMGLoginChengYouDialogFragment newInewInstance(Activity activity,Bundle bundle){
+		mActivity=activity;
+		CYMGLoginChengYouDialogFragment cYMGLoginChengYouDialogFragment=new CYMGLoginChengYouDialogFragment();
+		cYMGLoginChengYouDialogFragment.setArguments(bundle);
+		cYMGLoginChengYouDialogFragment.setStyle(DialogFragment.STYLE_NORMAL, AccResource.getInstance(mActivity).mgp_sdk_2_0_mian_dialog);
+		return cYMGLoginChengYouDialogFragment;
+	}
+
+	@Override
+	public void onClick(View v) {
+		if(v.getId()==AccResource.getInstance(mActivity).mgp_sdk_2_0_login_chengyou_back_ImageButton){
+			CMBILogManager.printEventLog(mActivity, "0", "133006", "");
+			dismiss();
+		}else if(v.getId()==AccResource.getInstance(mActivity).mgp_sdk_2_0_login_chengyou_close_ImageButton){
+			CMBILogManager.printEventLog(mActivity, "0", "133007", "");
+			mActivity.finish();
+		}else if(v.getId()==AccResource.getInstance(mActivity).mgp_sdk_2_0_login_chengyou_forget_ImageButton){
+			try {
+				CMBILogManager.printEventLog(mActivity, "0", "133003", "");
+				Intent intent = new Intent();        
+				intent.setAction("android.intent.action.VIEW");    
+				Uri content_url = Uri.parse(HttpContants.CNENGYOU_FORGET_PASSWORD);
+				intent.setData(content_url);  
+				startActivity(intent);
+			} catch (Exception e) {
+				log.e(e);
+			}
+		}else if(v.getId()==AccResource.getInstance(mActivity).mgp_sdk_2_0_login_chengyou_register_Button){
+			CMBILogManager.printEventLog(mActivity, "0", "133004", "");
+			Bundle bundle=new Bundle();
+			bundle.putString(Params.REGISTER_MODE, "phone");
+			((CYMGMainDialogFragmentActivity)mActivity).changeDialogFragment(Contants.DialogFragmentTag.REGISTER_CONTAINER, bundle);
+		}else if(v.getId()==AccResource.getInstance(mActivity).mgp_sdk_2_0_login_chengyou_login_Button){
+			CMBILogManager.printEventLog(mActivity, "0", "133005", "");
+			if(checkET()){
+				if(isRequest==false){
+					isRequest=true;
+					chengYouLogin();
+				}
+			}
+		}else if(v.getId()==AccResource.getInstance(mActivity).mgp_sdk_2_0_login_chengyou_account_EditText){
+			CMBILogManager.printEventLog(mActivity, "0", "133001", "");
+		}else if(v.getId()==AccResource.getInstance(mActivity).mgp_sdk_2_0_login_chengyou_password_EditText){
+			CMBILogManager.printEventLog(mActivity, "0", "133002", "");
+		}
+	}
+	
+	private boolean checkET(){
+		mAccountStr=mAccountET.getText().toString().toLowerCase().trim();
+		mPasswordStr=mPasswordET.getText().toString();
+		if(TextUtils.isEmpty(mAccountStr)){
+			Toast.makeText(mActivity, AccResource.getInstance(mActivity).mgp_sdk_2_0_error_login_account, Toast.LENGTH_SHORT).show();
+			return false;
+		}else if(mAccountStr.length()<ACC_MIN){
+			Toast.makeText(mActivity, AccResource.getInstance(mActivity).mgp_sdk_2_0_error_login_account, Toast.LENGTH_SHORT).show();
+			return false;
+		}else if(TextUtils.isEmpty(mPasswordStr)){
+			Toast.makeText(mActivity, AccResource.getInstance(mActivity).mgp_sdk_2_0_error_login_Password, Toast.LENGTH_SHORT).show();
+			return false;
+		}else if(mPasswordStr.length()<PSWD_MIN){
+			Toast.makeText(mActivity, AccResource.getInstance(mActivity).mgp_sdk_2_0_error_login_Password, Toast.LENGTH_SHORT).show();
+			return false;
+		}else if(mPasswordStr.contains(" ")){
+			Toast.makeText(mActivity, AccResource.getInstance(mActivity).mgp_sdk_2_0_error_login_space, Toast.LENGTH_SHORT).show();
+			return false;
+		}else if(!NetWorkUtils.isNetworkConnected(mActivity)){
+			Toast.makeText(mActivity, AccResource.getInstance(mActivity).mgp_sdk_2_0_error_common_net, Toast.LENGTH_SHORT).show();
+			return false;
+		}
+		return true;
+	}
+	
+	public void showDialog() {
+		FragmentTransaction transaction=((FragmentActivity)mActivity).getSupportFragmentManager().beginTransaction();
+		show(transaction, Contants.DialogFragmentTag.CHENGYOU_LOGIN);
+	}
+	
+	private void chengYouLogin(){
+		String deviceid = SystemUtils.getDeviceId(mActivity);
+		MyHttpClient myHttpClient=new MyHttpClient(mActivity);
+		Map map=new HashMap();
+		map.put("account", mAccountStr);
+		map.put("password", encryPassword(mPasswordStr));
+		map.put("device_id", deviceid);
+		myHttpClient.post(HttpContants.getURL(HttpContants.CHENGYOU_LOGIN), map, new MyAsyncResponseHandler(){
+			@Override
+			public void onStart() {
+				CMBILogManager.printEventLog(mActivity, "0", "110021", "");
+				mLoadingDialog.setMessage(mActivity.getString(AccResource.getInstance(mActivity).mgp_sdk_2_0_loading_login));
+				mLoadingDialog.showDialog();
+			}
+			
+			@Override
+			public void onSuccess(int statusCode, String content) {
+				try {
+					CMBILogManager.printEventLog(mActivity, "0", "120021", "");
+					log.d("content:"+content);
+					mLoadingDialog.dismissDialog();
+					isRequest=false;
+					if(!TextUtils.isEmpty(content)){
+						JSONObject jsonObject=new JSONObject(content);
+						String uid = jsonObject.getString("uid");
+						String token = jsonObject.getString("token");
+						String cn = jsonObject.getString("cn");
+						loginCallback(Contants.ACC_TYPE_CHENGYOU+cn, uid, token, Contants.LOGIN_CHENGYOU_TYPE);
+//						new CYMGLoginTokenVerifyUtil().loginTokenVerify(mActivity,Contants.ACC_TYPE_CHENGYOU+mAccountStr, uid, token, Contants.LOGIN_CHENGYOU_TYPE,new MyLoginTokenVerifyListener() {
+//							
+//							@Override
+//							public void onStart() {
+//								mLoadingDialog.setMessage(mActivity.getString(AccResource.getInstance(mActivity).mgp_sdk_2_0_loading_verify));
+//								mLoadingDialog.showDialog();
+//							}
+//							
+//							@Override
+//							public void onSuccess() {
+//								mLoadingDialog.dismissDialog();
+//							}
+//							
+//							@Override
+//							public void onFailure() {
+//								mLoadingDialog.dismissDialog();
+//							}
+//						});
+					}else{
+						Toast.makeText(mActivity, AccResource.getInstance(mActivity).mgp_sdk_2_0_error_common_server, Toast.LENGTH_SHORT).show();
+					}
+				} catch (Exception e) {
+					log.e(e);
+				}
+			}
+			
+			@Override
+			public void onFailure(int statusCode, Throwable error,
+					String content) {
+				try {
+					CMBILogManager.printEventLog(mActivity, "0", "120021", "");
+					log.d("content:"+content);
+					mLoadingDialog.dismissDialog();
+					isRequest=false;
+					if (!TextUtils.isEmpty(content)) {
+						ErrorInfo info = JSONUtil.getMapper().readValue(content,new TypeReference<ErrorInfo>() {});
+						if (info != null) {
+							Toast.makeText(mActivity, info.getClient_message(), Toast.LENGTH_SHORT).show();
+						} else {
+							Toast.makeText(mActivity, AccResource.getInstance(mActivity).mgp_sdk_2_0_error_common_server, Toast.LENGTH_SHORT).show();
+						}
+					} else {
+						Toast.makeText(mActivity, AccResource.getInstance(mActivity).mgp_sdk_2_0_error_common_server, Toast.LENGTH_SHORT).show();
+					}
+				} catch (Exception e) {
+					log.e(e);
+				}
+			}
+		});
+	}
+	
+	private void loginCallback(String acc,String uid,String token,String type){
+		try {
+			CYMGAccBean bean=new CYMGAccBean();
+			bean.setmAcc(acc);
+			bean.setmUID(uid);
+			bean.setmToken(token);
+			bean.setmState(1);
+			bean.setmTimeStamp(new Date(System.currentTimeMillis()).getTime()/1000);
+			((CYMGMainDialogFragmentActivity)mActivity).getmCYMGDBMaster().login(bean);
+		} catch (Exception e) {
+			log.e(e);
+		} finally{
+			UserInfoSPUtil.setUsername(mActivity, acc);
+			UserInfoSPUtil.setUid(mActivity, uid);
+			UserInfoSPUtil.setType(mActivity, type);
+			String userIp = NetWorkUtils.getLocalIpAddress(mActivity);
+			String deviceid = SystemUtils.getDeviceId(mActivity);
+			Bundle bundle = new Bundle();
+			bundle.putString(CYMGProtocolKeys.UID, uid);
+			bundle.putString(CYMGProtocolKeys.TOKEN, token);
+			bundle.putString(CYMGProtocolKeys.TYPE, type);
+			bundle.putString(CYMGProtocolKeys.USERIP, userIp);
+			bundle.putString(CYMGProtocolKeys.DEVICEID, deviceid);
+			bundle.putString(CYMGProtocolKeys.ISDEBUG, SDKConfig.DEBUG ? "true" : "false");
+			bundle.putString(CYMGProtocolKeys.CHANNEL_ID,mActivity.getString(AccResource.getInstance(mActivity).mgp_channel_cy));
+			bundle.putString(CYMGProtocolKeys.OPCODE, "10001");
+			CYMGCallbackHelper.callbackResult(CYMGCallbackHelper.getLoginResult(CYMGPrompt.CODE_LOGIN_SUCCESS, bundle,mActivity));
+			mActivity.finish();
+		}
+	}
+	
+	private String encryPassword(String password) {
+		String result = null;
+		try {
+			result = new DesUtil().encrypt(password);
+		} catch (Exception e) {
+			log.e(e);
+		}
+		return result;
+	}
+	
+}

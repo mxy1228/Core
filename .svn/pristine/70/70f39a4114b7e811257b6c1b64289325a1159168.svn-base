@@ -1,0 +1,65 @@
+package com.changyou.mgp.sdk.mbi.ui.widget;
+
+import android.app.Activity;
+import android.app.ProgressDialog;
+import android.content.Context;
+import android.content.DialogInterface;
+import android.content.DialogInterface.OnKeyListener;
+import android.support.v4.app.FragmentActivity;
+import android.support.v4.app.FragmentManager;
+import android.view.KeyEvent;
+
+import com.changyou.mgp.sdk.mbi.R;
+
+/**
+ * 
+ * 功能描述：自定义WaitingDialog
+ *
+ * @author 徐萌阳(xumengyang)
+ *
+ * <p>修改历史：(修改人，修改时间，修改原因/内容)</p>
+ */
+public class WaitingDialog extends ProgressDialog implements OnKeyListener{
+
+	private Context mContext;
+	
+	public WaitingDialog(Context context) {
+		super(context);
+		this.mContext = context;
+		init();
+	}
+	
+	public WaitingDialog(Context context, int theme) {
+		super(context, theme);
+		this.mContext = context;
+		init();
+	}
+
+	private void init(){
+		this.setCanceledOnTouchOutside(false);
+		this.setOnKeyListener(this);
+		this.setMessage(mContext.getString(R.string.mgp_loading));
+	}
+
+	@Override
+	public boolean onKey(DialogInterface dialog, int keyCode, KeyEvent event) {
+		if(keyCode == KeyEvent.KEYCODE_BACK){
+			Activity a = (Activity)mContext;
+			if(a instanceof FragmentActivity){
+				FragmentActivity fa = (FragmentActivity)a;
+				FragmentManager fm = fa.getSupportFragmentManager();
+				if(fm.getBackStackEntryCount() == 0){
+					fa.finish();
+					return true;
+				}else{
+					fm.popBackStack();
+					return true;
+				}
+			}else{
+				a.finish();
+				return true;
+			}
+		}
+		return false;
+	}
+}

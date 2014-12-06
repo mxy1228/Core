@@ -1,0 +1,136 @@
+/*******************************************************************************
+ *    工程名称   ： CYMGSDK
+ *    文件名    ： WeixinPayDo.java
+ *              (C) Copyright Cyou-inc Corporation 2014
+ *               All Rights Reserved.
+ *   
+ ******************************************************************************/
+package com.changyou.mgp.sdk.mbi.pay.weixin;
+
+import java.util.LinkedList;
+import java.util.List;
+
+import org.apache.http.NameValuePair;
+import org.apache.http.message.BasicNameValuePair;
+import org.json.JSONObject;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.tencent.mm.sdk.modelpay.PayReq;
+import com.tencent.mm.sdk.openapi.IWXAPI;
+
+/**
+ * <PRE>
+ * 作用
+ *       XXXX
+ * 限制
+ *       无。
+ * 注意事项
+ *       无。
+ * </PRE>
+ */
+
+public class WeixinPayDo {
+	private static CYLog log = CYLog.getInstance();
+	
+	private long timeStamp;
+	private String nonceStr=null;
+	private String  packageValue=null;
+
+	private String genSign(List<NameValuePair> params) {
+		StringBuilder sb = new StringBuilder();
+		
+		int i = 0;
+		for (; i < params.size() - 1; i++) {
+			sb.append(params.get(i).getName());
+			sb.append('=');
+			sb.append(params.get(i).getValue());
+			sb.append('&');
+		}
+		sb.append(params.get(i).getName());
+		sb.append('=');
+		sb.append(params.get(i).getValue());
+		
+		String sha1 = Util.sha1(sb.toString());
+		log.d( "genSign, sha1 = " + sha1);
+		return sha1;
+	}
+	
+	
+	//{"appSignature":appSignature,"partnerId":partnerId,"packageValue":packageValue}
+	public String genProductArgs(RequestSignEntity entity) throws WeixinPayException{
+		JSONObject json = new JSONObject();
+		
+		
+		try {
+			json.put("appid", WeixinPayModel.APP_ID);
+			//String traceId = getTraceId();  // traceId 由开发者自定义，可用于订单的查询与跟踪，建议根据支付用户信息生成此id
+			json.put("traceid", entity.traceid);
+			this.nonceStr =entity.nonceStr ;//genNonceStr();
+			json.put("noncestr", nonceStr);
+			
+			List<NameValuePair> packageParams = new LinkedList<NameValuePair>();
+			packageParams.add(new BasicNameValuePair("bank_type", "WX"));
+			packageParams.add(new BasicNameValuePair("body",entity.body));//商品名字 this.mGoodsItem.getGoods_name() "千足金箍棒"
+			packageParams.add(new BasicNameValuePair("fee_type", "1"));//固定写死
+			packageParams.add(new BasicNameValuePair("input_charset", "UTF-8"));
+			packageParams.add(new BasicNameValuePair("notify_url",entity.notify_url));//支付回调地址 HttpContants.getWeixinPayReturnUrl() "http://weixin.qq.com"
+			
+			packageParams.add(new BasicNameValuePair("out_trade_no",PayGood.orderID ));//genOutTradNo()
+			packageParams.add(new BasicNameValuePair("partner", WeixinPayModel.PARTNER_ID));
+			packageParams.add(new BasicNameValuePair("spbill_create_ip", entity.spbill_create_ip));
+			
+			
+			packageParams.add(new BasicNameValuePair("total_fee", entity.total_fee));//商品价格 this.mGoodsItem.getGoods_price() //"1"
+			this.packageValue =entity.packageValue;// genPackage(packageParams);
+			
+			json.put("package", packageValue);
+			this.timeStamp =entity.timestamp; //genTimeStamp();
+			json.put("timestamp", timeStamp);
+			
+			List<NameValuePair> signParams = new LinkedList<NameValuePair>();
+			signParams.add(new BasicNameValuePair("appid", WeixinPayModel.APP_ID));
+			signParams.add(new BasicNameValuePair("appkey", WeixinPayModel.APP_KEY));
+			signParams.add(new BasicNameValuePair("noncestr", nonceStr));
+			signParams.add(new BasicNameValuePair("package", packageValue));
+			signParams.add(new BasicNameValuePair("timestamp", String.valueOf(timeStamp)));
+			signParams.add(new BasicNameValuePair("traceid", entity.traceid));
+			json.put("app_signature", entity.appSignature);//genSign(signParams));
+			
+			json.put("sign_method", "sha1");
+		} catch (Exception e) {
+			log.e("genProductArgs fail, ex = " + e.getMessage());
+			throw new WeixinPayException(e.getMessage());
+
+		}
+		
+		return json.toString();
+	}
+	
+	
+	public void sendPayReq(IWXAPI api,WeixinPayModel.GetPrepayIdResult result) {
+		
+		PayReq req = new PayReq();
+		req.appId = WeixinPayModel.APP_ID;
+		req.partnerId = WeixinPayModel.PARTNER_ID;
+		req.prepayId = result.prepayId;
+		req.nonceStr = nonceStr;
+		req.timeStamp = String.valueOf(timeStamp);
+		req.packageValue = "Sign=" + packageValue;
+		
+		List<NameValuePair> signParams = new LinkedList<NameValuePair>();
+		signParams.add(new BasicNameValuePair("appid", req.appId));
+		signParams.add(new BasicNameValuePair("appkey", WeixinPayModel.APP_KEY));
+		signParams.add(new BasicNameValuePair("noncestr", req.nonceStr));
+		signParams.add(new BasicNameValuePair("package", req.packageValue));
+		signParams.add(new BasicNameValuePair("partnerid", req.partnerId));
+		signParams.add(new BasicNameValuePair("prepayid", req.prepayId));
+		signParams.add(new BasicNameValuePair("timestamp", req.timeStamp));
+		req.sign = genSign(signParams);
+		
+		// 在支付之前，如果应用没有注册到微信，应该先调用IWXMsg.registerApp将应用注册到微信
+		api.sendReq(req);
+	}
+	
+	
+
+
+}

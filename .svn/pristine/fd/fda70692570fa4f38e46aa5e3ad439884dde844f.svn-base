@@ -1,0 +1,91 @@
+package com.changyou.mgp.sdk.mbi.account.ui;
+
+import android.content.Intent;
+import android.os.Bundle;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.webkit.WebView;
+import android.widget.ImageButton;
+
+import com.changyou.mgp.sdk.mbi.account.id.AccResource;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.ui.base.BaseActivity;
+import com.changyou.mgp.sdk.mbi.utils.MetaDataValueUtils;
+import com.changyou.mgp.sdk.mbi.utils.UserInfoSPUtil;
+
+public class CYMGContainerActivity extends BaseActivity implements OnClickListener{
+
+	//打开个人中心
+	public static final int PERSONAL = 1;
+	//打开论坛
+	public static final int FORUM = 2;
+	//个人中心地址
+	private static final String PERSONAL_URL = "http://i.cy.com/sdk/usercenter/entry";
+	//论坛地址
+	private static final String FORUM_URL = "http://i.cy.com/sdk/bbs/";
+	
+	private AccResource mRes;
+	private int mType;
+	private CYLog log = CYLog.getInstance();
+	
+	private ImageButton mBackIBtn;
+	private WebView mWV;
+	
+	@Override
+	protected void onCreate(Bundle arg0) {
+		super.onCreate(arg0);
+		mRes = AccResource.getInstance(this);
+		setContentView(mRes.cymg_flow_win_container_view);
+		initView();
+		initData();
+		initEvent();
+	}
+	
+	@Override
+	protected void initView() {
+		View title = findViewById(mRes.cymg_flow_win_container_title);
+		this.mBackIBtn = (ImageButton)title.findViewById(mRes.mgp_title_left_ibtn);
+		this.mWV = (WebView)findViewById(mRes.cymg_flow_win_container_wv);
+	}
+
+	@Override
+	protected void initData() {
+		try {
+			Intent intent = getIntent();
+			mType = intent.getIntExtra("type", 0);
+			String token = UserInfoSPUtil.getToken(this);
+			String url = null;
+			if(mType == 0){
+				log.e("mType = 0");
+			}
+			switch (mType) {
+			case PERSONAL:
+				url = PERSONAL_URL + "?cysid="+token;
+				mWV.loadUrl(PERSONAL_URL);
+				break;
+			case FORUM:
+				url = FORUM_URL + MetaDataValueUtils.getAppKey(this);
+				mWV.loadUrl(url);
+				break;
+			default:
+				break;
+			}
+		} catch (Exception e) {
+			log.e(e);
+		}
+		
+	}
+
+	@Override
+	protected void initEvent() {
+		this.mBackIBtn.setOnClickListener(this);
+	}
+
+	@Override
+	public void onClick(View v) {
+		if(v.getId() == mRes.mgp_title_left_ibtn){
+			CYMGContainerActivity.this.finish();
+		}
+	}
+
+}

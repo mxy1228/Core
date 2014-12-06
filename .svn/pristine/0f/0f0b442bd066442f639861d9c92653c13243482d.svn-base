@@ -1,0 +1,333 @@
+package com.changyou.mgp.sdk.mbi.ui.splash;
+
+import java.util.ArrayList;
+import java.util.List;
+import org.json.JSONObject;
+import android.annotation.SuppressLint;
+import android.content.Intent;
+import android.content.pm.ActivityInfo;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.content.res.Resources;
+import android.os.Bundle;
+import android.util.Log;
+import android.view.animation.AlphaAnimation;
+import android.view.animation.Animation;
+import android.view.animation.Animation.AnimationListener;
+import android.widget.ImageView;
+import android.widget.Toast;
+import com.changyou.mgp.sdk.mbi.R;
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannel;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolConfig;
+import com.changyou.mgp.sdk.mbi.config.Contants;
+import com.changyou.mgp.sdk.mbi.config.Contants.UpdateParams;
+import com.changyou.mgp.sdk.mbi.config.HttpContants;
+import com.changyou.mgp.sdk.mbi.http.MyAsyncResponseHandler;
+import com.changyou.mgp.sdk.mbi.http.MyHttpClient;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.mbi.manager.CMBILogManager;
+import com.changyou.mgp.sdk.mbi.platform.CYMGChannelHelper;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPlatformConfiguration;
+import com.changyou.mgp.sdk.mbi.ui.base.BaseActivity;
+import com.changyou.mgp.sdk.mbi.update.ui.CYMGUpdateDialogFragmentActivity;
+import com.changyou.mgp.sdk.mbi.utils.MetaDataValueUtils;
+import com.changyou.mgp.sdk.mbi.utils.NetWorkUtils;
+import com.changyou.mgp.sdk.mbi.utils.UpdateSpUtil;
+import com.loopj.android.http.RequestParams;
+
+/**
+ * 
+ * @ClassName: CYMGSplashActivity 
+ * @Description: 处理闪屏逻辑
+ * @author J.Beyond 
+ * @date 2014年8月12日 下午4:05:07 
+ *
+ */
+public class CYMGSplashActivity extends BaseActivity {
+	
+	CYLog mLog = CYLog.getInstance();
+	protected static final int GET_NEW_PACKAGE_INFO_SUCCESS = 0;
+	protected static final int GET_NEW_PACKAGE_INFO_FAILURE = 1;
+	public static final int ON_ANIMATION_END = 2;
+	//闪屏图片的名称前缀
+	private static final String SPLASH_HORIZONTAL_DRAWABLE_PREFIX_NAME ="mgp_sdk_splash_horizontal_0";
+	private static final String SPLASH_VERTICAL_DRAWABLE_PREFIX_NAME ="mgp_sdk_splash_vertical_0";
+	private ImageView mIvSplash;
+	private List<Integer> mDrawableIds;
+	private int mScreenOrientation;
+	private boolean isNewVersionAvailable = false;
+	private int i = 0;
+	private List<AlphaAnimation> mAnimationList;
+	private SplashResource mRes;
+	
+	@Override
+	protected void onCreate(Bundle arg0) {
+		super.onCreate(arg0);
+		mRes = SplashResource.getInstance(this);
+		setContentView(mRes.mgp_sdk_2_0_init_splash);
+		initScreenOrientation();
+		initView();
+		initAnimation();
+		getNewVersionInfo();
+	}
+	
+	/**
+	 * 
+	 * @Title: initAnimation 
+	 * @Description: 初始化动画
+	 * @param  
+	 * @return void
+	 * @throws
+	 */
+	private void initAnimation() {
+		//初始化闪屏资源id
+		mDrawableIds = new ArrayList<Integer>();
+		mDrawableIds.clear();
+		Resources res = getResources();
+		//闪屏图片（0~3张）
+		for (int i = 1; i <= 3; i++) {
+			int splash_drawable_id;
+			if (mScreenOrientation == CYMGProtocolConfig.LANDSCAPE) {
+				splash_drawable_id = res.getIdentifier(SPLASH_HORIZONTAL_DRAWABLE_PREFIX_NAME+i, "drawable", getPackageName());
+			}else {
+				splash_drawable_id = res.getIdentifier(SPLASH_VERTICAL_DRAWABLE_PREFIX_NAME+i, "drawable", getPackageName());
+			}
+			
+			if (splash_drawable_id != 0) {
+				mDrawableIds.add(splash_drawable_id);
+			}
+		}
+		if (mDrawableIds.size() == 0) {
+			//没有闪屏图片，直接初始化SDK
+			initData();
+			return;
+		}
+		mIvSplash.setBackgroundResource(mDrawableIds.get(0));
+		mAnimationList = new ArrayList<AlphaAnimation>();
+		for (int i = 0; i < mDrawableIds.size(); i++) {
+			AlphaAnimation alphaAnimation = null;
+			if (i == 0) {
+				alphaAnimation=new AlphaAnimation(1.0f, 0.0f);
+				alphaAnimation.setDuration(2000);
+			}else {
+				alphaAnimation=new AlphaAnimation(0.0f, 1.0f);
+				alphaAnimation.setRepeatMode(Animation.REVERSE);
+				alphaAnimation.setRepeatCount(1);
+				alphaAnimation.setDuration(1000);
+			}
+			alphaAnimation.setAnimationListener(new changeSplashAnimationListener());
+			mAnimationList.add(alphaAnimation);
+		}
+		mIvSplash.setAnimation(mAnimationList.get(0));
+		mAnimationList.get(0).start();
+	}
+
+	/**
+	 * 
+	 * @Title: initScreenOrientation 
+	 * @Description:初始化屏幕方向
+	 * @param  
+	 * @return void
+	 * @throws
+	 */
+	private void initScreenOrientation() {
+		mScreenOrientation = getIntent().getIntExtra("ScreenOrientation"
+				,ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+		//横屏
+		if (mScreenOrientation == CYMGProtocolConfig.LANDSCAPE) {
+			setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+		}else {//竖屏
+			setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+		}
+		
+	}
+
+	@Override
+	protected void initView() {
+		mIvSplash = (ImageView) findViewById(mRes.mgp_splash_iv);
+		
+	}
+
+	@Override
+	protected void initData() {
+		//SDK初始化
+		CYMGPlatformConfiguration config = new CYMGPlatformConfiguration
+				.Builder(this)
+				.setScreenOrientation(mScreenOrientation)
+				.build();
+		String channelID=MetaDataValueUtils.getChannelID(this);
+		CYMGChannel channel = CYMGChannelHelper.getChannel(this, channelID);
+		channel.init(config);
+	}
+	
+	/**
+	 * 
+	 * @Title: getNewVersionInfo 
+	 * @Description: 开启子线程获取服务端游戏更新参数 
+	 * @param  
+	 * @return void
+	 * @throws
+	 */
+	private void getNewVersionInfo() {
+		//判断网络是否可用
+		if (!NetWorkUtils.isNetworkConnected(this)) {
+			Toast.makeText(this, mRes.mgp_net_error_hint, Toast.LENGTH_LONG).show();
+			return;
+		}
+		try {
+			RequestParams params = new RequestParams();
+			String versionName = getPkgVersion();
+			//判断versionName是否为空串
+			if ("".equals(versionName)) {
+				return;
+			}
+			params.put("app_version",versionName);
+			MyHttpClient httpClient = new MyHttpClient(this);
+			httpClient.get(HttpContants.GAME_UPDATE_URL, params,
+					new MyAsyncResponseHandler() {
+
+						@Override
+						public void onStart() {
+							mLog.d("request start!");
+							CMBILogManager.printEventLog(CYMGSplashActivity.this, "0", "110080", "");
+						}
+
+						@Override
+						public void onSuccess(int statusCode, String content) {
+							mLog.i("获取游戏更新数据成功::"+content);
+							try {
+								CMBILogManager.printEventLog(CYMGSplashActivity.this, "0", "120080", "");
+								JSONObject obj = new JSONObject(content);
+								String download_url = obj.getString("download_url");
+								int update_level = obj.getInt("update_level");
+								String app_new_version = obj.getString("app_new_version");
+								String update_title = obj.getString("update_title");
+								String update_description = obj.getString("update_description");
+								int package_size = obj.getInt("package_size");
+								if (update_level != 0) {
+									isNewVersionAvailable = true;
+									Bundle bundle = new Bundle();
+									bundle.putString(Contants.UpdateParams.DOWNLOAD_URL, download_url);
+									bundle.putInt(Contants.UpdateParams.UPDATE_LEVEL, update_level);
+									bundle.putString(Contants.UpdateParams.APP_NEW_VERSION, app_new_version);
+									bundle.putString(Contants.UpdateParams.UPDATE_TITLE, update_title);
+									bundle.putString(Contants.UpdateParams.UPDATE_DESCRIPTION, update_description);
+									bundle.putInt(Contants.UpdateParams.PACKAGE_SIZE, package_size);
+									boolean isUpdateCanceled = UpdateSpUtil.isUpdateCanceled(CYMGSplashActivity.this);
+									bundle.putBoolean("isUpdateCanceled", isUpdateCanceled);
+									//跳转到游戏更新页
+									Intent intent = new Intent(CYMGSplashActivity.this,CYMGUpdateDialogFragmentActivity.class);
+									intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+									intent.putExtras(bundle);
+									startActivityForResult(intent, 0);
+								}else {
+									isNewVersionAvailable = false;
+									mLog.d("游戏暂时没有更新");
+								}
+							} catch (Exception e) {
+								mLog.e(e);
+							}
+						}
+						
+						@Override
+						public void onFailure(int statusCode, Throwable error,
+								String content) {
+							mLog.e("获取游戏更新数据失败::statusCode:"+statusCode+",content:"+content);
+							CMBILogManager.printEventLog(CYMGSplashActivity.this, "0", "120080", "");
+						}
+					});
+		} catch (Exception e) {
+			mLog.e(e);
+		}
+	}
+	
+	/**
+	 * 
+	 * @Title: getPkgVersion 
+	 * @Description: 获取游戏版本号名称
+	 * @param @return 
+	 * @return String
+	 * @throws
+	 */
+	private String getPkgVersion(){
+		 String versionName = "";    
+		    try {    
+		        // ---get the package info---    
+		        PackageManager pm = getPackageManager();    
+		        PackageInfo pi = pm.getPackageInfo(getPackageName(), 0);    
+		        versionName = pi.versionName;    
+		        if (versionName == null || versionName.length() <= 0) {    
+		            return "";    
+		        }    
+		    } catch (Exception e) {    
+		        Log.e("VersionInfo", "Exception", e);    
+		    }    
+		    return versionName;    
+	}
+	
+	@Override
+	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+		super.onActivityResult(requestCode, resultCode, data);
+		switch (resultCode) {
+		case UpdateParams.UPDATE_CANCELED:
+			initData();
+			finish();
+			break;
+
+		default:
+			break;
+		}
+	}
+	
+	
+	@Override
+	protected void initEvent() {
+		
+	}
+	
+	/**
+	 * 
+	 * @ClassName: changeSplashAnimationListener 
+	 * @Description: 动画事件监听
+	 * @author J.Beyond 
+	 * @date 2014年8月8日 下午2:38:13 
+	 *
+	 */
+	private class changeSplashAnimationListener implements AnimationListener{
+
+		@SuppressLint("ResourceAsColor")
+		@Override
+		public void onAnimationEnd(Animation animation) {
+			i++;
+			animation.cancel();
+			//设置消失时背景
+			mIvSplash.setBackgroundColor(mRes.mgp_sdk_white);
+			if (i == mDrawableIds.size()) {
+				initData();
+				if (!isNewVersionAvailable) {
+					CYMGSplashActivity.this.finish();
+				}
+				return;
+			}
+			
+			if (!isNewVersionAvailable) {
+				mIvSplash.setBackgroundResource(mDrawableIds.get(i));
+				mIvSplash.setAnimation(mAnimationList.get(i));
+				mAnimationList.get(i).start();
+			}
+		}
+
+		@Override
+		public void onAnimationRepeat(Animation animation) {
+			// TODO Auto-generated method stub
+			
+		}
+
+		@Override
+		public void onAnimationStart(Animation animation) {
+			// TODO Auto-generated method stub
+		}
+		
+	}
+	
+}

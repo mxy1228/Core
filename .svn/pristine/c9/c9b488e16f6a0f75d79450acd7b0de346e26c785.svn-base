@@ -1,0 +1,96 @@
+package com.changyou.mgp.sdk.mbi.pay.weixin;
+
+import android.app.Activity;
+
+import com.changyou.mgp.sdk.mbi.config.CYMGPrompt;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPayHelper;
+import com.tencent.mm.sdk.constants.ConstantsAPI;
+import com.tencent.mm.sdk.modelbase.BaseReq;
+import com.tencent.mm.sdk.modelbase.BaseResp;
+import com.tencent.mm.sdk.openapi.IWXAPIEventHandler;
+/***
+ * 
+ * <PRE>
+ * 作用
+ *       微信支付回调接口处理
+ * 限制
+ *       无。
+ * 注意事项
+ *       无。
+ * </PRE>
+ */
+public class PayEventCallback implements IWXAPIEventHandler{
+
+	
+	private Activity mContext;
+	private CYLog log = CYLog.getInstance();
+	
+	public PayEventCallback(Activity cxt){
+		mContext=cxt;
+		
+		cxt.setVisible(false);
+	}
+	
+	
+	@Override
+	public void onReq(BaseReq req) {
+		log.d( "src:"+"22222222222222222222  onReq, errCode = " + req.toString());
+	}
+	
+
+	@Override
+	public void onResp(BaseResp resp) {
+		log.d( "src:"+"22222222222222222222  onPayFinish, errCode = " + resp.errCode+",resp.getType() :"+resp.getType() );
+
+		if (resp.getType() == ConstantsAPI.COMMAND_PAY_BY_WX) {
+			String errormsg="";
+			boolean isError=true;
+			switch(resp.errCode){
+			
+			case BaseResp.ErrCode.ERR_AUTH_DENIED:
+				errormsg="认证被否决";
+				break;
+			case BaseResp.ErrCode.ERR_COMM:
+				errormsg="一般错误";
+				break;
+			case BaseResp.ErrCode.ERR_OK:
+				errormsg="正确返回";
+
+				if(PayGood.uid==null || PayGood.goodsItem==null  || PayGood.orderID==null){
+					CYMGPayHelper.getInstance().payException(CYMGPrompt.CODE_PAY_FAILED);
+				}else{
+//					CYMGPayHelper.getInstance().paySuccess(PayGood.uid, PayGood.goodsItem, PayGood.orderID);
+				}
+				PayGood.clear();
+				isError=false;
+				
+				break;
+			case BaseResp.ErrCode.ERR_SENT_FAILED:
+				errormsg="发送失败";
+				break;
+			case BaseResp.ErrCode.ERR_UNSUPPORT:
+				errormsg="不支持错误";
+				CYMGPayHelper.getInstance().payException(CYMGPrompt.CODE_PAY_FAILED);
+				break;
+			case BaseResp.ErrCode.ERR_USER_CANCEL:
+				errormsg="用户取消";
+				CYMGPayHelper.getInstance().payException(CYMGPrompt.CODE_PAY_CANCEL);
+				isError=false;
+				break;
+			}
+			
+			
+			if(isError){
+				CYMGPayHelper.getInstance().payException(CYMGPrompt.CODE_PAY_FAILED);
+			}
+		
+			log.d( "src:"+"22222222222222222222  onPayFinish, errormsg = " +errormsg);
+
+
+			//关闭监听的activity
+			mContext.finish();
+		}
+	}
+
+}

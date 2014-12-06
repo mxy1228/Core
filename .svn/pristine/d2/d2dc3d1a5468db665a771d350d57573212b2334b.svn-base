@@ -1,0 +1,213 @@
+package com.changyou.mgp.sdk.mbi.update.ui;
+
+import android.os.Bundle;
+import android.support.v4.app.FragmentActivity;
+import android.view.KeyEvent;
+
+import com.changyou.mgp.sdk.downloader.bean.DownloadAppInfo;
+import com.changyou.mgp.sdk.downloader.constants.DownloadConstants;
+import com.changyou.mgp.sdk.mbi.config.Contants;
+import com.changyou.mgp.sdk.mbi.config.Contants.UpdateParams;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.utils.NetWorkUtils;
+import com.changyou.mgp.sdk.mbi.utils.UpdateSpUtil;
+
+public class CYMGUpdateDialogFragmentActivity extends FragmentActivity {
+	CYLog mLog = CYLog.getInstance();
+	private CYMGUpdateDownloadDialogFragment mDownloadDialogFragment;
+	private CYMGUpdateForceNoticeDialogFragment mUpdateForceNoticeDialogFragment;
+	private CYMGUpdateNetErrorDialogFragment mNetErrorDialogFragment;
+	private CYMGUpdateNoForceNoticeDialogFragment mUpdateNoForceDialogFragment;
+	private CYMGUpdateWifiNoticeDialogFragment mWifiNoticeDialogFragment;
+	private DownloadAppInfo mAppInfo;
+	private boolean isNetConnected;
+	private boolean isWifiConnected;
+	private boolean isWillingDownloadWithoutWifi = false;//标示用户是否愿意在非WIFI环境下载，默认为FALSE
+	private boolean isDownloadCancled = false;
+	private boolean isDownloaded = false;  //标示是否下载过
+	private boolean isPreDownloadCanceled;
+	
+	public boolean isDownloaded() {
+		return isDownloaded;
+	}
+
+	public void setDownloaded(boolean isDownloaded) {
+		this.isDownloaded = isDownloaded;
+	}
+
+	public boolean isDownloadCancled() {
+		return isDownloadCancled;
+	}
+
+	public void setDownloadCancled(boolean isDownloadCancled) {
+		//下载过了才保存，便于下次进入游戏时弹出未下载完的提醒
+		if (isDownloaded()) {
+			UpdateSpUtil.setIsUpdateCanceled(this, isDownloadCancled);
+		}
+		this.isDownloadCancled = isDownloadCancled;
+		finishActivity();
+	}
+
+	public boolean isWillingDownloadWithoutWifi() {
+		return isWillingDownloadWithoutWifi;
+	}
+
+	public void setWillingDownloadWithoutWifi(boolean isWillingDownloadWithoutWifi) {
+		this.isWillingDownloadWithoutWifi = isWillingDownloadWithoutWifi;
+	}
+
+	public boolean isNetConnected() {
+		return isNetConnected;
+	}
+
+	public void setNetConnected(boolean isNetConnected) {
+		this.isNetConnected = isNetConnected;
+	}
+
+	public boolean isWifiConnected() {
+		return isWifiConnected;
+	}
+
+	public void setWifiConnected(boolean isWifiConnected) {
+		this.isWifiConnected = isWifiConnected;
+	}
+
+	@Override
+	protected void onCreate(Bundle arg0) {
+		super.onCreate(arg0);
+		initData();
+		initView();
+	}
+	
+	private void initView() {
+		//0没有最新版本不更新1有最新版本可选更新2有最新版本强制更新
+		int update_level = mAppInfo.getUpdate_level();
+		if (update_level == 0) {
+			finish();
+		}else if (update_level == 1) {
+			if (isPreDownloadCanceled) {
+				changeDialogFragment(Contants.DialogFragmentTag.UPDATE_DOWNLOAD);
+			}else {
+				changeDialogFragment(Contants.DialogFragmentTag.UPDATE_NO_FORCE_NOTICE);
+			}
+		}else if(update_level == 2){
+			if (isPreDownloadCanceled) {
+				changeDialogFragment(Contants.DialogFragmentTag.UPDATE_DOWNLOAD);
+			}else {
+				changeDialogFragment(Contants.DialogFragmentTag.UPDATE_FORCE_NOTICE);
+			}
+		}
+	}
+	
+	/**
+	 * 
+	 * @Title: initData 
+	 * @Description: 初始化数据
+	 * @param  
+	 * @return void
+	 * @throws
+	 */
+	private void initData() {
+		//1、接收传递过来的数据，以初始化DownloadAppInfo实体类
+		Bundle bundle = getIntent().getExtras();
+		if (bundle == null) {
+			return;
+		}
+		String download_url = bundle.getString(Contants.UpdateParams.DOWNLOAD_URL);
+		int update_level = bundle.getInt(Contants.UpdateParams.UPDATE_LEVEL);
+		String app_new_version = bundle.getString(Contants.UpdateParams.APP_NEW_VERSION);
+		String update_title = bundle.getString(Contants.UpdateParams.UPDATE_TITLE);
+		String update_description = bundle.getString(Contants.UpdateParams.UPDATE_DESCRIPTION);
+		int app_size = bundle.getInt(Contants.UpdateParams.PACKAGE_SIZE);
+		isPreDownloadCanceled = bundle.getBoolean("isUpdateCanceled");
+		//测试数据
+		mAppInfo = new DownloadAppInfo();
+		mAppInfo.setDownload_url(download_url);
+		mAppInfo.setUpdate_level(update_level);
+		mAppInfo.setApp_new_version(app_new_version);
+		mAppInfo.setUpdate_title(update_title);
+		mAppInfo.setUpdate_description(update_description);
+		mAppInfo.setApp_size(app_size * 1024);
+		//2、判断网络环境
+		isNetConnected = NetWorkUtils.isNetworkConnected(this);
+		isWifiConnected = NetWorkUtils.isWifiConnected(this);
+		
+		if (isPreDownloadCanceled) {
+			changeDialogFragment(Contants.DialogFragmentTag.UPDATE_DOWNLOAD);
+		}
+		
+	}
+
+	/**
+	 * 
+	 * @Title: changeDialogFragment 
+	 * @Description: 切换DialogFragment
+	 * @param @param tag
+	 * @param @param bundle 
+	 * @return void
+	 * @throws
+	 */
+	public void changeDialogFragment(String tag){
+		if(tag.equals(Contants.DialogFragmentTag.UPDATE_DOWNLOAD)){
+			mLog.i("change to CYMGUpdateDownloadDialogFragment");
+			Bundle bundle = new Bundle();
+			bundle.putSerializable("DownloadAppInfo", mAppInfo);
+			bundle.putBoolean("isPreDownloadCanceled", isPreDownloadCanceled);
+			mDownloadDialogFragment=CYMGUpdateDownloadDialogFragment.newInstance(this,bundle);
+			if (!mDownloadDialogFragment.isVisible()) {
+				mDownloadDialogFragment.showDialog();
+			}
+		}else if(tag.equals(Contants.DialogFragmentTag.UPDATE_FORCE_NOTICE)){
+			mLog.i("change to CYMGUpdateForceNoticeDialogFragment");
+			Bundle bundle = new Bundle();
+			bundle.putSerializable("DownloadAppInfo", mAppInfo);
+			mUpdateForceNoticeDialogFragment=CYMGUpdateForceNoticeDialogFragment.newInstance(this,bundle);
+			if (!mUpdateForceNoticeDialogFragment.isVisible()) {
+				mUpdateForceNoticeDialogFragment.showDialog();
+			}
+		}else if(tag.equals(Contants.DialogFragmentTag.UPDATE_NETERROR_NOTICE)){
+			mLog.i("change to CYMGUpdateNetErrorDialogFragment");
+			mNetErrorDialogFragment = CYMGUpdateNetErrorDialogFragment.newInstance(this);
+			if (!mNetErrorDialogFragment.isVisible()) {
+				mNetErrorDialogFragment.showDialog();
+			}
+		}else if(tag.equals(Contants.DialogFragmentTag.UPDATE_NO_FORCE_NOTICE)){
+			mLog.i("change to CYMGUpdateNoForceNoticeDialogFragment");
+			Bundle bundle = new Bundle();
+			bundle.putSerializable("DownloadAppInfo", mAppInfo);
+			mUpdateNoForceDialogFragment=CYMGUpdateNoForceNoticeDialogFragment.newInstance(this,bundle);
+			if (!mUpdateNoForceDialogFragment.isVisible()) {
+				mUpdateNoForceDialogFragment.showDialog();
+			}
+		}else if(tag.equals(Contants.DialogFragmentTag.UPDATE_WIFI_NOTICE)){
+			mLog.i("change to CYMGUpdateWifiNoticeDialogFragment");
+			mWifiNoticeDialogFragment=CYMGUpdateWifiNoticeDialogFragment.newInstance(this);
+			if (!mWifiNoticeDialogFragment.isVisible()) {
+				mWifiNoticeDialogFragment.showDialog();
+			}
+		}
+	}
+	
+	public void finishActivity() {
+		if (isDownloadCancled) {
+			setResult(UpdateParams.UPDATE_CANCELED);
+		}
+		this.finish();
+	}
+	
+	@Override
+	public boolean onKeyDown(int keyCode, KeyEvent event) {
+		if (keyCode == KeyEvent.KEYCODE_BACK) {
+			if (mDownloadDialogFragment != null && mDownloadDialogFragment.getDownloadState() == DownloadConstants.DownloadState.FINISHED) {
+				finishActivity();
+			}
+		}
+		return super.onKeyDown(keyCode, event);
+	}
+	
+	
+	@Override
+	protected void onDestroy() {
+		super.onDestroy();
+	}
+}

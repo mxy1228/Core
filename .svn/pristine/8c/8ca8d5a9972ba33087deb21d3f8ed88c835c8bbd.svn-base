@@ -1,0 +1,312 @@
+package com.changyou.mgp.sdk.mbi.account.ui;
+
+import java.util.Date;
+import java.util.Timer;
+import java.util.TimerTask;
+
+import android.app.Activity;
+import android.content.DialogInterface;
+import android.graphics.drawable.AnimationDrawable;
+import android.os.Bundle;
+import android.support.v4.app.DialogFragment;
+import android.support.v4.app.FragmentActivity;
+import android.support.v4.app.FragmentTransaction;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.ViewGroup;
+import android.widget.ImageView;
+import android.widget.TextView;
+
+import com.changyou.mgp.sdk.mbi.account.id.AccResource;
+import com.changyou.mgp.sdk.mbi.common.CYMGCallbackHelper;
+import com.changyou.mgp.sdk.mbi.config.CYMGPrompt;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolKeys;
+import com.changyou.mgp.sdk.mbi.config.Contants;
+import com.changyou.mgp.sdk.mbi.config.Params;
+import com.changyou.mgp.sdk.mbi.config.SDKConfig;
+import com.changyou.mgp.sdk.mbi.db.CYMGAccBean;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.mbi.manager.CMBILogManager;
+import com.changyou.mgp.sdk.mbi.utils.NetWorkUtils;
+import com.changyou.mgp.sdk.mbi.utils.SystemUtils;
+import com.changyou.mgp.sdk.mbi.utils.UserInfoSPUtil;
+
+public class CYMGAutoLoginDialogFragment extends BaseDialogFragment implements OnClickListener{
+	
+	private static CYLog log = CYLog.getInstance();
+	
+	private static Activity mActivity;
+	
+	private TextView mAccountTv;
+	private TextView mSwtichTv;
+	private ImageView mLoadingImg;
+	
+	private String mUid,mToken,mAcc,mType;
+	
+	private Timer mTimer;
+	private int mCount = 0;
+	private int isOK = 0;
+	
+	private Bundle mBundle;
+	
+	private AnimationDrawable mAnim;
+	
+	@Override
+	public View onCreateView(LayoutInflater inflater, ViewGroup container,
+			Bundle savedInstanceState) {
+		View view=inflater.inflate(AccResource.getInstance(mActivity).mgp_sdk_2_0_dialog_auto_login, container,false);
+		initView(view);
+		initData();
+		initEvent();
+		return view;
+	}
+
+	@Override
+	protected void initView(View view) {
+		mAccountTv=(TextView) view.findViewById(AccResource.getInstance(mActivity).mgp_sdk_2_0_auto_login_account_TextView);
+		mSwtichTv=(TextView) view.findViewById(AccResource.getInstance(mActivity).mgp_sdk_2_0_auto_login_switch_TextView);
+		mLoadingImg=(ImageView) view.findViewById(AccResource.getInstance(mActivity).mgp_sdk_2_0_auto_login_loading_ImageView);
+	}
+
+	@Override
+	protected void initData() {
+		try {
+			mBundle=getArguments();
+			mUid=mBundle.getString(Params.UID);
+			mToken=mBundle.getString(Params.TOKEN);
+			mAcc=mBundle.getString(Params.ACCOUNT);
+			mType=mBundle.getString(Params.TYPE);
+			mAccountTv.setText(mAcc.substring(6, mAcc.length()));
+//			String deviceid = SystemUtils.getDeviceId(mActivity);
+//			MyHttpClient myHttpClient=new MyHttpClient(mActivity);
+//			Map map=new HashMap();
+//			map.put("uid", mUid);
+//			map.put("token", mToken);
+//			map.put("device_id", deviceid);
+//			myHttpClient.post(HttpContants.getURL(HttpContants.TOKEN_VERIFY), map, new MyAsyncResponseHandler(){
+//				@Override
+//				public void onStart() {
+//					CMBILogManager.printEventLog(mActivity, "0", "110022", "");
+//				}
+//				
+//				@Override
+//				public void onSuccess(int statusCode, String content) {
+//					CMBILogManager.printEventLog(mActivity, "0", "120022", "");
+//					log.d("content:"+content);
+//					try {
+//						if(mCount<=3){
+//							if(!TextUtils.isEmpty(content)){
+//								JSONObject jsonObject=new JSONObject(content);
+//								int status=jsonObject.getInt("status");
+//								if(status==1){
+//									CYMGAccBean bean=new CYMGAccBean();
+//									bean.setmAcc(mAcc);
+//									bean.setmUID(mUid);
+//									bean.setmToken(mToken);
+//									bean.setmState(1);
+//									bean.setmTimeStamp(new Date(System.currentTimeMillis()).getTime()/1000);
+//									((CYMGMainDialogFragmentActivity)mActivity).getmCYMGDBMaster().login(bean);
+//									UserInfoSPUtil.setUid(mActivity, mUid);
+//									UserInfoSPUtil.setType(mActivity, mType);
+//									isOK=1;
+//								}
+//							}else{
+//								new Handler(Looper.getMainLooper()).post(new Runnable() {
+//									@Override
+//									public void run() {
+//										Toast.makeText(mActivity, AccResource.getInstance(mActivity).mgp_sdk_2_0_error_common_server, Toast.LENGTH_SHORT).show();
+//										((CYMGMainDialogFragmentActivity)mActivity).changeDialogFragment(Contants.DialogFragmentTag.SWITCH_ACCOUNT, null);
+//										mTimer.cancel();
+//										dismiss();
+//									}
+//								});
+//							}
+//						}else{
+//							CYMGLoginToast.showLoginToast(mActivity, mAcc.substring(6, mAcc.length()));
+//							String userIp = NetWorkUtils.getLocalIpAddress(mActivity);
+//							String deviceid = SystemUtils.getDeviceId(mActivity);
+//							Bundle bundle = new Bundle();
+//							bundle.putString(CYMGProtocolKeys.UID, mUid);
+//							bundle.putString(CYMGProtocolKeys.TOKEN, mToken);
+//							bundle.putString(CYMGProtocolKeys.TYPE, mType);
+//							bundle.putString(CYMGProtocolKeys.USERIP, userIp);
+//							bundle.putString(CYMGProtocolKeys.DEVICEID, deviceid);
+//							bundle.putString(CYMGProtocolKeys.ISDEBUG, SDKConfig.DEBUG ? "true" : "false");
+//							bundle.putString(CYMGProtocolKeys.CHANNEL_ID,mActivity.getString(AccResource.getInstance(mActivity).mgp_channel_cy));
+//							bundle.putString(CYMGProtocolKeys.OPCODE, "10001");
+//							CYMGCallbackHelper.callbackResult(CYMGCallbackHelper.getLoginResult(CYMGPrompt.CODE_LOGIN_SUCCESS, bundle,mActivity));
+//							mTimer.cancel();
+//							mActivity.finish();
+//						}
+//					} catch (Exception e) {
+//						log.e(e);
+//					}
+//				}
+//				
+//				@Override
+//				public void onFailure(int statusCode, Throwable error,
+//						String content) {
+//					CMBILogManager.printEventLog(mActivity, "0", "120022", "");
+//					log.d("content:"+content);
+//					try {
+//						if (!TextUtils.isEmpty(content)) {
+//							ErrorInfo info = JSONUtil.getMapper().readValue(content,new TypeReference<ErrorInfo>() {});
+//							if (info != null) {
+//								Toast.makeText(mActivity, info.getClient_message(), Toast.LENGTH_SHORT).show();
+//							} else {
+//								Toast.makeText(mActivity, AccResource.getInstance(mActivity).mgp_sdk_2_0_error_common_server, Toast.LENGTH_SHORT).show();
+//							}
+//						} else {
+//							Toast.makeText(mActivity, AccResource.getInstance(mActivity).mgp_sdk_2_0_error_common_server, Toast.LENGTH_SHORT).show();
+//						}
+//						if(mCount<=3){
+//							isOK=2;
+//						}else{
+//							new Handler(Looper.getMainLooper()).post(new Runnable() {
+//								@Override
+//								public void run() {
+//									((CYMGMainDialogFragmentActivity)mActivity).changeDialogFragment(Contants.DialogFragmentTag.SWITCH_ACCOUNT, null);
+//									mTimer.cancel();
+//									dismiss();
+//								}
+//							});
+//						}
+//					} catch (Exception e) {
+//						log.e(e);
+//					}
+//				}
+//			});
+			startTimer();
+			startAnim();
+		} catch (Exception e) {
+			log.e(e);
+		}
+	}
+
+	@Override
+	protected void initEvent() {
+		mSwtichTv.setOnClickListener(this);
+	}
+	
+	public static CYMGAutoLoginDialogFragment newInewInstance(Activity activity,Bundle bundle){
+		mActivity=activity;
+		CYMGAutoLoginDialogFragment cymgAutoLoginDialogFragment=new CYMGAutoLoginDialogFragment();
+		cymgAutoLoginDialogFragment.setArguments(bundle);
+		cymgAutoLoginDialogFragment.setStyle(DialogFragment.STYLE_NORMAL, AccResource.getInstance(mActivity).mgp_sdk_2_0_mian_dialog);
+		return cymgAutoLoginDialogFragment;
+	}
+	
+	@Override
+	public void dismiss() {
+		super.dismiss();
+		if(mAnim.isRunning()){
+			mAnim.stop();
+		}
+	}
+	
+	@Override
+	public void onCancel(DialogInterface dialog) {
+		mActivity.finish();
+	}
+
+	@Override
+	public void onClick(View v) {
+		if(v.getId()==AccResource.getInstance(mActivity).mgp_sdk_2_0_auto_login_switch_TextView){
+			CMBILogManager.printEventLog(mActivity, "0", "137001", "");
+			((CYMGMainDialogFragmentActivity)mActivity).changeDialogFragment(Contants.DialogFragmentTag.SWITCH_ACCOUNT, null);
+			mTimer.cancel();
+			dismiss();
+		}
+	}
+	
+	@Override
+	public void onDestroy() {
+		super.onDestroy();
+	}
+	
+	private void startAnim(){
+		mLoadingImg.setBackgroundResource(AccResource.getInstance(mActivity).mgp_sdk_2_0_dialog_loading_anim);  
+		mAnim = (AnimationDrawable) mLoadingImg.getBackground();  
+		mAnim.start();  
+	}
+	
+	private void startTimer(){
+		TimerTask task = new TimerTask(){
+
+			@Override
+			public void run() {
+//				if(mCount>3){
+//					if(isOK==1){
+//						CYMGLoginToast.showLoginToast(mActivity, mAcc.substring(6, mAcc.length()));
+//						String userIp = NetWorkUtils.getLocalIpAddress(mActivity);
+//						String deviceid = SystemUtils.getDeviceId(mActivity);
+//						Bundle bundle = new Bundle();
+//						bundle.putString(CYMGProtocolKeys.UID, mUid);
+//						bundle.putString(CYMGProtocolKeys.TOKEN, mToken);
+//						bundle.putString(CYMGProtocolKeys.TYPE, mType);
+//						bundle.putString(CYMGProtocolKeys.USERIP, userIp);
+//						bundle.putString(CYMGProtocolKeys.DEVICEID, deviceid);
+//						bundle.putString(CYMGProtocolKeys.ISDEBUG, SDKConfig.DEBUG ? "true" : "false");
+//						bundle.putString(CYMGProtocolKeys.CHANNEL_ID,mActivity.getString(AccResource.getInstance(mActivity).mgp_channel_cy));
+//						bundle.putString(CYMGProtocolKeys.OPCODE, "10001");
+//						CYMGCallbackHelper.callbackResult(CYMGCallbackHelper.getLoginResult(CYMGPrompt.CODE_LOGIN_SUCCESS, bundle,mActivity));
+//						mTimer.cancel();
+//						mActivity.finish();
+//					}else if(isOK==2){
+//						new Handler(Looper.getMainLooper()).post(new Runnable() {
+//							@Override
+//							public void run() {
+//								((CYMGMainDialogFragmentActivity)mActivity).changeDialogFragment(Contants.DialogFragmentTag.SWITCH_ACCOUNT, null);
+//								mTimer.cancel();
+//								dismiss();
+//							}
+//						});
+//					}
+//				}
+				if(mCount==3){
+					loginCallback(mAcc,mUid,mToken,mType);
+				}
+				mCount++;
+			}
+		};
+		mTimer=new Timer();
+		mTimer.schedule(task,0,1000);
+	}
+	
+	private void loginCallback(String acc,String uid,String token,String type){
+		try {
+			CYMGAccBean bean=new CYMGAccBean();
+			bean.setmAcc(acc);
+			bean.setmUID(uid);
+			bean.setmToken(token);
+			bean.setmState(1);
+			bean.setmTimeStamp(new Date(System.currentTimeMillis()).getTime()/1000);
+			((CYMGMainDialogFragmentActivity)mActivity).getmCYMGDBMaster().login(bean);
+		} catch (Exception e) {
+			log.e(e);
+		} finally{
+			UserInfoSPUtil.setUsername(mActivity, acc);
+			UserInfoSPUtil.setUid(mActivity, uid);
+			UserInfoSPUtil.setType(mActivity, type);
+			String userIp = NetWorkUtils.getLocalIpAddress(mActivity);
+			String deviceid = SystemUtils.getDeviceId(mActivity);
+			Bundle bundle = new Bundle();
+			bundle.putString(CYMGProtocolKeys.UID, uid);
+			bundle.putString(CYMGProtocolKeys.TOKEN, token);
+			bundle.putString(CYMGProtocolKeys.TYPE, type);
+			bundle.putString(CYMGProtocolKeys.USERIP, userIp);
+			bundle.putString(CYMGProtocolKeys.DEVICEID, deviceid);
+			bundle.putString(CYMGProtocolKeys.ISDEBUG, SDKConfig.DEBUG ? "true" : "false");
+			bundle.putString(CYMGProtocolKeys.CHANNEL_ID,mActivity.getString(AccResource.getInstance(mActivity).mgp_channel_cy));
+			bundle.putString(CYMGProtocolKeys.OPCODE, "10001");
+			CYMGCallbackHelper.callbackResult(CYMGCallbackHelper.getLoginResult(CYMGPrompt.CODE_LOGIN_SUCCESS, bundle,mActivity));
+			mActivity.finish();
+		}
+	}
+	
+	public void showDialog() {
+		FragmentTransaction transaction=((FragmentActivity)mActivity).getSupportFragmentManager().beginTransaction();
+		show(transaction, Contants.DialogFragmentTag.AUTO_LOGIN);
+	}
+}

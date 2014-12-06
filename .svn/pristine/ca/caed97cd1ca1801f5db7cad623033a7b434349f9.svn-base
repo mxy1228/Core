@@ -1,0 +1,123 @@
+package com.changyou.mgp.sdk.mbi.pay.ui;
+
+import android.app.Activity;
+import android.os.Bundle;
+import android.text.Html;
+import android.text.Spannable;
+import android.text.SpannableStringBuilder;
+import android.text.style.ForegroundColorSpan;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.ImageButton;
+import android.widget.TextView;
+
+import com.changyou.mgp.sdk.mbi.config.Params;
+import com.changyou.mgp.sdk.mbi.entity.GoodsItem;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.pay.id.PayResource;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPayHelper;
+import com.changyou.mgp.sdk.mbi.ui.base.BaseFragment;
+import com.changyou.mgp.sdk.mbi.utils.SystemUtils;
+
+public class CYMGPaymentWayCardPromptFragment extends BaseFragment implements OnClickListener{
+
+	private CYLog log = CYLog.getInstance();
+	
+	private Activity mActivity;
+
+	private ImageButton mServiceImgBtn;
+	private Button mRightBtn;
+	private TextView mTitleTv;
+	private ImageButton mBackIBtn;
+	private View mTitle;
+	
+	private TextView mPromptTv1,mPromptTv2;
+	private Button mCommitBtn;
+	
+	private Bundle mBundle;
+	
+	@Override
+	public View onCreateView(LayoutInflater inflater, ViewGroup container,
+			Bundle savedInstanceState) {
+		View view = inflater.inflate(PayResource.getInstance(mActivity).mgp_payment_way_card_prompt, container,false);
+		initTitle(view);
+		initView(view);
+		initData();
+		initEvent();
+		return view;
+	}
+	
+	@Override
+	public void onResume() {
+		super.onResume();
+		SystemUtils.dissmisSoftInput(mActivity);
+	}
+	
+	@Override
+	public void onAttach(Activity activity) {
+		super.onAttach(activity);
+		this.mActivity = activity;
+	}
+	
+	@Override
+	public void onDestroy() {
+		super.onDestroy();
+	}
+	
+	private void initTitle(View view){
+		this.mTitle = view.findViewById(PayResource.getInstance(mActivity).mgp_payment_way_card_prompt_title);
+		this.mTitleTv = (TextView)mTitle.findViewById(PayResource.getInstance(mActivity).mgp_title_tv);
+		this.mTitleTv.requestFocus();
+		this.mBackIBtn = (ImageButton)mTitle.findViewById(PayResource.getInstance(mActivity).mgp_title_left_ibtn);
+		this.mRightBtn = (Button)mTitle.findViewById(PayResource.getInstance(mActivity).mgp_title_right_btn);
+		this.mServiceImgBtn = (ImageButton)mTitle.findViewById(PayResource.getInstance(mActivity).mgp_title_right_imgbtn);
+		this.mBackIBtn.setVisibility(View.GONE);
+		this.mRightBtn.setVisibility(View.GONE);
+		this.mServiceImgBtn.setVisibility(View.GONE);
+	}
+	
+	private void initView(View view){
+		this.mCommitBtn=(Button) view.findViewById(PayResource.getInstance(mActivity).mgp_payment_way_card_prompt_btn);
+		this.mPromptTv1=(TextView) view.findViewById(PayResource.getInstance(mActivity).mgp_payment_way_card_prompt_TextView1);
+		this.mPromptTv2=(TextView) view.findViewById(PayResource.getInstance(mActivity).mgp_payment_way_card_prompt_TextView2);
+	}
+	
+	@Override
+	protected void initData() {
+		this.mBundle=getArguments();
+		String type=mBundle.getString("type");
+		if("phone".equals(type)){
+			this.mTitleTv.setText(PayResource.getInstance(mActivity).mgp_title_tv_payment_way_phone_card);
+		}else if("game".equals(type)){
+			this.mTitleTv.setText(PayResource.getInstance(mActivity).mgp_title_tv_payment_way_game_card);
+		}
+		this.mPromptTv1.setText(Html.fromHtml(getString(PayResource.getInstance(mActivity).mgp_payment_way_card_prompt_tv2)));
+		this.mPromptTv2.setText(Html.fromHtml(getString(PayResource.getInstance(mActivity).mgp_payment_way_card_prompt_tv3)));
+	}
+
+	@Override
+	protected void initEvent() {
+		this.mCommitBtn.setOnClickListener(this);
+	}
+
+	@Override
+	public void onClick(View v) {
+		if(v.getId()==PayResource.getInstance(mActivity).mgp_payment_way_card_prompt_btn){
+			String uid=mBundle.getString(Params.UID);
+			GoodsItem goodsItem=(GoodsItem) mBundle.getSerializable(Params.GOODSITEM);
+			String orderId=mBundle.getString(Params.ORDER_ID);
+			((CYMGPaymentActivity)mActivity).back2PaymentFragment();
+			CYMGPayHelper.getInstance().paySuccess(uid, goodsItem, orderId);
+		}
+	}
+	
+	private SpannableStringBuilder getTextPortionColorStyle(String text,int color,int a,int b){
+		 SpannableStringBuilder style=new SpannableStringBuilder(text);     
+//		 style.setSpan(new BackgroundColorSpan(Color.RED),2,5,Spannable.SPAN_EXCLUSIVE_INCLUSIVE);     //设置指定位置textview的背景颜色  
+		 style.setSpan(new ForegroundColorSpan(color),a,b,Spannable.SPAN_EXCLUSIVE_INCLUSIVE);     //设置指定位置文字的颜色  
+		 return style; 
+	}
+}

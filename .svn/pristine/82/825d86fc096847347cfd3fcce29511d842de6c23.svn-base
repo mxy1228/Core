@@ -1,0 +1,102 @@
+package com.changyou.mgp.sdk.mbi.db;
+
+import java.io.File;
+
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.content.SharedPreferences.Editor;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteException;
+import android.os.Environment;
+
+import com.changyou.mgp.sdk.mbi.config.Contants;
+import com.changyou.mgp.sdk.mbi.config.SDKConfig;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+
+public class CYMGDBHelper{
+	private CYLog log = CYLog.getInstance();
+	
+	private static final String DB_NAME = "cyou_sdk.db";
+	private static final String DB_VERSION_SP_NAME = "cymg_db";
+	//db文件存放路径
+	private static final String DATABASE_PATH = 
+			Environment.getExternalStorageDirectory() 
+			+ File.separator 
+			+ Contants.SDK_FLODER_NAME 
+			+ File.separator
+			+ "DB"
+			+ File.separator;
+	//创建账号表的sql语句
+	private static final String CREATE_ACC_TABLE = "CREATE TABLE IF NOT EXISTS "+CYMGAccDao.TABLE_NAME
+			+" ( "+CYMGAccDao.Properties.ID+" INTEGER PRIMARY KEY AUTOINCREMENT, "
+			+CYMGAccDao.Properties.ACC+" TEXT,"
+			+CYMGAccDao.Properties.TOKEN+" TEXT,"
+			+CYMGAccDao.Properties.STATE+" INTEGER,"
+			+CYMGAccDao.Properties.TIME_STAMP+" LONG,"
+			+CYMGAccDao.Properties.UID+" TEXT )";
+	private SQLiteDatabase mDatabase;
+	
+	
+	public CYMGDBHelper(Context context){
+		try {
+			if(isStorageAvailable()){
+				File file = new File(DATABASE_PATH);
+				if(!file.exists()){
+					file.mkdirs();
+				}
+				SharedPreferences sp = context.getSharedPreferences(DB_VERSION_SP_NAME, Context.MODE_PRIVATE);
+				int version = sp.getInt("version", 0);
+				mDatabase = SQLiteDatabase.openOrCreateDatabase(DATABASE_PATH+DB_NAME, null);
+				createAccTable();
+				if(SDKConfig.DB_VERSION > version){
+					if(updateTable()){
+						Editor e = sp.edit();
+						e.putInt("version", SDKConfig.DB_VERSION);
+						e.commit();
+					}
+				}
+			}else{
+				log.e("storage :"+Environment.getExternalStorageDirectory()+" unavailable");
+			}
+		} catch (SQLiteException e) {
+			log.e(e);
+		}
+		
+	}
+	
+	/**
+	 * 更新表
+	 * @return
+	 */
+	private boolean updateTable(){
+		try {
+			
+		} catch (Exception e) {
+			log.e(e);
+		}
+		return false;
+	}
+	
+	/**
+	 * 创建账号表
+	 */
+	private void createAccTable(){
+		mDatabase.execSQL(CREATE_ACC_TABLE);
+	}
+	
+	public SQLiteDatabase getWriteableDatabase(){
+		return SQLiteDatabase.openDatabase(DATABASE_PATH+DB_NAME, null, SQLiteDatabase.OPEN_READWRITE);
+	}
+	
+	public SQLiteDatabase getReadDatabase(){
+		return SQLiteDatabase.openDatabase(DATABASE_PATH+DB_NAME, null, SQLiteDatabase.OPEN_READONLY);
+	}
+	
+	/**
+	 * 判断存储空间是否可用
+	 * @return
+	 */
+	public boolean isStorageAvailable(){
+		return Environment.getExternalStorageDirectory().canRead() && Environment.getExternalStorageDirectory().canWrite();
+	}
+}

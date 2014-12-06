@@ -1,0 +1,93 @@
+package com.changyou.mgp.sdk.mbi.update.ui;
+
+import android.app.Activity;
+import android.os.Bundle;
+import android.support.v4.app.DialogFragment;
+import android.support.v4.app.FragmentActivity;
+import android.support.v4.app.FragmentTransaction;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.ViewGroup;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+
+import com.changyou.mgp.sdk.mbi.R;
+import com.changyou.mgp.sdk.mbi.account.ui.BaseDialogFragment;
+import com.changyou.mgp.sdk.mbi.config.Contants;
+import com.changyou.mgp.sdk.mbi.update.id.UpdateResource;
+import com.changyou.mgp.sdk.mbi.utils.NetWorkUtils;
+/**
+ * 
+ * @ClassName: CYMGUpdateForceNoticeDialogFragment 
+ * @Description: 强制更新提示Dialog
+ * @author J.Beyond 
+ * @date 2014年8月6日 上午10:33:42 
+ *
+ */
+public class CYMGUpdateForceNoticeDialogFragment extends BaseDialogFragment implements OnClickListener{
+
+	private static Activity mActivity;
+	private TextView mTvForceUpdateNotice;
+	private LinearLayout mLlForceUpdateBtn;
+	private UpdateResource mRes;
+
+	@Override
+	public View onCreateView(LayoutInflater inflater, ViewGroup container,
+			Bundle savedInstanceState) {
+		mRes = UpdateResource.getInstance(mActivity);
+		View view = inflater.inflate(mRes.mgp_sdk_2_0_dialog_update_force_notice, container,false);
+		initView(view);
+		initData();
+		initEvent();
+		return view;
+	}
+	
+	@Override
+	protected void initView(View view) {
+		mTvForceUpdateNotice = (TextView) view.findViewById(mRes.mgp_update_force_notice_txt_tv);
+		mLlForceUpdateBtn = (LinearLayout) view.findViewById(mRes.mgp_update_force_immediately_btn_ll);
+	}
+
+	@Override
+	protected void initData() {
+		
+	}
+
+	@Override
+	protected void initEvent() {
+		mLlForceUpdateBtn.setOnClickListener(this);
+	}
+	
+	public static CYMGUpdateForceNoticeDialogFragment newInstance(Activity activity){
+		mActivity = activity;
+		CYMGUpdateForceNoticeDialogFragment forceNoticeDialogFragment = new CYMGUpdateForceNoticeDialogFragment();
+		forceNoticeDialogFragment.setStyle(DialogFragment.STYLE_NORMAL, R.style.mgp_sdk_2_0_update_mian_dialog);
+		return forceNoticeDialogFragment;
+	}
+	
+	public void showDialog() {
+		FragmentTransaction transaction=((FragmentActivity)mActivity).getSupportFragmentManager().beginTransaction();
+		show(transaction, Contants.DialogFragmentTag.UPDATE_FORCE_NOTICE);
+	}
+
+	@Override
+	public void onClick(View view) {
+		if (view == mLlForceUpdateBtn) {
+			//先判断网络条件
+			if (NetWorkUtils.isNetworkConnected(mActivity)) {
+				//判断是否是WIFI环境
+				if (NetWorkUtils.isWifiConnected(mActivity)) {
+					//切换至下载Dialog
+					((CYMGUpdateDialogFragmentActivity)mActivity).changeDialogFragment(Contants.DialogFragmentTag.UPDATE_DOWNLOAD);
+				}else {
+					((CYMGUpdateDialogFragmentActivity)mActivity).changeDialogFragment(Contants.DialogFragmentTag.UPDATE_WIFI_NOTICE);
+				}
+			}else {
+				((CYMGUpdateDialogFragmentActivity)mActivity).changeDialogFragment(Contants.DialogFragmentTag.UPDATE_NETERROR_NOTICE);
+			}
+			dismiss();
+		}
+	}
+
+}

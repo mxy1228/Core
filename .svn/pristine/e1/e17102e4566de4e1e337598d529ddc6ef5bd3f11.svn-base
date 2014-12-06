@@ -1,0 +1,141 @@
+package com.changyou.mgp.sdk.mbi.account.adapter;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import android.content.Context;
+import android.text.TextUtils;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.ViewGroup;
+import android.widget.AutoCompleteTextView;
+import android.widget.BaseAdapter;
+import android.widget.Filter;
+import android.widget.Filterable;
+import android.widget.TextView;
+
+import com.changyou.mgp.sdk.mbi.account.id.AccResource;
+import com.changyou.mgp.sdk.mbi.utils.ResourceUtil;
+import com.changyou.mgp.sdk.mbi.utils.ResourceUtil;
+
+public class MyEmailDropListAdapter extends BaseAdapter implements Filterable {
+	private Context mContext;
+	private List<String> mData;
+	private EmailFilter mFiler;
+	private AutoCompleteTextView mTV;
+	private boolean mIsRegist;
+
+	public MyEmailDropListAdapter(Context mContext, AutoCompleteTextView tv,
+			boolean isRegist) {
+		this.mContext = mContext;
+		this.mData = new ArrayList<String>();
+		this.mTV = tv;
+		this.mIsRegist = isRegist;
+	}
+
+	@Override
+	public int getCount() {
+		return mData.size();
+	}
+
+	@Override
+	public Object getItem(int i) {
+		return mData.get(i);
+	}
+
+	@Override
+	public long getItemId(int i) {
+		return i;
+	}
+
+	@Override
+	public View getView(int i, View convertView, ViewGroup viewgroup) {
+		ViewHolder holder = null;
+		if (convertView == null) {
+			holder = new ViewHolder();
+			convertView = LayoutInflater.from(mContext).inflate(
+					AccResource.getInstance(mContext).mgp_login_account_email_list_item,
+					null);
+			holder.textView = (TextView) convertView.findViewById(AccResource.getInstance(mContext).mgp_login_tv_account_email_list_item);
+			convertView.setTag(holder);
+		} else {
+			holder = (ViewHolder) convertView.getTag();
+		}
+		holder.textView.setText(mData.get(i));
+		holder.textView.setTag(mData.get(i));
+		holder.textView.setOnClickListener(new OnClickListener() {
+
+			@Override
+			public void onClick(View view) {
+				String content = view.getTag().toString();
+				mTV.setText(content);
+				mTV.dismissDropDown();
+			}
+		});
+		return convertView;
+	}
+
+	class ViewHolder {
+		TextView textView;
+	}
+
+	@Override
+	public Filter getFilter() {
+		return mFiler == null ? new EmailFilter() : mFiler;
+	}
+
+	private class EmailFilter extends Filter {
+
+		@Override
+		protected FilterResults performFiltering(CharSequence constraint) {
+			FilterResults results = new FilterResults();
+			if (TextUtils.isEmpty(constraint.toString())) {
+				return results;
+			}
+			List<String> emails = new ArrayList<String>();
+			String[] strs = null;
+			if (mIsRegist) {
+				strs = mContext.getResources().getStringArray(
+						AccResource.getInstance(mContext).regist_email);
+			} else {
+				strs = mContext.getResources().getStringArray(
+						AccResource.getInstance(mContext).email_ends);
+			}
+			int length = strs.length;
+			if (!constraint.toString().contains("@")) {
+				emails.add(constraint.toString());
+				for (int i = 0; i < length; i++) {
+					emails.add(constraint.toString() + "@" + strs[i]);
+				}
+			} else {
+				String[] inputs = constraint.toString().split("@");
+				if (inputs.length == 1) {
+					for (int i = 0; i < length; i++) {
+						emails.add(constraint.toString().replace("@", "") + "@"
+								+ strs[i]);
+					}
+				} else {
+					for (int i = 0; i < length; i++) {
+						if (strs[i].startsWith(inputs[1])) {
+							emails.add(inputs[0] + "@" + strs[i]);
+						}
+					}
+				}
+			}
+
+			results.values = emails;
+			results.count = length;
+			return results;
+		}
+
+		@Override
+		protected void publishResults(CharSequence constraint,
+				FilterResults results) {
+			if (results.values != null) {
+				mData = (List<String>) results.values;
+				notifyDataSetChanged();
+			}
+		}
+	}
+}

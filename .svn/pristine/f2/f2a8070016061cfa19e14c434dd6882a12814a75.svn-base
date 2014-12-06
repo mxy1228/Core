@@ -1,0 +1,331 @@
+package com.changyou.mgp.sdk.mbi.channel.impl;
+
+import android.app.Activity;
+import android.content.Context;
+import android.os.Bundle;
+import android.os.Handler; 
+import android.text.TextUtils;
+
+import com.changyou.mgp.sdk.mbi.account.id.AccResource;
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannel;
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannelEntity;
+import com.changyou.mgp.sdk.mbi.common.CYMGCallbackHelper;
+import com.changyou.mgp.sdk.mbi.common.CallbackInfoUtils;
+import com.changyou.mgp.sdk.mbi.config.CYMGPrompt;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolKeys;
+import com.changyou.mgp.sdk.mbi.config.Params;
+import com.changyou.mgp.sdk.mbi.entity.GoodsItem;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPayHelper;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPlatformConfiguration;
+import com.changyou.mgp.sdk.mbi.utils.MetaDataValueUtils;
+import com.changyou.mgp.sdk.mbi.utils.NetWorkUtils;
+import com.changyou.mgp.sdk.mbi.utils.SystemUtils;
+import com.downjoy.CallbackListener;
+import com.downjoy.Downjoy;
+import com.downjoy.DownjoyError;
+
+
+
+/***
+ * 
+ * <PRE>
+ * 作用
+ *       当乐渠道的账号、支付、客服功能的调用
+ * 限制
+ *       无。
+ * 注意事项
+ *       无。
+ * </PRE>
+ */
+public class CYMGDownJoyImpl implements CYMGChannel {
+
+	private CYLog log = CYLog.getInstance();
+	private String mChannelId;
+	int screenOrientation;
+	private String appId;
+    
+    private CYMGPayHelper cymgPayHelper = CYMGPayHelper.getInstance();
+	@Override
+	public void init(final CYMGPlatformConfiguration config) {
+		try{
+			new Handler().post(new Runnable(){
+
+				@Override
+				public void run() {
+					invokeInit(config.getmContext());
+					
+				}});
+		}catch(Exception e){
+			log.e(e);
+			CallbackInfoUtils.callbackResult(CYMGPrompt.CODE_INIT_FAILED);
+		}
+	}
+	/***
+	 * 获取downjoy实例
+	 * @param context
+	 * @return
+	 */
+	private Downjoy getDownJoy(Context context){
+		 // 初始化当乐游戏中心
+        final String merchantId = MetaDataValueUtils.getDownJoyMerchantId(context);//"126"; // 当乐分配的MERCHANT_ID
+        final String appId = MetaDataValueUtils.getDownJoyAppId(context);//"1497"; // 当乐分配的APP_ID
+        final String serverSeqNum = MetaDataValueUtils.getDangJoyServerSeqNum(context); // 当乐分配的 SERVER_SEQ_NUM，
+                                         // 不同服务器序列号可使用不同计费通知地址
+        final String appKey =MetaDataValueUtils.geDownJoyAppKey(context) ;//"aIJFlSfz"; // 当乐分配的 APP_KEY
+
+        if(TextUtils.isEmpty(merchantId)||TextUtils.isEmpty(appId)||TextUtils.isEmpty(serverSeqNum)||TextUtils.isEmpty(appKey)){
+        	CYMGCallbackHelper.callbackResult(CYMGCallbackHelper.getCommonResult(CYMGPrompt.CODE_INIT_FAILED, null));
+        	return null;
+        }
+        // 获取当乐游戏中心的实例
+        Downjoy downjoy = Downjoy.getInstance(context, merchantId, appId,
+                serverSeqNum, appKey);
+        
+        log.d("========================="+"\nmerchantid:"+merchantId+"\nappid:"+appId+"\nappkey:"+appKey+"\n serverSeqNum:"+serverSeqNum);
+        return downjoy;
+        
+        
+	}
+	
+	private void invokeInit(Context context){
+
+		Downjoy downjoy=this.getDownJoy(context);
+        
+        // 设置登录成功后属否显示当乐游戏中心的悬浮按钮
+        // 注意：
+        // 此处应在调用登录接口之前设置，默认值是true，即登录成功后自动显示当乐游戏中心的悬浮按钮。
+        // 如果此处设置为false，登录成功后，不显示当乐游戏中心的悬浮按钮。
+        downjoy.showDownjoyIconAfterLogined(false);
+       
+        downjoy.setInitLocation(Downjoy.LOCATION_CENTER_HORIZONTAL_BOTTOM);
+        
+        //通知初始化成功
+		CallbackInfoUtils.callbackResult(CYMGPrompt.CODE_INIT_SUCCESS);
+
+	}
+	@Override
+	public void doLogin(CYMGChannelEntity entity) {
+		Context context = entity.getmContext();
+		mChannelId = MetaDataValueUtils.getChannelID(context);
+		if (context == null) {
+			log.e("DownJoyImpl#doLogin,context is null!!");
+			return;
+		}
+		quickLogin(context);
+	}
+
+	/**
+	 * 功能描述: 快速登录
+	 * @param @param context  
+	 * @return void    返回类型 
+	 * @author 欧阳海冰(OuyangHaibing)
+	 * @date 2014-4-30 下午7:01:03
+	 */
+	private void quickLogin(final Context context) {
+
+				Downjoy.getInstance().openLoginDialog(context, new CallbackListener() {
+
+                    @Override
+                    public void onLoginSuccess(Bundle bundle) {
+                    	/***
+                    	 * 创建登陆结果bundle Bundle[{dj_mid=27804540, dj_token=FA2670BE70EF0B545GJY4C315L97D19C, dj_username=d1s0qbq065, dj_nickname=d1s0qbq065}]
+                    	 */
+
+                        log.d("DownJoy login success!");
+                        
+                        String memberId = bundle.getString(Downjoy.DJ_PREFIX_STR + "mid");
+                        String token = bundle.getString(Downjoy.DJ_PREFIX_STR + "token");
+                        Bundle b = new Bundle();
+        				b.putString(CYMGProtocolKeys.UID, memberId);
+        				b.putString(CYMGProtocolKeys.TOKEN,token);
+
+        				String appid = MetaDataValueUtils.getDownJoyAppId(context);
+        				String appkey = MetaDataValueUtils.geDownJoyAppKey(context);
+        				String userIp = NetWorkUtils.getLocalIpAddress(context);
+        				String deviceid = SystemUtils.getDeviceId(context);
+        				String channelId = context
+        						.getString(AccResource.getInstance(context).mgp_channel_downjoy);
+        				b.putString(CYMGProtocolKeys.APP_ID_DOWNJOY, appid);
+        				b.putString(CYMGProtocolKeys.APPKEY_DOWNJOY, appkey);
+        				b.putString(CYMGProtocolKeys.USERIP, userIp);
+        				b.putString(CYMGProtocolKeys.DEVICEID, deviceid);
+        				b.putString(CYMGProtocolKeys.CHANNEL_ID, channelId);
+        				
+        				
+        				b.putString(CYMGProtocolKeys.OPCODE, "10001");
+        				log.d("======onLoginSuccess bundle:"+b.toString());
+        				
+        				
+    					CYMGCallbackHelper.callbackResult(CYMGCallbackHelper.getLoginResult(CYMGPrompt.CODE_LOGIN_SUCCESS, b,context));
+                    }
+
+                    @Override
+                    public void onLoginError(DownjoyError error) {
+                        int errorCode = error.getMErrorCode();
+                        String errorMsg = error.getMErrorMessage();
+                        //Util.alert(context, "onLoginError:" + errorCode + "|"   + errorMsg);
+                        log.e("onLoginError:" + errorCode + "|"   + errorMsg);
+                        sendMessageCallback(context);
+                    }
+
+                    @Override
+                    public void onError(Error error) {
+                        String errorMessage = error.getMessage();
+                        //Util.alert(context, "onError:" + errorMessage);
+                        log.e("onError:" + errorMessage);
+                        sendMessageCallback(context);
+                    }
+                });
+
+	}
+
+	private void sendMessageCallback(Context context){
+        log.w("DownJoy login faliure!");
+
+		CYMGCallbackHelper.callbackResult(CYMGCallbackHelper.getLoginResult(CYMGPrompt.CODE_LOGIN_FAILED, null,context));
+	}
+	
+
+	@Override
+	public void doPay(CYMGChannelEntity entity) {
+		final Context context = entity.getmContext();
+		Bundle bundle = entity.getBundle();
+		final String uid = bundle.getString(Params.UID);
+		final String orderId = bundle.getString(Params.ORDER_ID);
+		final GoodsItem item = (GoodsItem)bundle.getSerializable(Params.GOODSITEM);
+		final String priceStr = item.getGoods_price();
+		float price= Float.parseFloat(priceStr);
+		
+		
+          // 打开支付界面,获得订单号
+		//extInfo cp 自定义信息，计费结果通知时原样返回。   appkey_cy&goodsRegisterId&payment_key&orderIdCy
+
+		//根据http://t.changyou.com/htm3/cyouapi_phone_other.jsp?cid=3012 进行拼串
+		String appkey_cy=MetaDataValueUtils.getAppKey(context); //是billing的appkey不是当乐的appkey
+		String goodsRegisterId=item.getGoods_register_id();
+		String payment_key=MetaDataValueUtils.geDownJoyPaymentKey(context);
+		String orderIdCy=orderId;
+		String extInfo=appkey_cy+"&"+goodsRegisterId+"&"+payment_key+"&"+orderIdCy;
+		log.d("==extInfo:"+extInfo);
+		Downjoy.getInstance().openPaymentDialog(context, price, item.getGoods_name(), extInfo,
+                  new CallbackListener() {
+
+                      @Override
+                      public void onPaymentSuccess(String orderNo) {
+                         // Util.alert(context,  "payment success! \n orderNo:"   + orderNo);
+                         log.w( "payment success! \n orderNo:"   + orderNo);
+                  		cymgPayHelper.setContext((Activity)context);
+                       // 合法签名值，支付成功，请添加支付成功后的业务逻辑
+      					cymgPayHelper.paySuccess(uid, item, orderId);
+                      }
+
+                      @Override
+                      public void onPaymentError(DownjoyError error,
+                              String orderNo) {
+                          int errorCode = error.getMErrorCode();
+                          String errorMsg = error.getMErrorMessage();
+                         // Util.alert(context, "onPaymentError:"    + errorCode + "|" + errorMsg + "\n orderNo:" + orderNo);
+                          log.e("onPaymentError:"    + errorCode + "|" + errorMsg + "\n orderNo:" + orderNo);
+                          cymgPayHelper.payException(CYMGPrompt.CODE_PAY_FAILED);
+                     
+                      }
+
+                      @Override
+                      public void onError(Error error) {
+                          //Util.alert(context,  "onError:" + error.getMessage());
+                          log.e( "onError:" + error.getMessage());
+                          cymgPayHelper.payException(CYMGPrompt.CODE_PAY_FAILED);
+                      }
+                  });
+		
+	}
+
+	@Override
+	public void doLogout(CYMGChannelEntity entity) {
+	   final  Context context=entity.getmContext();
+		
+		 // 执行登出操作
+	   Downjoy.getInstance().logout(context, new CallbackListener() {
+
+            @Override
+            public void onLogoutSuccess() {
+               // Util.alert(context, "logout ok");
+            	log.d("logout ok!");
+              //告知接入方注销成功
+				CYMGCallbackHelper.callbackResult(CYMGCallbackHelper.getCommonResult(CYMGPrompt.CODE_LOGOUT_SUCCESS, null));
+				//重新调出登录页
+				//quickLogin(context);
+            }
+
+            @Override
+            public void onLogoutError(DownjoyError error) {
+                int errorCode = error.getMErrorCode();
+                String errorMsg = error.getMErrorMessage();
+                //Util.alert(context, "onLogoutError:" + errorCode + "|"    + errorMsg);
+                log.e( "onLogoutError:" + errorCode + "|"    + errorMsg);
+                CYMGCallbackHelper.callbackResult(CYMGCallbackHelper.getLoginResult(CYMGPrompt.CODE_LOGOUT_FAILED, null,context));
+            }
+
+            @Override
+            public void onError(Error error) {
+                //Util.alert(context, "onError:" + error.getMessage());
+            	log.e("onError:" + error.getMessage());
+                CYMGCallbackHelper.callbackResult(CYMGCallbackHelper.getLoginResult(CYMGPrompt.CODE_LOGOUT_FAILED, null,context));
+            }
+        });
+
+        Downjoy.getInstance().destroy();
+	}
+
+	/* (non-Javadoc)
+	 * @see com.changyou.mgp.sdk.mbi.channel.CYMGChannel#doResume(com.changyou.mgp.sdk.mbi.channel.CYMGChannelEntity)
+	 */
+	@Override
+	public void doResume(CYMGChannelEntity entity) {
+		
+	}
+
+	/* (non-Javadoc)
+	 * @see com.changyou.mgp.sdk.mbi.channel.CYMGChannel#doPause(com.changyou.mgp.sdk.mbi.channel.CYMGChannelEntity)
+	 */
+	@Override
+	public void doPause(CYMGChannelEntity entity) {
+		
+	}
+
+	/* (non-Javadoc)
+	 * @see com.changyou.mgp.sdk.mbi.channel.CYMGChannel#doStop(com.changyou.mgp.sdk.mbi.channel.CYMGChannelEntity)
+	 */
+	@Override
+	public void doStop(CYMGChannelEntity entity) {
+		
+	}
+
+	/* (non-Javadoc)
+	 * @see com.changyou.mgp.sdk.mbi.channel.CYMGChannel#doDestroy(com.changyou.mgp.sdk.mbi.channel.CYMGChannelEntity)
+	 */
+	@Override
+	public void doDestroy(CYMGChannelEntity entity) {
+
+
+	}
+
+	/* (non-Javadoc)
+	 * @see com.changyou.mgp.sdk.mbi.channel.CYMGChannel#doCustomerService(com.changyou.mgp.sdk.mbi.channel.CYMGChannelEntity)
+	 */
+	@Override
+	public void doCustomerService(CYMGChannelEntity entity) {
+		
+	}
+
+	/* (non-Javadoc)
+	 * @see com.changyou.mgp.sdk.mbi.channel.CYMGChannel#doShowUserCenter(com.changyou.mgp.sdk.mbi.channel.CYMGChannelEntity)
+	 */
+	@Override
+	public void doShowUserCenter(CYMGChannelEntity entity) {
+		
+	}
+
+	
+}

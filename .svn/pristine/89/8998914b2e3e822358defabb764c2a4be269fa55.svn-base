@@ -1,0 +1,103 @@
+package com.changyou.mgp.sdk.mbi.config;
+
+/**
+ * 
+ * 功能描述：存储接口URL地址
+ *
+ * @author 徐萌阳(xumengyang)
+ * @date 2013-12-20下午6:03:29
+ */
+public class HttpContants {
+	
+	public static class IP{
+		public static final String CYOU_WRAP_IP = "http://member.changyou.com/";//WrapIP
+	}
+	
+	private static String getIP(){
+		return SDKConfig.DEBUG ? "http://tgateway.changyou.com" : "http://gateway.changyou.com";
+	}
+	
+	/**
+	 * 获取接口地址，该方法会根据SDKConfig.DEBUG判断返回正式服还是测试服地址
+	 * @param key
+	 * @return
+	 */
+	public static String getURL(String key){
+		return getIP()+key;
+	}
+	
+	//用户登录
+	public static String USER_LOGIN =  "/gateway/cyou/user/login.json";
+	//一键注册
+	public static String USER_ONE_KEY_REGISTER =  "/gateway/cyou/user/register.json";
+	//商品列表
+	public static String PAYMENT_GOODS =  "/gateway/cyou/goods/goodslist.json";
+	//订单核对
+	public static String ORDER_CHECK =  "/gateway/cyou/order/verify.json";
+	//订单生成
+	public static String CREATE_ORDER =  "/gateway/cyou/order/create.json";
+	//获取订单列表
+	public static String ORDER_LIST =  "/gateway/cyou/order/query.json";
+	//订单验证
+	public static String VERIFY_ORDER =  "/gateway/cyou/order/verify.json";
+	//工单类型
+	public static String WORK_ORDER_TYPE =  "/gateway/cyou/customers/workordertype/query.json";
+	//工单查询
+	public static String WORK_ORDER_LIST =  "/gateway/cyou/customers/workorder/query.json";
+	//工单录入
+	public static String WORK_ORDER_IMPORT =  "/gateway/cyou/customers/workorder/create.json";
+	//手机注册
+	public static String TEL_REGIST = "/gateway/cyou/account/cellphone/register.json";
+	//邮箱注册
+	public static String MAIL_REGIST = "/gateway/cyou/account/email/register.json";
+	//支付宝wrap支付
+	public static String ALIPAY_WRAP = "/pay/alipayapi.jsp";
+	//一卡通支付
+	public static String ONE_CARD_PAY = "/pay/sdkOneCardPayAction";
+	//易宝支付
+	public static String YEE_PAY = "/pay/sdkYeePayAction";
+	//获取手机验证码
+	public static String GET_VALIDATE_NUM =  "/gateway/cyou/account/cellphone/verify.json";
+	//MDO
+	public static String MDO =  "/gateway/cyou/mdo/msgcontent/msgquery.json";
+	//全局参数
+	public static String GLOBAL_PARAMS =  "/gateway/cyou/sys/maintainmap/query.json";
+	//银联获取tn流水号
+	public static String UPPAY_TN =  "/gateway/cyou/order/upmp/tn.json";
+	//畅游用户协议
+	public static String CYOU_PROTOCOL = "http://member.changyou.com/inc/useragreement.html";
+	// 忘记密码
+	public static String FORGET_PASSWORD="http://member.changyou.com/common/codeAdmin.do";
+	//360登录验证
+	public static String QIHOO_LOGIN = 
+			"http://10.12.16.240:8080"
+			//IP.HOST_IP 
+			+ "/gateway/cyou/sdk/qihoo/login.json";
+	//OPPO渠道充值回调URL
+	public static String getOppoPayNotifyUrl(){
+		return SDKConfig.DEBUG ? 
+				"http://tservicebilling.changyou.com/service/sdkOppoPaylist"
+				:"http://servicebilling.changyou.com/service/sdkOppoPaylist";
+	}
+	
+	//UC渠道充值回调URL
+	public static String getUCNotifyUrl() {
+		return SDKConfig.DEBUG?"http://tservicebilling.changyou.com/service/sdkUcPaylist"
+				:"http://servicebilling.changyou.com/service/sdkUcPaylist";
+	}
+	//联想渠道充值回调URL
+	public static String getLenovoNotifyUrl() {
+		return SDKConfig.DEBUG?"http://tservicebilling.changyou.com/service/sdkLenovoPaylist"
+				:"http://servicebilling.changyou.com/service/sdkLenovoPaylist";
+	}
+	//华为渠道充值回调URL
+	public static String getHuaweiNotifyUrl() {
+		return SDKConfig.DEBUG?"http://tservicebilling.changyou.com/service/sdkHwPaylist":
+			"http://servicebilling.changyou.com/service/sdkHwPaylist";
+	}
+	//一卡通充值回调URL
+	public static String getOneCardPayNotifyUrl() {
+		return SDKConfig.DEBUG?"http://tservicebilling.changyou.com/service/sdkOneCardPayCallBackAction":
+			"http://servicebilling.changyou.com/service/sdkOneCardPayCallBackAction";
+	}
+}

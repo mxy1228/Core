@@ -1,0 +1,106 @@
+package com.changyou.mgp.sdk.mbi.platform;
+
+import org.json.JSONObject;
+
+import android.content.Context;
+import android.os.Bundle;
+import android.text.TextUtils;
+
+import com.changyou.mgp.sdk.mbi.channel.CYMGFunHelper;
+import com.changyou.mgp.sdk.mbi.common.CYMGCallBackManager;
+import com.changyou.mgp.sdk.mbi.common.CYMGCallback;
+import com.changyou.mgp.sdk.mbi.config.CYMGFunID;
+import com.changyou.mgp.sdk.mbi.config.CYMGPrompt;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolKeys;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+
+public class CYMGCustomerServiseHelper implements CYMGFunHelper{
+
+	private CYMGCustomerServiseHelper(Context context) {
+		// TODO Auto-generated constructor stub
+	}
+	
+	
+	private CYLog log = CYLog.getInstance();
+	
+	private CYMGCallback mCallBack;
+	private static CYMGCustomerServiseHelper mInstance;
+	
+	private CYMGCustomerServiseHelper(){
+		
+	}
+	
+	public static CYMGCustomerServiseHelper getInstance(){
+		if(mInstance == null){
+			mInstance = new CYMGCustomerServiseHelper();
+		}
+		return mInstance;
+	}
+	
+	@Override
+	public boolean checkNesessaryParam(Bundle b) {
+		String gameName = b.getString(CYMGProtocolKeys.GAME_NAME);
+		String role_id = b.getString(CYMGProtocolKeys.ROLE_ID);
+		String serverName = b.getString(CYMGProtocolKeys.SERVER_NAME);
+		String uid = b.getString(CYMGProtocolKeys.UID);
+		if(TextUtils.isEmpty(gameName) || gameName == null){
+			paramsException(CYMGProtocolKeys.GAME_NAME);
+			return false;
+		}
+		if(TextUtils.isEmpty(role_id) || role_id == null){
+			paramsException(CYMGProtocolKeys.ROLE_ID);
+			return false;
+		}
+		if(TextUtils.isEmpty(uid) || uid == null){
+			paramsException(CYMGProtocolKeys.UID);
+			return false;
+		}
+		if(TextUtils.isEmpty(serverName) || serverName == null){
+			paramsException(CYMGProtocolKeys.SERVER_NAME);
+			return false;
+		}
+		return true;
+	}
+	
+	/**
+	 * 
+	 * 功能描述：若在使用客服功能过程中出现任何异常信息，以该方法为出口，log给接入者
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param @param stateCode
+	 * @return void
+	 * @date 2014-3-25 下午8:23:00
+	 *
+	 */
+	public void exception(int stateCode){
+		try {
+			JSONObject obj = new JSONObject();
+			obj.put(CYMGProtocolKeys.STATE_CODE, stateCode);
+			obj.put(CYMGProtocolKeys.MSG, CYMGPrompt.getContentByCode(stateCode));
+			CYMGCallBackManager.getAndRemoveCallBack(CYMGFunID.CUSTOMER_SERVICE).onFinished(obj.toString());
+		} catch (Exception e) {
+			log.e(e);
+		}
+	}
+	
+	/**
+	 * 
+	 * 功能描述：若检测参数合法性出现异常，则拼写Json返回给接入者
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param @param key
+	 * @return void
+	 * @date 2014-3-25 下午8:28:45
+	 *
+	 */
+	private void paramsException(String key){
+		try {
+			JSONObject obj = new JSONObject();
+			obj.put(CYMGProtocolKeys.STATE_CODE, CYMGPrompt.CODE_EMPTY_PARAM);
+			obj.put(CYMGProtocolKeys.MSG, key + "is null");
+			CYMGCallBackManager.getAndRemoveCallBack(CYMGFunID.CUSTOMER_SERVICE).onFinished(obj.toString());
+		} catch (Exception e) {
+			log.e(e);
+		}
+	}
+}

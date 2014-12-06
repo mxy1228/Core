@@ -1,0 +1,147 @@
+package com.changyou.mgp.sdk.mbi.account.ui;
+
+import java.util.List;
+
+import android.content.Context;
+import android.os.Bundle;
+import android.support.v4.app.FragmentActivity;
+import android.text.TextUtils;
+
+import com.changyou.mgp.sdk.mbi.config.Contants;
+import com.changyou.mgp.sdk.mbi.config.Params;
+import com.changyou.mgp.sdk.mbi.db.CYMGAccBean;
+import com.changyou.mgp.sdk.mbi.db.CYMGDBMaster;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.ui.widget.CYMGFlowWinManager;
+import com.changyou.mgp.sdk.mbi.ui.widget.CYMGFlowWindowClose;
+import com.changyou.mgp.sdk.mbi.utils.UserInfoSPUtil;
+
+public class CYMGMainDialogFragmentActivity extends FragmentActivity {
+	
+	private static CYLog log = CYLog.getInstance();
+	
+	private CYMGQuickIntoDialogFragment cYMGQuickIntoDialogFragment;
+	private CYMGFindPasswordSetPasswordDialogFragment cYMGFindPasswordSetPasswordDialogFragment;
+	private CYMGFindPasswordSetAuthCodeDialogFragment cYMGFindPasswordSetAuthCodeDialogFragment;
+	private CYMGLoginChengYouDialogFragment cYMGLoginChengYouDialogFragment;
+	private CYMGLoginChangYouDialogFragment cYMGLoginChangYouDialogFragment;
+	private CYMGRegisterContainerDialogFragment cYMGRegisterContainerDialogFragment;
+	private CYMGRegisterPhoneSetAuthCodeDialogFragment cYMGRegisterPhoneSetAuthCodeDialogFragment;
+	private CYMGSwitchAccountDialogFragment cYMGSwitchAccountDialogFragment;
+	private CYMGFindPasswordDialogFragment cYMGFindPasswordDialogFragment;
+	private CYMGAutoLoginDialogFragment cYMGAutoLoginDialogFragment;
+	private CYMGActivateCodeDialogFragment cYMGActivateCodeDialogFragment;
+	
+	private String mUid,mType;
+	
+	private CYMGDBMaster mCYMGDBMaster;
+	
+	public CYMGDBMaster getmCYMGDBMaster(){
+		return mCYMGDBMaster;
+	}
+	
+	@Override
+	protected void onCreate(Bundle arg0) {
+		super.onCreate(arg0);
+		//在这里初始化悬浮窗
+		CYMGFlowWinManager.getInstance().setContext(getApplicationContext());
+		mCYMGDBMaster=new CYMGDBMaster(this);
+		List<CYMGAccBean> list=mCYMGDBMaster.getAccList(-1);
+		getUserSP(this);
+		if(list.isEmpty()){
+			changeDialogFragment(Contants.DialogFragmentTag.QUICK_INTO,null);
+		}else{
+			boolean isAuto=getIntent().getBundleExtra(Params.BUNDLE).getBoolean(Params.ISAUTOLOGIN);
+			if(isAuto==false){
+				changeDialogFragment(Contants.DialogFragmentTag.SWITCH_ACCOUNT,null);
+				return;
+			}
+			if(TextUtils.isEmpty(mUid)){
+				if(list.get(0).getmState()==1){
+					Bundle bundle=new Bundle();
+					String uid=list.get(0).getmUID();
+					String token=list.get(0).getmToken();
+					String acc=list.get(0).getmAcc();
+					String type="";
+					if(acc.startsWith(Contants.ACC_TYPE_CHENGYOU)){
+						type=Contants.LOGIN_CHENGYOU_TYPE;
+					}else if(acc.startsWith(Contants.ACC_TYPE_CHANGYOU)){
+						type=Contants.LOGIN_CHANGYOU_TYPE;
+					}
+					bundle.putString(Params.UID, uid);
+					bundle.putString(Params.TOKEN, token);
+					bundle.putString(Params.ACCOUNT, acc);
+					bundle.putString(Params.TYPE, type);
+					changeDialogFragment(Contants.DialogFragmentTag.AUTO_LOGIN,bundle);
+				}else{
+					changeDialogFragment(Contants.DialogFragmentTag.SWITCH_ACCOUNT,null);
+				}
+			}else{
+				for(int i=0;i<list.size();i++){
+					if(mUid.equals(list.get(i).getmUID())){
+						if(list.get(i).getmState()==1){
+							Bundle bundle=new Bundle();
+							String uid=list.get(i).getmUID();
+							String token=list.get(i).getmToken();
+							String acc=list.get(i).getmAcc();
+							bundle.putString(Params.UID, uid);
+							bundle.putString(Params.TOKEN, token);
+							bundle.putString(Params.ACCOUNT, acc);
+							bundle.putString(Params.TYPE, mType);
+							changeDialogFragment(Contants.DialogFragmentTag.AUTO_LOGIN,bundle);
+							return;
+						}
+					}
+				}
+				changeDialogFragment(Contants.DialogFragmentTag.SWITCH_ACCOUNT,null);
+			}
+		}
+	}
+	
+	@Override
+	protected void onDestroy() {
+		super.onDestroy();
+	}
+	
+	public void changeDialogFragment(String tag,Bundle bundle){
+		if(tag.equals(Contants.DialogFragmentTag.QUICK_INTO)){
+			cYMGQuickIntoDialogFragment=CYMGQuickIntoDialogFragment.newInewInstance(this,bundle);
+			cYMGQuickIntoDialogFragment.showDialog();
+		}else if(tag.equals(Contants.DialogFragmentTag.FIND_PASSWORD_SET_PASSWORD)){
+			cYMGFindPasswordSetPasswordDialogFragment=CYMGFindPasswordSetPasswordDialogFragment.newInewInstance(this,bundle);
+			cYMGFindPasswordSetPasswordDialogFragment.showDialog();
+		}else if(tag.equals(Contants.DialogFragmentTag.CHENGYOU_LOGIN)){
+			cYMGLoginChengYouDialogFragment=CYMGLoginChengYouDialogFragment.newInewInstance(this,bundle);
+			cYMGLoginChengYouDialogFragment.showDialog();
+		}else if(tag.equals(Contants.DialogFragmentTag.CHANGYOU_LOGIN)){
+			cYMGLoginChangYouDialogFragment=CYMGLoginChangYouDialogFragment.newInewInstance(this,bundle);
+			cYMGLoginChangYouDialogFragment.showDialog();
+		}else if(tag.equals(Contants.DialogFragmentTag.REGISTER_CONTAINER)){
+			cYMGRegisterContainerDialogFragment=CYMGRegisterContainerDialogFragment.newInewInstance(this,bundle);
+			cYMGRegisterContainerDialogFragment.showDialog();
+		}else if(tag.equals(Contants.DialogFragmentTag.REGISTER_SET_AUTH_CODE)){
+			cYMGRegisterPhoneSetAuthCodeDialogFragment=CYMGRegisterPhoneSetAuthCodeDialogFragment.newInewInstance(this,bundle);
+			cYMGRegisterPhoneSetAuthCodeDialogFragment.showDialog();
+		}else if(tag.equals(Contants.DialogFragmentTag.SWITCH_ACCOUNT)){
+			cYMGSwitchAccountDialogFragment=CYMGSwitchAccountDialogFragment.newInewInstance(this,bundle);
+			cYMGSwitchAccountDialogFragment.showDialog();
+		}else if(tag.equals(Contants.DialogFragmentTag.FIND_PASSWORD)){
+			cYMGFindPasswordDialogFragment=CYMGFindPasswordDialogFragment.newInewInstance(this,bundle);
+			cYMGFindPasswordDialogFragment.showDialog();
+		}else if(tag.equals(Contants.DialogFragmentTag.AUTO_LOGIN)){
+			cYMGAutoLoginDialogFragment=CYMGAutoLoginDialogFragment.newInewInstance(this,bundle);
+			cYMGAutoLoginDialogFragment.showDialog();
+		}else if(tag.equals(Contants.DialogFragmentTag.FIND_PASSWORD_SET_AUTH_CODE)){
+			cYMGFindPasswordSetAuthCodeDialogFragment=CYMGFindPasswordSetAuthCodeDialogFragment.newInewInstance(this,bundle);
+			cYMGFindPasswordSetAuthCodeDialogFragment.showDialog();
+		}else if(tag.equals(Contants.DialogFragmentTag.ACTIVATE_CODE)){
+			cYMGActivateCodeDialogFragment=CYMGActivateCodeDialogFragment.newInewInstance(this,bundle);
+			cYMGActivateCodeDialogFragment.showDialog();
+		}
+	}
+	
+	private void getUserSP(Context context) {
+		mUid = UserInfoSPUtil.getUid(context);
+		mType = UserInfoSPUtil.getType(context);
+	}
+}

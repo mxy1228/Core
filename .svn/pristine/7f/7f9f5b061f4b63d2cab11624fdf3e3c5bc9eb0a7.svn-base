@@ -1,0 +1,93 @@
+package com.changyou.mgp.sdk.mbi.pay.adapter;
+
+import java.util.List;
+
+import android.content.Context;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.BaseAdapter;
+import android.widget.ImageView;
+
+import com.changyou.mgp.sdk.mbi.R;
+import com.changyou.mgp.sdk.mbi.entity.GoodsItem;
+import com.changyou.mgp.sdk.mbi.image.MGPImageLoader;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.pay.viewcache.GoodsListViewCache;
+import com.nostra13.universalimageloader.core.DisplayImageOptions;
+import com.nostra13.universalimageloader.core.assist.ImageScaleType;
+import com.nostra13.universalimageloader.core.display.RoundedBitmapDisplayer;
+/**
+ * 
+ * 功能描述：商品列表Adapter
+ *
+ * @author 严峥(yanzheng)
+ * @date 2014-1-20 上午10:16:44
+ * 修改历史：(修改人，修改时间，修改原因/内容)
+ */
+public class GoodsListAdapter extends BaseAdapter {
+	
+	private CYLog log = CYLog.getInstance();
+	
+	private static final String GOODS_REGISTER_ID="com.cyou.mrd.suixin.item";
+	
+	private Context mContext;
+	private List<GoodsItem> mList;
+	private DisplayImageOptions options;
+	
+	public GoodsListAdapter(Context contetx,List<GoodsItem> list){
+		this.mContext=contetx;
+		this.mList=list;
+		this.options = new DisplayImageOptions.Builder().showImageOnLoading(R.drawable.mgp_payment_item_icon)
+				.showImageForEmptyUri(R.drawable.mgp_payment_item_icon)
+				.showImageOnFail(R.drawable.mgp_payment_item_icon)
+				.displayer(new RoundedBitmapDisplayer(90))
+				.cacheInMemory(true)
+				.cacheOnDisc(true)
+				.imageScaleType(ImageScaleType.IN_SAMPLE_POWER_OF_2)
+				.build();
+	}
+
+	@Override
+	public int getCount() {
+		// TODO Auto-generated method stub
+		return mList.size();
+	}
+
+	@Override
+	public Object getItem(int position) {
+		// TODO Auto-generated method stub
+		return mList.get(position);
+	}
+
+	@Override
+	public long getItemId(int position) {
+		// TODO Auto-generated method stub
+		return position;
+	}
+
+	@Override
+	public View getView(int position, View convertView, ViewGroup parent) {
+		GoodsListViewCache holder = null;
+		if(convertView==null){
+			holder = new GoodsListViewCache();
+			convertView=LayoutInflater.from(mContext).inflate(R.layout.mgp_payment_item_1_03, null);
+			holder.setView(convertView);
+			convertView.setTag(holder); 
+		}else{
+			holder=(GoodsListViewCache) convertView.getTag();
+		}
+		final GoodsItem mGoodsItem=mList.get(position);
+		ImageView mImageView=holder.getGoodsIconImg();
+		String url=mGoodsItem.getGoods_icon().toString();
+		MGPImageLoader.getInstance(mContext).displayImage(url, mImageView, options);
+		holder.getGoodsNameTv().setText(mGoodsItem.getGoods_name());
+		holder.getGoodsDescribeTv().setText(mGoodsItem.getGoods_describe());
+		holder.getGoodsPriceTv().setText(mGoodsItem.getGoods_price());
+		if(GOODS_REGISTER_ID.equals(mGoodsItem.getGoods_register_id())){
+			holder.getGoodsPriceLl().setVisibility(View.GONE);
+		}
+		return convertView;
+	}
+
+}

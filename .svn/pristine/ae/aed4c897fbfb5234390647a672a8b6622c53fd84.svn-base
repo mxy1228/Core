@@ -1,0 +1,399 @@
+package com.changyou.mgp.sdk.mbi.pay.ui;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import org.codehaus.jackson.type.TypeReference;
+
+import android.app.Activity;
+import android.os.Bundle;
+import android.text.TextUtils;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemClickListener;
+import android.widget.Button;
+import android.widget.ImageButton;
+import android.widget.LinearLayout;
+import android.widget.ListView;
+import android.widget.RelativeLayout;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import com.changyou.mgp.sdk.mbi.R;
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannel;
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannelEntity;
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannelHelper;
+import com.changyou.mgp.sdk.mbi.config.CYMGFunID;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolKeys;
+import com.changyou.mgp.sdk.mbi.config.Contants;
+import com.changyou.mgp.sdk.mbi.config.HttpContants;
+import com.changyou.mgp.sdk.mbi.config.Params;
+import com.changyou.mgp.sdk.mbi.entity.ErrorInfo;
+import com.changyou.mgp.sdk.mbi.entity.GoodsItem;
+import com.changyou.mgp.sdk.mbi.entity.GoodsList;
+import com.changyou.mgp.sdk.mbi.http.MyAsyncResponseHandler;
+import com.changyou.mgp.sdk.mbi.http.MyHttpClient;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.pay.adapter.GoodsListAdapter;
+import com.changyou.mgp.sdk.mbi.ui.base.BaseFragment;
+import com.changyou.mgp.sdk.mbi.ui.widget.NetErrorView;
+import com.changyou.mgp.sdk.mbi.ui.widget.WaitingDialog;
+import com.changyou.mgp.sdk.mbi.utils.JSONUtil;
+import com.changyou.mgp.sdk.mbi.utils.MetaDataValueUtils;
+import com.changyou.mgp.sdk.mbi.utils.MyToast;
+import com.changyou.mgp.sdk.mbi.utils.NetWorkUtils;
+import com.changyou.mgp.sdk.mbi.utils.StringUtils;
+import com.changyou.mgp.sdk.mbi.utils.SwitchInfoSPUtil;
+import com.changyou.mgp.sdk.mbi.utils.UserInfoSPUtil;
+import com.loopj.android.http.RequestParams;
+/**
+ * 
+ * 功能描述：支付列表界�?
+ *
+ * @author 严峥(yanzheng)
+ * @date 2014-1-20 上午10:27:52
+ * 修改历史�?修改人，修改时间，修改原�?内容)
+ */
+public class CYMGPaymentFragment extends BaseFragment implements OnClickListener{
+	
+	private CYLog log = CYLog.getInstance();
+	
+	private Activity mContext;
+	
+	private NetErrorView mNetErrorView;
+	private LinearLayout mNullDataView;
+	private Button mRefreshBtn;
+	private ListView mListView;
+	private WaitingDialog mWaitingDialog;
+	private View mTitle;
+	private ImageButton mServiceImgBtn;
+	private TextView mTitleTv;
+	private ImageButton mBackIBtn;
+	private Button mServiceBtn;
+	
+	private List<GoodsItem> mGoodsList;
+	private GoodsListAdapter mAdapter;
+	
+	private String mUID;
+	private Bundle mBundle;
+	
+	@Override
+	public void onAttach(Activity activity) {
+		log.i("-----onAttach");
+		super.onAttach(activity);
+		this.mContext=activity;
+	}
+
+	@Override
+	public View onCreateView(LayoutInflater inflater, ViewGroup container,
+			Bundle savedInstanceState) {
+		log.i("-----onCreateView");
+		View view = inflater.inflate(R.layout.mgp_payment_1_03,container,false);
+		initView(view);
+		initData();
+		initEvent();
+		return view;
+	}
+	
+	@Override
+	public void onResume() {
+		log.i("onResume");
+		super.onResume();
+	}
+	
+	@Override
+	public void onDestroy() {
+		log.i("onDestroy");
+		super.onDestroy();
+		if (this.mWaitingDialog.isShowing()) {
+			this.mWaitingDialog.dismiss();
+		}
+	}
+	
+	private void initView(View view){
+		this.mNullDataView= (LinearLayout) view.findViewById(R.id.mgp_payment_1_03_null_ll);
+		this.mNetErrorView = (NetErrorView)view.findViewById(R.id.mgp_payment_1_03_error_ll);
+		this.mRefreshBtn = mNetErrorView.getRefreshBtn();
+		this.mListView=(ListView) view.findViewById(R.id.mgp_payment_1_03_goodslist_ListView);
+		this.mWaitingDialog = new WaitingDialog(mContext);
+		this.mTitle = view.findViewById(R.id.payment_title);
+		this.mBackIBtn = (ImageButton)mTitle.findViewById(R.id.mgp_title_left_ibtn);
+		this.mServiceBtn = (Button)mTitle.findViewById(R.id.mgp_title_right_btn);
+		this.mServiceImgBtn = (ImageButton)mTitle.findViewById(R.id.mgp_title_right_imgbtn);
+		this.mTitleTv = (TextView)mTitle.findViewById(R.id.mgp_title_tv);
+	}
+
+	@Override
+	protected void initData() {
+		this.mWaitingDialog.setMessage(mContext.getString(R.string.mgp_loading));
+		this.mGoodsList=new ArrayList<GoodsItem>();
+		this.mAdapter=new GoodsListAdapter(mContext,mGoodsList);
+		this.mListView.setAdapter(mAdapter);
+		this.mBundle= getArguments();
+		this.mUID = mBundle.getString(CYMGProtocolKeys.UID);
+		if(TextUtils.isEmpty(this.mUID) || this.mUID == null){
+			throw new IllegalAccessError("uid is null");
+		}
+		this.mTitleTv.setText(R.string.mgp_title_tv_payment);
+		this.mServiceBtn.setText(R.string.mgp_payment_tv_payrecord);
+		getPaymentGoodsRequest();
+	}
+
+	@Override
+	protected void initEvent() {
+		this.mRefreshBtn.setOnClickListener(this);
+		this.mListView.setOnItemClickListener(new OnItemClickListener() {
+
+			@Override
+			public void onItemClick(AdapterView<?> arg0, View arg1, int arg2,
+					long arg3) {
+				GoodsItem mGoodsItem = mGoodsList.get(arg2);
+				if(checkGoodsItem(mGoodsItem)){
+					createOrder(mGoodsItem);
+				}else{
+					MyToast.showDebugToast(mContext, "goodsItem exception");
+				}
+			}
+		});
+		this.mBackIBtn.setOnClickListener(this);
+		this.mServiceBtn.setOnClickListener(this);
+		this.mServiceImgBtn.setOnClickListener(this);
+	}
+	
+	@Override
+	public void onClick(View v) {
+		if(v.getId() == R.id.mgp_net_error_refresh_btn_id){
+			this.mWaitingDialog.show();
+			getPaymentGoodsRequest();
+		}else if(v.getId()==R.id.mgp_title_right_btn){
+			((CYMGPaymentActivity)mContext).changeFragment(Contants.FragmentTag.PAYMENT_ORDER_FRAGMENT_TAG , null);
+		}else if(v.getId()==R.id.mgp_title_left_ibtn){
+			((CYMGPaymentActivity)mContext).goback();
+		}
+		
+	}
+	
+	/**
+	 * 
+	 * 功能描述：获取商品列�?
+	 *
+	 * @author 徐萌�?xumengyang)
+	 * @param @param context
+	 * @return void
+	 * @date 2014-2-25 下午3:22:40
+	 *
+	 */
+	private void getPaymentGoodsRequest(){
+		if(NetWorkUtils.isNetworkConnected(mContext)){
+			MyHttpClient mHttpClient = new MyHttpClient(mContext);
+			RequestParams map = new RequestParams();
+			mHttpClient.get(HttpContants.getURL(HttpContants.PAYMENT_GOODS), map, new MyAsyncResponseHandler(){
+				@Override
+				public void onStart() {
+					mWaitingDialog.show();
+					mGoodsList.clear();
+				}
+		
+				@Override
+				public void onSuccess(int statusCode, String content) {
+					log.d("getPaymentGoodsRequest-----onSuccess,content:"+content);
+					mWaitingDialog.dismiss();
+					if(!StringUtils.isEmpty(content)){
+						try {
+							GoodsList mList=JSONUtil.getMapper().readValue(JSONUtil.initJsonArrayStr(content), new TypeReference<GoodsList>() {
+							});
+							mGoodsList.addAll(mList.getData());
+							mAdapter.notifyDataSetChanged();
+							if(!mGoodsList.isEmpty()){
+								showGoodsListView();
+							}else{
+								showNullDataView();
+							}
+						} catch (Exception e) {
+							log.e(e);
+						}
+					}else{
+						showNetErrorView();
+					}
+				}
+				
+				@Override
+				public void onFailure(int statusCode, Throwable error,String content) {
+					log.d("getPaymentGoodsRequest-----onFailure,content:"+content);
+					mWaitingDialog.dismiss();
+					if(!StringUtils.isEmpty(content)){
+						try {
+							ErrorInfo info=JSONUtil.getMapper().readValue(content, new TypeReference<ErrorInfo>() {
+							});
+							showNetErrorView();
+							return;
+						} catch (Exception e) {
+							log.e(e);
+						}
+					}else{
+						showNetErrorView();
+						return;
+					}
+					if(statusCode==404){
+						showNetErrorView();
+					}else{
+						showNetErrorView();
+					}
+				}
+			});
+		}else{
+			showNetErrorView();
+		}
+	}
+	
+	/**
+	 * 
+	 * 功能描述：检测GoodsItem数据的合法�?
+	 *
+	 * @author 徐萌�?xumengyang)
+	 * @param item
+	 * @return boolean
+	 * @date 2014-2-10 下午7:59:28
+	 *
+	 */
+	private boolean checkGoodsItem(GoodsItem item){
+		if(item == null){
+			log.e("item is null");
+			return false;
+		}else if(TextUtils.isEmpty(item.getGoods_name()) || item.getGoods_name() == null){
+			log.e("goodsDescribe is null");
+			return false;
+		}else if(TextUtils.isEmpty(item.getGoods_price()) || item.getGoods_price() == null){
+			log.e("price is null");
+			return false;
+		}else{
+			return true;
+		}
+	}
+	
+	/**
+	 * 
+	 * 功能描述：生成UUID，并将UUID当做OrderID传给服务�?
+	 *
+	 * @author 徐萌�?xumengyang)
+	 * @param @return
+	 * @return String
+	 * @date 2014-2-18 上午11:07:16
+	 *
+	 */
+	private String getOrderID(){
+		return UUID.randomUUID().toString().replace("-", "");
+	}
+	
+	/**
+	 * 
+	 * 功能描述：和服务器交互生成订�?
+	 *
+	 * @author 徐萌�?xumengyang)
+	 * @param 
+	 * @return void
+	 * @date 2014-2-17 下午5:26:25
+	 *
+	 */
+	private void createOrder(final GoodsItem item){
+		final String orderID = getOrderID();
+		log.d("createOrder : orderID = "+orderID);
+		final String mUID = mBundle.getString(CYMGProtocolKeys.UID);
+		if(TextUtils.isEmpty(mUID) || mUID == null){
+			throw new IllegalAccessError("uid is null");
+		}
+		if(NetWorkUtils.isNetworkConnected(mContext)){
+			log.d("创建订单uid = "+mUID);
+			MyHttpClient http = new MyHttpClient(mContext);
+			Map<String,String> params = new HashMap<String, String>();
+			String type = UserInfoSPUtil.getType(mContext);
+			String account_id = UserInfoSPUtil.getUsername(mContext);
+			if(Contants.LoginParams.TYPE_CYOU.equals(type)){
+				if(!TextUtils.isEmpty(account_id)&&account_id!=null){
+					params.put("account_id", account_id);
+				}else{
+					params.put("account_id", mUID);
+				}
+			}else{
+				params.put("account_id", mUID);
+			}
+			params.put("user_id", mUID);
+			params.put("goods_id", item.getGoods_id());
+			params.put("goods_register_id",item.getGoods_register_id());
+			params.put("goods_number", item.getGoods_number());
+			params.put("goods_price", String.valueOf(item.getGoods_price()));
+			params.put("order_id", orderID);
+			params.put("push_info", mBundle.getString(CYMGProtocolKeys.PUSH_INFO));
+			http.post(HttpContants.getURL(HttpContants.CREATE_ORDER), params, new MyAsyncResponseHandler(){
+				@Override
+				public void onStart() {
+					if(mWaitingDialog != null && !mWaitingDialog.isShowing()){
+						mWaitingDialog.show();
+					}
+				}
+				
+				@Override
+				public void onSuccess(int statusCode, String content) {
+					log.d("onSuccess:content = "+content);
+					mWaitingDialog.dismiss();
+					mBundle.putSerializable(Params.GOODSITEM, item);
+					mBundle.putString(Params.ORDER_ID, orderID);
+					mBundle.putString(Params.UID, mUID);
+					CYMGChannelEntity entity = new CYMGChannelEntity();
+					entity.setBundle(mBundle);
+					entity.setmContext(getActivity());
+					entity.setmScreenOrientation(SwitchInfoSPUtil.getLandScape(mContext));
+					try {
+						CYMGChannel channelDo = new CYMGChannelHelper(mContext).getChannel(MetaDataValueUtils.getChannelID(mContext),CYMGFunID.PAY);
+						channelDo.doPay(entity);
+					} catch (Exception e) {
+						log.e(e);
+					}
+				}
+				
+				@Override
+				public void onFailure(Throwable error, String content) {
+					log.e("onFailure:content="+content);
+					if(mWaitingDialog.isShowing()){
+						mWaitingDialog.dismiss();
+					}
+					Toast.makeText(mContext, R.string.mgp_net_error_hint, Toast.LENGTH_LONG).show();
+				}
+			});
+		}else{
+			showNetErrorView();
+		}
+	}
+	
+	private void showGoodsListView(){
+		mListView.setVisibility(View.VISIBLE);
+		mNetErrorView.setVisibility(View.GONE);
+		mNullDataView.setVisibility(View.GONE);
+	}
+	
+	private void showNetErrorView(){
+		mListView.setVisibility(View.GONE);
+		mNetErrorView.setVisibility(View.VISIBLE);
+		mNullDataView.setVisibility(View.GONE);
+	}
+	
+	private void showNullDataView(){
+		mListView.setVisibility(View.GONE);
+		mNetErrorView.setVisibility(View.GONE);
+		mNullDataView.setVisibility(View.VISIBLE);
+	}
+	
+	@Override
+	public void onDestroyView() {
+		super.onDestroyView();
+	}
+	
+	
+	
+}

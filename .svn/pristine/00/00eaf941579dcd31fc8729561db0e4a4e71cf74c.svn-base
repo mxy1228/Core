@@ -1,0 +1,75 @@
+package com.changyou.mgp.sdk.mbi.utils;
+
+import android.content.Context;
+
+import com.nd.commplatform.gc.widget.NdToolBar;
+import com.nd.commplatform.gc.widget.NdToolBarPlace;
+
+
+public class MGP91ToolBar {
+	
+	private NdToolBar mTtoolBar;
+	
+	public static MGP91ToolBar mInstance;
+	
+	private MGP91ToolBar(){
+		
+	}
+	
+	public static MGP91ToolBar getInstance(){
+		if(mInstance == null){
+			mInstance = new MGP91ToolBar();
+		}
+		return mInstance;	
+	}
+	
+	/**
+	 * 
+	 * 功能描述：创建91悬浮框
+	 *
+	 * @author 严峥(yanzheng)
+	 * @param @param context
+	 * @return void
+	 * @date 2014-3-25 下午2:09:08
+	 *
+	 * 修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public void CreatTtoolBar(Context context){
+		mTtoolBar = NdToolBar.create(context, NdToolBarPlace.NdToolBarRightMid);
+	}
+	
+	/**
+	 * 
+	 * 功能描述：显示91悬浮框
+	 *
+	 * @author 严峥(yanzheng)
+	 * @param 
+	 * @return void
+	 * @date 2014-3-25 下午2:09:29
+	 *
+	 * 修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public void showTtoolBar(){
+		if(mTtoolBar!=null){
+			mTtoolBar.show();
+		}
+	}
+	
+	/**
+	 * 
+	 * 功能描述：销毁91悬浮框
+	 *
+	 * @author 严峥(yanzheng)
+	 * @param 
+	 * @return void
+	 * @date 2014-3-25 下午2:09:41
+	 *
+	 * 修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public void destroyTtoolBar(){
+		if(mTtoolBar!=null){
+			mTtoolBar.recycle();
+			mTtoolBar = null;
+		}
+	}
+}

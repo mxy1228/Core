@@ -1,0 +1,169 @@
+package com.changyou.mgp.sdk.mbi.channel.impl;
+
+import android.app.Activity;
+import android.content.Context;
+import android.content.pm.ActivityInfo;
+import android.os.Bundle;
+
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannel;
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannelEntity;
+import com.changyou.mgp.sdk.mbi.config.CYMGPrompt;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolKeys;
+import com.changyou.mgp.sdk.mbi.config.Params;
+import com.changyou.mgp.sdk.mbi.config.SDKConfig;
+import com.changyou.mgp.sdk.mbi.entity.GoodsItem;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.platform.CYMGInitHelper;
+import com.changyou.mgp.sdk.mbi.platform.CYMGLoginHelper;
+import com.changyou.mgp.sdk.mbi.platform.CYMGLoginOutHelpr;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPayHelper;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPlatformConfiguration;
+import com.changyou.mgp.sdk.mbi.utils.MetaDataValueUtils;
+import com.lenovo.lsf.open.LenovoGameSdk;
+import com.lenovo.mpay.ifmgr.IPayResultCallback;
+import com.lenovo.mpay.ifmgr.SDKApi;
+import com.lenovo.mpay.tools.PayRequest;
+
+public class CYMGLenovoImpl implements CYMGChannel {
+
+	private CYLog mLog = CYLog.getInstance();
+	
+	//回调地址
+	public static final String NOTIFYURL =SDKConfig.DEBUG ? 
+			"http://t.changyou.com/service/sdkLenovoPaylist"
+			:"http://servicebilling.changyou.com/service/sdkLenovoPaylist";
+	@Override
+	public void init(CYMGPlatformConfiguration config) {
+		final Context context = config.getmContext();
+		String appId = MetaDataValueUtils.getLenovoAppId(context);
+		// 设置SDK的横竖屏显示
+		int screenOrientation;
+		if (config.getmScreenOrientation() == ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT) {
+			screenOrientation = SDKApi.PORTRAIT;
+		}else {
+			screenOrientation = SDKApi.LANDSCAPE;
+		}
+		// 支付接口初始化，设置支付界面为横屏，详情参见文档.建议此方法在进入游戏时调用
+		SDKApi.init((Activity)context, screenOrientation, appId);
+		// 支付预读接口（init的时候调用）
+		SDKApi.preGettingData((Activity)context, appId);
+		
+		CYMGInitHelper.getInstance().onInitResult(CYMGPrompt.CODE_INIT_SUCCESS,null);
+	}
+
+	@Override
+	public void doLogin(CYMGChannelEntity entity) {
+		Context context = entity.getmContext();
+		final String channelId = MetaDataValueUtils.getChannelID(context);
+		Bundle loginOption = new Bundle();
+		//该参数控制：是否显示登录成功后 浮动在界面上面的欢迎条
+		loginOption.putBoolean(LenovoGameSdk.SHOW_WELCOME, true);
+
+		LenovoGameSdk.quickLogin((Activity)context, new LenovoGameSdk.OnAuthenListener() {
+
+			@Override
+			public void onFinished(boolean ret, String data) {
+				if (ret) {//登录成功
+					mLog.d("------->>Lenovo login success!");
+					Bundle b = new Bundle();
+		 			b.putString(CYMGProtocolKeys.TOKEN, data);
+		 			b.putString(CYMGProtocolKeys.CHANNEL_ID,channelId);
+		 			CYMGLoginHelper.getInstance().loginResult(CYMGPrompt.CODE_LOGIN_SUCCESS, b);
+				} else {//登录失败
+					mLog.w("------->>Lenovo login faliure!");
+					CYMGLoginHelper.getInstance().loginResult(
+							CYMGPrompt.CODE_LOGIN_FAILED, null);
+				}
+			}
+		}, loginOption);
+	}
+
+	@Override
+	public void doPay(CYMGChannelEntity entity) {
+		final Context context = entity.getmContext();
+		
+		String appId = MetaDataValueUtils.getLenovoAppId(context);
+		final String appKey = MetaDataValueUtils.getLenovoAppKey(context);
+		
+		Bundle bundle = entity.getBundle();
+		final String uid = bundle.getString(Params.UID);
+		final String orderId = bundle.getString(Params.ORDER_ID);
+		final GoodsItem item = (GoodsItem)bundle.getSerializable(Params.GOODSITEM);
+		final String priceStr = item.getGoods_price();
+		int price=(int) Double.parseDouble(priceStr);
+		
+		
+		PayRequest payRequest = new PayRequest();
+		// 请填写商品参数
+		payRequest.addParam("notifyurl", NOTIFYURL);
+		payRequest.addParam("appid", appId);
+		payRequest.addParam("waresid", item.getGoods_register_id());
+		payRequest.addParam("exorderno", orderId);
+		payRequest.addParam("price", price);
+		payRequest.addParam("cpprivateinfo", "123456");
+		// 生成签名，创建请求url
+		String paramUrl = payRequest.genSignedUrlParamString(appKey);
+		SDKApi.startPay((Activity)context, paramUrl, new IPayResultCallback() {
+			@Override
+			public void onPayResult(int resultCode, String signValue,
+					String resultInfo) {// resultInfo = 应用编号&商品编号&外部订单号
+				CYMGPayHelper cymgPayHelper = CYMGPayHelper.getInstance();
+				cymgPayHelper.setContext((Activity)context);
+				if (SDKApi.PAY_SUCCESS == resultCode) {//支付成功
+					mLog.d("---->lenovo pay signValue = "+ signValue);
+					if (null == signValue) {//没有签名值
+						// 没有签名值，默认采用finish()，请根据需要修改
+						mLog.e("----->lenovo pay, signValue is null ");
+						cymgPayHelper.payException(CYMGPrompt.CODE_PAY_FAILED);
+					}
+					boolean flag = PayRequest.isLegalSign(signValue,appKey);
+					if (flag) {//支付成功
+						mLog.d("---->lenovo pay success:islegalsign: true");
+						// 合法签名值，支付成功，请添加支付成功后的业务逻辑
+						cymgPayHelper.paySuccess(uid, item.getGoods_register_id(), orderId, priceStr);
+					} else {//验证签名失败
+						// 非法签名值，默认采用finish()，请根据需要修改
+						cymgPayHelper.payException(CYMGPrompt.CODE_PAY_FAILED);
+					}
+				} else if (SDKApi.PAY_CANCEL == resultCode) {//取消支付
+					// 取消支付处理，默认采用finish()，请根据需要修改
+					mLog.d("---->lenovo pay cancel");
+					cymgPayHelper.payException(CYMGPrompt.CODE_PAY_CANCEL);
+					
+				} else {//支付失败
+					// 计费失败处理，默认采用finish()，请根据需要修改
+					mLog.e("---->lenovo pay failure");
+					cymgPayHelper.payException(CYMGPrompt.CODE_PAY_FAILED);
+					
+				}
+			}
+		});
+	}
+
+	@Override
+	public void doLogout(CYMGChannelEntity entity) {
+		final Context context = entity.getmContext();
+		LenovoGameSdk.setLogoutFinishListener(new LenovoGameSdk.OnLogoutFinishListener() {
+			
+			@Override
+			public void onLogoutFinish() {
+				//告知接入方注销成功
+				CYMGLoginOutHelpr.getInstance().logoutResult(CYMGPrompt.CODE_LOGOUT_SUCCESS);
+			}
+		});
+		//联想的注销有点QiPa，需要调出通行证页面让用户手动注销
+		LenovoGameSdk.showAccountPage(context);
+	}
+
+	@Override
+	public void doDestroy(CYMGChannelEntity entity) {
+		//在注销时已释放资源
+	}
+
+	@Override
+	public void doCustomerService(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+
+	}
+
+}

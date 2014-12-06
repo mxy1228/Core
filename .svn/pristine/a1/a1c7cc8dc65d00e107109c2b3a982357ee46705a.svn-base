@@ -1,0 +1,121 @@
+package com.changyou.mgp.sdk.mbi.account.ui;
+
+import android.app.Activity;
+import android.content.DialogInterface;
+import android.graphics.drawable.AnimationDrawable;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.support.v4.app.DialogFragment;
+import android.support.v4.app.FragmentActivity;
+import android.support.v4.app.FragmentManager;
+import android.support.v4.app.FragmentTransaction;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ImageView;
+import android.widget.TextView;
+
+import com.changyou.mgp.sdk.mbi.account.id.AccResource;
+import com.changyou.mgp.sdk.mbi.config.Contants;
+
+public class CYMGLoadingDialogFragment extends BaseDialogFragment{
+	
+	private static Activity mActivity;
+	
+	private ImageView mLoadingImg;
+	private TextView mLoadingTv;
+	
+	private AnimationDrawable mAnim;
+	
+	private String mMessage = "";
+	
+	@Override
+	public View onCreateView(LayoutInflater inflater, ViewGroup container,
+			Bundle savedInstanceState) {
+		View view=inflater.inflate(AccResource.getInstance(mActivity).mgp_sdk_2_0_dialog_loading_dialog, container,false);
+		initView(view);
+		initData();
+		initEvent();
+		return view;
+	}
+	
+
+	@Override
+	protected void initView(View view) {
+		mLoadingImg=(ImageView) view.findViewById(AccResource.getInstance(mActivity).mgp_sdk_2_0_dialog_loading_dialog_ImageView);
+		mLoadingTv=(TextView) view.findViewById(AccResource.getInstance(mActivity).mgp_sdk_2_0_dialog_loading_dialog_TextView);
+	}
+
+	@Override
+	protected void initData() {
+		mLoadingTv.setText(mMessage);
+		startAnim();
+	}
+
+	@Override
+	protected void initEvent() {
+		
+	}
+	
+	public static CYMGLoadingDialogFragment newInewInstance(Activity activity){
+		mActivity=activity;
+		CYMGLoadingDialogFragment cymgLoadingDialogFragment=new CYMGLoadingDialogFragment();
+		cymgLoadingDialogFragment.setStyle(DialogFragment.STYLE_NORMAL, AccResource.getInstance(mActivity).mgp_sdk_2_0_mian_dialog);
+		return cymgLoadingDialogFragment;
+	}
+
+	@Override
+	public void onCancel(DialogInterface dialog) {
+		if(mActivity instanceof CYMGMainDialogFragmentActivity){
+			dismiss();
+		}else{
+			FragmentManager fm = ((FragmentActivity)mActivity).getSupportFragmentManager();
+			if(fm.getBackStackEntryCount() == 0){
+				mActivity.finish();
+			}else{
+				fm.popBackStack();
+			}
+		}
+	}
+	
+	private void startAnim(){
+		mLoadingImg.setBackgroundResource(AccResource.getInstance(mActivity).mgp_sdk_2_0_dialog_loading_anim);  
+		mAnim = (AnimationDrawable) mLoadingImg.getBackground();  
+		mAnim.start();  
+	}
+	
+	public void setMessage(String msg){
+		mMessage=msg;
+	}
+	
+	public void showDialog() {
+		try {
+			new Handler(Looper.getMainLooper()).post(new Runnable() {
+				@Override
+				public void run() {
+					FragmentTransaction transaction=((FragmentActivity)mActivity).getSupportFragmentManager().beginTransaction();
+					show(transaction, Contants.DialogFragmentTag.LOADING);
+				}
+			});
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public void dismissDialog(){
+		try {
+			new Handler(Looper.getMainLooper()).post(new Runnable() {
+				@Override
+				public void run() {
+					dismiss();
+				}
+			});
+			if(mAnim!=null&&mAnim.isRunning()){
+				mAnim.stop();
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+}

@@ -1,0 +1,413 @@
+
+package com.changyou.mgp.sdk.mbi.channel.impl;
+
+import android.app.Activity;
+import android.content.Context;
+import android.os.Bundle;
+import cn.uc.gamesdk.UCCallbackListener;
+import cn.uc.gamesdk.UCCallbackListenerNullException;
+import cn.uc.gamesdk.UCFloatButtonCreateException;
+import cn.uc.gamesdk.UCGameSDK;
+import cn.uc.gamesdk.UCGameSDKStatusCode;
+import cn.uc.gamesdk.UCLogLevel;
+import cn.uc.gamesdk.UCOrientation;
+import cn.uc.gamesdk.info.FeatureSwitch;
+import cn.uc.gamesdk.info.GameParamInfo;
+import cn.uc.gamesdk.info.OrderInfo;
+import cn.uc.gamesdk.info.PaymentInfo;
+
+import com.changyou.mgp.sdk.mbi.account.id.AccResource;
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannel;
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannelEntity;
+import com.changyou.mgp.sdk.mbi.common.CYMGCallback;
+import com.changyou.mgp.sdk.mbi.common.CYMGCallbackHelper;
+import com.changyou.mgp.sdk.mbi.config.CYMGPrompt;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolConfig;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolKeys;
+import com.changyou.mgp.sdk.mbi.config.HttpContants;
+import com.changyou.mgp.sdk.mbi.config.Params;
+import com.changyou.mgp.sdk.mbi.config.SDKConfig;
+import com.changyou.mgp.sdk.mbi.entity.GoodsItem;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPayHelper;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPlatform;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPlatformConfiguration;
+import com.changyou.mgp.sdk.mbi.utils.MetaDataValueUtils;
+import com.changyou.mgp.sdk.mbi.utils.NetWorkUtils;
+import com.changyou.mgp.sdk.mbi.utils.SystemUtils;
+
+public class CYMGUCImpl implements CYMGChannel {
+	private CYLog log = CYLog.getInstance();
+
+	/*
+	 * cpId：游戏开发商对应标示，用于SDK接入时配置，客户端及服务端均需使用。
+	 * gameId：游戏对应标示，用于SDK接入时配置，客户端及服务端均需使用。
+	 * serverId：游戏服务器对应标示，用于SDK接入时配置，客户端及服务端均需使用。
+	 */
+	private Context mContext;
+	@Override
+	public void init(CYMGPlatformConfiguration config) {
+		log.d("UC init");
+		this.mContext = config.getmContext();
+		String cpid = MetaDataValueUtils.getUcCPID(mContext);
+		String gameid = MetaDataValueUtils.getUcGAMEID(mContext);
+		String serverid = MetaDataValueUtils.getUcSERVERID(mContext);
+
+		GameParamInfo gpi = new GameParamInfo();
+		gpi.setCpId(Integer.parseInt(cpid));
+		gpi.setGameId(Integer.parseInt(gameid));
+		gpi.setServerId(Integer.parseInt(serverid));
+		gpi.setFeatureSwitch(new FeatureSwitch(true, true));
+
+		try {
+			// 设置是否支持查询充值历史和显示切换账号功能，如果不设置，默认具有查询充值历史记录，不具有切换账户功能
+			// 对于需要支持试玩用户激活的游戏,必须在此设置试玩用户激活绑定的操作
+			//注意：试玩用户UC已不支持！！
+//			UCGameSDK.defaultSDK().bindGuest(bindGuestListener);
+			// 设置SDK登录界面为竖直或横屏("UCOrientation.LANDSCAPE"时为横屏)
+			if (config.getmScreenOrientation() == CYMGProtocolConfig.LANDSCAPE) {
+				UCGameSDK.defaultSDK().setOrientation(UCOrientation.LANDSCAPE);
+			} else if (config.getmScreenOrientation() == CYMGProtocolConfig.PORTRAIT) {
+				UCGameSDK.defaultSDK().setOrientation(UCOrientation.PORTRAIT);
+			}
+
+			// 对于需要支持账户切换/退出账号的游戏,必须在此设置退出监听器
+			setUCLogoutCallback(mContext,false);
+
+			// 设置登录界面 USE_WIDGET--简版登录界面 USE_STANDARD--标准版登录界面,默认是简版
+			// UCGameSDK.defaultSDK().setLoginUISwitch(UCLoginFaceType.USE_WIDGET);
+			/*
+			 * ctx Android 程序上下文 logLevel 日志级别,定义在UCLogLevel 中，主要包括ERROR、WARN
+			 * 和DEBUG 三种。 Error - SDK 仅记录错误信息并输出到SD 卡的errorlog 目录下； WARN - SDK
+			 * 会记录出错和警告信息，警告信息会输出到SD 卡的warnlog目录里; DEBUG - 会输出所有的日志，DEBUG
+			 * 日志会输出到SD 卡的debuglog 目录里。 debugMode 是否打开调试模式。在为true 的时候，
+			 * 会连接到联调测试环境（sdk.test4.g.uc.cn），当为false 的时候则会连接到正式环境（sdk.g.uc.cn）。
+			 * gameParams
+			 * 初始化游戏信息使用的实体类，在该参数中设置的信息包括：游戏ID、游戏合作商ID、服务器ID、九游社区按钮开关、
+			 * 游戏附加信息。使用方式是新建对象，通过set 方法设置对应的值，如果不设置，就会取默认 值。具体参数内容请参考javadoc
+			 * 参考文档。 listener 初始化步骤执行完后回调处理的操作，需要实现callback 方法，并使用String 泛型
+			 */
+			UCGameSDK.defaultSDK().initSDK(mContext, UCLogLevel.DEBUG, SDKConfig.DEBUG,
+					gpi, new UCCallbackListener<String>() {
+
+						@Override
+						public void callback(int code, String msg) {
+							System.out.println("msg:" + msg);// 返回的消息
+							switch (code) {
+							case UCGameSDKStatusCode.SUCCESS:
+								log.d("UC初始化结果:"+msg);
+								CYMGCallbackHelper.callbackResult(CYMGCallbackHelper.getCommonResult(CYMGPrompt.CODE_INIT_SUCCESS, null));
+								break;
+							case UCGameSDKStatusCode.INIT_FAIL:
+								log.d("UC初始化结果:"+msg);
+								CYMGCallbackHelper.callbackResult(CYMGCallbackHelper.getCommonResult(CYMGPrompt.CODE_INIT_FAILED, null));
+								break;
+							}
+						}
+					});
+		} catch (UCCallbackListenerNullException e) {
+			log.e(e);
+		}
+		setUCLogoutCallback(mContext,false);
+	}
+
+	private void setUCLogoutCallback(final Context context,final boolean isLogoutFromUserCenter) {
+		try {
+			UCGameSDK.defaultSDK().setLogoutNotifyListener(new UCCallbackListener<String>() {
+				
+				@Override
+				public void callback(int statuscode, String data) {
+					log.d("UC 退出账号监听结果 code = "+statuscode+" data = "+data);
+					switch (statuscode) {
+					case UCGameSDKStatusCode.NO_INIT:
+						CYMGCallbackHelper.callbackResult(CYMGCallbackHelper.getCommonResult(CYMGPrompt.CODE_LOGOUT_FAILED, null));
+						break;
+					case UCGameSDKStatusCode.NO_LOGIN:
+						CYMGCallbackHelper.callbackResult(CYMGCallbackHelper.getCommonResult(CYMGPrompt.CODE_LOGOUT_FAILED, null));
+						break;
+					case UCGameSDKStatusCode.SUCCESS:
+						if (isLogoutFromUserCenter) {
+							log.d("UC 退出账号：exitAccountResult");
+							ucSdkShowFloatButton(context, false);
+							CYMGCallbackHelper.callbackResult(CYMGCallbackHelper.getCommonResult(CYMGPrompt.CODE_LOGOUT_SUCCESS, null));
+						}else {
+							log.d("UC 注销：logoutResult");
+							CYMGCallbackHelper.callbackResult(CYMGCallbackHelper.getCommonResult(CYMGPrompt.CODE_LOGOUT_SUCCESS, null));
+							UCLogin(context);
+						}
+						break;
+					case UCGameSDKStatusCode.FAIL:
+						CYMGCallbackHelper.callbackResult(CYMGCallbackHelper.getCommonResult(CYMGPrompt.CODE_LOGOUT_FAILED, null));
+						break;
+					}
+				}
+			});
+		} catch (UCCallbackListenerNullException e) {
+			e.printStackTrace();
+		}
+	}
+
+	@Override
+	public void doLogin(CYMGChannelEntity entity) {
+		this.mContext = entity.getmContext();
+		if (mContext == null) {
+			log.e("context is null!!");
+			return;
+		}
+		UCLogin(mContext);
+	}
+
+	private void UCLogin(final Context context) {
+		log.d("UC Login");
+		final String userIp = NetWorkUtils.getLocalIpAddress(context);
+		final String deviceid = SystemUtils.getDeviceId(context);
+		final String channelId = context.getString(AccResource.getInstance(context).mgp_channel_UC);
+		final String cpId = MetaDataValueUtils.getUcCPID(context);
+		final String gameId = MetaDataValueUtils.getUcGAMEID(context);
+		final String serverId = MetaDataValueUtils.getUcSERVERID(context);
+		final String apiKey = MetaDataValueUtils.getUcAPIKEY(context);
+		try {
+			UCGameSDK.defaultSDK().login((Activity)context,
+					new UCCallbackListener<String>() {
+						@Override
+						public void callback(int code, String msg) {
+							if (code == UCGameSDKStatusCode.SUCCESS) {
+								log.d("uc login result"+msg);
+					 			String sid = UCGameSDK.defaultSDK().getSid();
+								// 执行悬浮按钮创建方法
+								ucSdkCreateFloatButton(context);
+								// 执行悬浮按钮显示方法
+								ucSdkShowFloatButton(context,true);
+					 			Bundle b = new Bundle();
+					 			b.putString(CYMGProtocolKeys.UC_SID, sid);
+					 			b.putString(CYMGProtocolKeys.UC_FLAG, "0");
+					 			b.putString(CYMGProtocolKeys.USERIP, userIp);
+					 			b.putString(CYMGProtocolKeys.DEVICEID, deviceid);
+					 			b.putString(CYMGProtocolKeys.UC_CPID, cpId);
+					 			b.putString(CYMGProtocolKeys.UC_GAMEID, gameId);
+					 			b.putString(CYMGProtocolKeys.UC_SERVERID, serverId);
+					 			b.putString(CYMGProtocolKeys.UC_APIKEY, apiKey);
+					 			b.putString(CYMGProtocolKeys.UC_CHANNELID, channelId);
+					 			b.putString(CYMGProtocolKeys.CHANNEL_ID, channelId);
+					 			b.putString(CYMGProtocolKeys.OPCODE, "10001");
+					 			CYMGCallbackHelper.callbackResult(CYMGCallbackHelper.getLoginResult(CYMGPrompt.CODE_LOGIN_SUCCESS, b,context));
+							}
+							
+							if (code == UCGameSDKStatusCode.LOGIN_EXIT) {
+								// 登录界面关闭，游戏需判断此时是否已登录成功进行相应操作
+								log.d("uc login result"+msg);
+							}
+							if (code == UCGameSDKStatusCode.NO_INIT) {
+								// 没有初始化就进行登录调用，需要游戏调用SDK初始化方法
+								log.d("uc login result"+msg);
+							}
+						}
+
+					});
+		} catch (UCCallbackListenerNullException e) {
+			log.e(e);
+		}
+	}
+	
+	
+	@Override
+	public void doPay(CYMGChannelEntity entity) {
+		log.d("UC Pay");
+		Bundle bundle = entity.getBundle();
+		final GoodsItem item = (GoodsItem)bundle.getSerializable(Params.GOODSITEM);
+		final String orderId = bundle.getString(Params.ORDER_ID);
+		final String uid = bundle.getString(Params.UID);
+		final String goodsRegistID = item.getGoods_register_id();
+		final String goodsPrice = item.getGoods_price();
+		// 使用默认的Payment 信息
+		PaymentInfo payInfo = new PaymentInfo();
+		this.mContext = entity.getmContext();
+		payInfo.setServerId(Integer.parseInt( MetaDataValueUtils.getUcSERVERID(mContext)));
+		payInfo.setAmount(Float.valueOf(goodsPrice));
+		payInfo.setNotifyUrl(HttpContants.getUCNotifyUrl());
+		payInfo.setCustomInfo(orderId);
+		try {
+			UCGameSDK.defaultSDK().pay(entity.getmContext(), payInfo,
+				new UCCallbackListener<OrderInfo>() {
+
+//					private String orderID;
+					private float amount;
+					private boolean isOrdered = false;
+
+					@Override
+					public void callback(int statudcode,
+							OrderInfo orderInfo) {
+						if (statudcode == UCGameSDKStatusCode.NO_INIT) {
+							// 没有初始化就进行登录调用，需要游戏调用SDK初始化方法
+							log.d("UC not init");
+							CYMGPayHelper.getInstance().payException(CYMGPrompt.CODE_PAY_FAILED);
+						}
+						if (statudcode == UCGameSDKStatusCode.SUCCESS) {
+							log.d("UC 充值返回结果:code = "+statudcode+" orderInfo = "+orderInfo.toString());
+							// 成功充值
+							if (orderInfo != null) {
+//								orderID = orderInfo.getOrderId();
+								amount = orderInfo.getOrderAmount();
+								isOrdered = true;
+							}
+						}
+						if (statudcode == UCGameSDKStatusCode.PAY_USER_EXIT) {
+							// 用户退出充值界面。从UC支付页面回到游戏时必经的回调
+							log.d("user come back to the game");
+							if (mContext != null) {
+//								((Activity)mContext).finish();
+								if (isOrdered) {
+									CYMGPayHelper.getInstance().paySuccess(uid, item,orderId);
+								}else {
+									CYMGPayHelper.getInstance().payException(CYMGPrompt.CODE_PAY_CANCEL);
+								}
+							}
+						}
+					}
+				});
+		} catch (UCCallbackListenerNullException e) {
+			log.e(e);
+		}
+	}
+	/**
+	 * 
+	 * 功能描述：退出 UCSDK
+	 * 
+	 * @author 王明君(wangmingjun)
+	 * @param
+	 * @return void
+	 * @date 2014-2-21 下午1:32:26
+	 * 
+	 */
+	public void exitSDK() {
+		UCGameSDK.defaultSDK().exitSDK();
+	}
+
+	@Override
+	public void doLogout(CYMGChannelEntity entity) {
+		try {
+			UCGameSDK.defaultSDK().logout();
+			ucSdkShowFloatButton(entity.getmContext(), false);
+		} catch (UCCallbackListenerNullException e) {
+			log.e(e);
+		}
+	}
+	
+	@Override
+	public void doDestroy(CYMGChannelEntity entity) {
+		Context context = entity.getmContext();
+		ucSdkDestoryFloatButton(context);
+	}
+	/**
+	 * 悬浮按钮创建及显示<br>
+	 * 悬浮按钮必须保证在SDK进行初始化成功之后再进行创建需要在UI线程中调用<br>
+	 * @param context 
+	 */
+	private void ucSdkCreateFloatButton(final Context context) {
+		((Activity)context).runOnUiThread(new Runnable() {
+			
+			@Override
+			public void run() {
+				try {
+					// 创建悬浮按钮。该悬浮按钮将悬浮显示在GameActivity页面上，点击时将会展开悬浮菜单，菜单中含有 SDK 一些功能的操作入口。
+					// 创建完成后，并不自动显示，需要调用showFloatButton(Activity,double, double, boolean)方法进行显示或隐藏。
+					UCGameSDK.defaultSDK().createFloatButton((Activity) context,
+							new UCCallbackListener<String>() {
+						
+						@Override
+						public void callback(int statuscode, String data) {
+							log.d("SelectServerActivity floatButton Callback,statusCode == " + statuscode
+									+ "  data == " + data);
+						}
+					});
+					
+				} catch (UCCallbackListenerNullException e) {
+					log.e(e);
+				} catch (UCFloatButtonCreateException e) {
+					log.e(e);
+				}
+				
+			}
+		});
+	}
+	/**
+	 * 悬浮按钮显示<br>
+	 * 悬浮按钮显示需要在UI线程中调用<br>
+	 * @param context 
+	 */
+	private void ucSdkShowFloatButton(final Context context,final boolean isShow) {
+		((Activity) context).runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				try {
+					UCGameSDK.defaultSDK().showFloatButton((Activity)context, 100, 50, isShow);
+				} catch (UCCallbackListenerNullException e) {
+					log.e(e);
+				}
+			}
+		});
+	}
+	/**
+	 * 悬浮按钮销毁<br>
+	 * 悬浮按钮销毁需要在UI线程中调用<br>
+	 * @param context 
+	 */
+	private void ucSdkDestoryFloatButton(final Context context) {
+		((Activity) context).runOnUiThread(new Runnable() {
+			public void run() {
+				// 悬浮按钮销毁功能
+				UCGameSDK.defaultSDK().destoryFloatButton((Activity) context);
+			}
+		});
+	}
+
+	@Override
+	public void doCustomerService(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void doShowUserCenter(CYMGChannelEntity entity) {
+		Context context = entity.getmContext();
+		setUCLogoutCallback(context,true);
+		try {
+			UCGameSDK.defaultSDK().enterUserCenter(context, new UCCallbackListener<String>() {
+				
+				@Override
+				public void callback(int statucode, String dumpdata) {
+					if (statucode == UCGameSDKStatusCode.NO_INIT) {
+						//没有初始化，需要进行初始化操作
+						
+					}else if (statucode == UCGameSDKStatusCode.NO_LOGIN) {
+						//没有登录，需要先登录
+						
+					}else if (statucode == UCGameSDKStatusCode.SUCCESS) {
+						//用户管理界面正常关闭，返回游戏的界面逻辑
+						
+					}
+				}
+			});
+		} catch (UCCallbackListenerNullException e) {
+			e.printStackTrace();
+		}
+	}
+
+	@Override
+	public void doResume(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void doPause(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void doStop(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+		
+	}
+}

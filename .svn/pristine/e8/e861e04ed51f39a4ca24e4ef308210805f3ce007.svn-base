@@ -1,0 +1,642 @@
+package com.changyou.mgp.sdk.mbi.pay.ui;
+
+import org.codehaus.jackson.type.TypeReference;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.Dialog;
+import android.content.DialogInterface;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.text.Editable;
+import android.text.Selection;
+import android.text.TextUtils;
+import android.text.TextWatcher;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.LinearLayout;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
+import android.widget.TextView;
+
+import com.changyou.mgp.sdk.mbi.config.CYMGPrompt;
+import com.changyou.mgp.sdk.mbi.config.Contants;
+import com.changyou.mgp.sdk.mbi.config.HttpContants;
+import com.changyou.mgp.sdk.mbi.config.Params;
+import com.changyou.mgp.sdk.mbi.entity.ErrorInfo;
+import com.changyou.mgp.sdk.mbi.http.MyAsyncResponseHandler;
+import com.changyou.mgp.sdk.mbi.http.MyHttpClient;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.mbi.manager.CMBILogManager;
+import com.changyou.mgp.sdk.mbi.pay.id.PayResource;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPayHelper;
+import com.changyou.mgp.sdk.mbi.ui.base.BaseFragment;
+import com.changyou.mgp.sdk.mbi.ui.widget.WaitingDialog;
+import com.changyou.mgp.sdk.mbi.utils.DesUtil;
+import com.changyou.mgp.sdk.mbi.utils.JSONUtil;
+import com.changyou.mgp.sdk.mbi.utils.MetaDataValueUtils;
+import com.changyou.mgp.sdk.mbi.utils.MyToast;
+import com.changyou.mgp.sdk.mbi.utils.NetWorkUtils;
+import com.changyou.mgp.sdk.mbi.utils.StringUtils;
+import com.loopj.android.http.RequestParams;
+
+public class CYMGPaymentWayGameCardFragment extends BaseFragment implements OnClickListener{
+
+	private CYLog log = CYLog.getInstance();
+	
+	private Activity mActivity;
+
+	private ImageButton mServiceImgBtn;
+	private Button mRightBtn;
+	private TextView mTitleTv;
+	private ImageButton mBackIBtn;
+	private View mTitle;
+	
+	private TextView mSelectTv;
+	private EditText mNumberEt;
+	private EditText mPasswordEt;
+	private Button mPay;
+	private LinearLayout mPromptLl;
+	private TextView mPromptTv1;
+	
+	private Dialog mSelectDialog;
+	private RadioGroup mRadioGroup;
+	private RadioButton mCYRb;
+//	private RadioButton mJWRb;
+//	private RadioButton mWYRb;
+//	private RadioButton mSDRb;
+//	private RadioButton mWMRb;
+//	private RadioButton mZTRb;
+	
+	private final static int JW = 10;
+	private final static int WY = 42;
+	private final static int SD = 41;
+	private final static int WM = 44;
+	private final static int ZT = 43;
+	private int mType = 0;
+	
+	private WaitingDialog mWaitingDialog;
+	private AlertDialog.Builder mAlertDialog;
+	
+	private Bundle mBundle;
+	
+	private static final String CY="CY";
+	
+	
+	@Override
+	public void onAttach(Activity activity) {
+		super.onAttach(activity);
+		this.mActivity = activity;
+	}
+	
+	@Override
+	public View onCreateView(LayoutInflater inflater, ViewGroup container,
+			Bundle savedInstanceState) {
+		View view = inflater.inflate(PayResource.getInstance(mActivity).mgp_payment_way_card, container,false);
+		initTitle(view);
+		initView(view);
+		initWaitingDialog();
+		initAlertDialog();
+		initSelectDialog();
+		initData();
+		initEvent();
+		return view;
+	}
+
+	@Override
+	public void onResume() {
+		super.onResume();
+		CMBILogManager.page_B_GameCard(mActivity);
+	}
+	
+	@Override
+	public void onDestroy() {
+		super.onDestroy();
+	}
+	
+	private void initTitle(View view){
+		this.mTitle = view.findViewById(PayResource.getInstance(mActivity).mgp_payment_way_card_title);
+		this.mTitleTv = (TextView)mTitle.findViewById(PayResource.getInstance(mActivity).mgp_title_tv);
+		this.mTitleTv.setText(PayResource.getInstance(mActivity).mgp_title_tv_payment_way_game_card);
+		this.mBackIBtn = (ImageButton)mTitle.findViewById(PayResource.getInstance(mActivity).mgp_title_left_ibtn);
+		this.mRightBtn = (Button)mTitle.findViewById(PayResource.getInstance(mActivity).mgp_title_right_btn);
+		this.mServiceImgBtn = (ImageButton)mTitle.findViewById(PayResource.getInstance(mActivity).mgp_title_right_imgbtn);
+		this.mRightBtn.setVisibility(View.GONE);
+		this.mServiceImgBtn.setVisibility(View.GONE);
+	}
+	
+	private void initView(View view){
+		this.mSelectTv=(TextView) view.findViewById(PayResource.getInstance(mActivity).mgp_payment_way_card_select_TextView);
+		this.mSelectTv.setHint(PayResource.getInstance(mActivity).mgp_payment_way_card_select2_tv);
+		this.mNumberEt=(EditText) view.findViewById(PayResource.getInstance(mActivity).mgp_payment_way_card_number_EditText);
+		this.mPasswordEt=(EditText) view.findViewById(PayResource.getInstance(mActivity).mgp_payment_way_card_Password_EditText);
+		this.mPay=(Button) view.findViewById(PayResource.getInstance(mActivity).mgp_payment_way_card_pay_Button);
+		this.mPromptLl=(LinearLayout) view.findViewById(PayResource.getInstance(mActivity).mgp_payment_way_card_prompt_LinearLayout);
+		this.mPromptTv1=(TextView) view.findViewById(PayResource.getInstance(mActivity).mgp_payment_way_card_prompt2_TextView1);
+	}
+	
+	private void initWaitingDialog(){
+		this.mWaitingDialog = new WaitingDialog(mActivity);
+		this.mWaitingDialog.setMessage(mActivity.getString(PayResource.getInstance(mActivity).mgp_paying));
+	}
+	
+	private void initAlertDialog(){
+		this.mAlertDialog = new AlertDialog.Builder(mActivity);
+		this.mAlertDialog.setTitle(mActivity.getString(PayResource.getInstance(mActivity).mgp_payment_way_card_dialog_title));
+		this.mAlertDialog.setMessage(mActivity.getString(PayResource.getInstance(mActivity).mgp_payment_way_card_dialog_message));
+		this.mAlertDialog.setPositiveButton(mActivity.getString(PayResource.getInstance(mActivity).mgp_payment_way_card_dialog_commit), new DialogInterface.OnClickListener() {
+			
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+				oneCardPay();
+			}
+		});
+		this.mAlertDialog.setNegativeButton(mActivity.getString(PayResource.getInstance(mActivity).mgp_payment_way_card_dialog_cannel), new DialogInterface.OnClickListener() {
+			
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+				
+			}
+		});
+	}
+	
+	private void initSelectDialog(){
+		this.mSelectDialog = new Dialog(mActivity,PayResource.getInstance(mActivity).mgp_onlineserver_custom_dialog_style);
+		this.mSelectDialog.setContentView(PayResource.getInstance(mActivity).mgp_payment_way_game_card_dialog);
+		this.mRadioGroup=(RadioGroup) mSelectDialog.findViewById(PayResource.getInstance(mActivity).mgp_payment_way_game_card_RadioGroup);
+		this.mCYRb=(RadioButton) mRadioGroup.findViewById(PayResource.getInstance(mActivity).mgp_payment_way_game_card_RadioButton1);
+//		this.mJWRb=(RadioButton) mRadioGroup.findViewById(PayResource.getInstance(mActivity).mgp_payment_way_game_card_RadioButton2);
+//		this.mWYRb=(RadioButton) mRadioGroup.findViewById(PayResource.getInstance(mActivity).mgp_payment_way_game_card_RadioButton3);
+//		this.mSDRb=(RadioButton) mRadioGroup.findViewById(PayResource.getInstance(mActivity).mgp_payment_way_game_card_RadioButton4);
+//		this.mWMRb=(RadioButton) mRadioGroup.findViewById(PayResource.getInstance(mActivity).mgp_payment_way_game_card_RadioButton5);
+//		this.mZTRb=(RadioButton) mRadioGroup.findViewById(PayResource.getInstance(mActivity).mgp_payment_way_game_card_RadioButton6);
+	}
+	
+	@Override
+	protected void initData() {
+		this.mBundle=getArguments();
+	}
+
+	@Override
+	protected void initEvent() {
+		this.mBackIBtn.setOnClickListener(this);
+		this.mSelectTv.setOnClickListener(this);
+		this.mPay.setOnClickListener(this);
+		this.mCYRb.setOnClickListener(this);
+		this.mSelectDialog.setCanceledOnTouchOutside(true);
+		this.mSelectDialog.setCancelable(true);
+		this.mAlertDialog.setCancelable(false);
+		setEditTextListener(mNumberEt,24);
+		setEditTextListener(mPasswordEt,26);
+	}
+
+	@Override
+	public void onClick(View v) {
+		if(v.getId()==PayResource.getInstance(mActivity).mgp_title_left_ibtn){
+			((CYMGPaymentActivity)mActivity).goback();
+		}else if(v.getId()==PayResource.getInstance(mActivity).mgp_payment_way_card_select_TextView){
+			showSelectDialog();
+		}else if(v.getId()==PayResource.getInstance(mActivity).mgp_payment_way_card_pay_Button){
+			CMBILogManager.action_B_GameCard_Pay(mActivity);
+			if(checkET()){
+				log.d("一卡通支付");
+				mAlertDialog.show();
+			}else{
+				log.d("一卡通输入参数不完整");
+			}
+		}else if(v.getId()==PayResource.getInstance(mActivity).mgp_payment_way_game_card_RadioButton1){
+			CMBILogManager.action_B_GameCard_Select(mActivity, "01");
+			this.mSelectTv.setText(PayResource.getInstance(mActivity).mgp_payment_way_card_game1);
+			setPromptTv(CY);
+			this.mPromptLl.setVisibility(View.VISIBLE);
+			dismissSelectDialog();
+		}
+	}
+	
+	private void showWaitingDialog(){
+		if(mWaitingDialog!=null){
+			mWaitingDialog.show();
+		}
+	}
+	
+	private void dismissWaitingDialog(){
+		if(mWaitingDialog.isShowing()){
+			mWaitingDialog.dismiss();
+		}
+	}
+	
+	private void showSelectDialog(){
+		if(mSelectDialog!=null){
+			mSelectDialog.show();
+		}
+	}
+	
+	private void dismissSelectDialog(){
+		if(mSelectDialog.isShowing()){
+			mSelectDialog.dismiss();
+		}
+	}
+	
+	/**
+	 * 
+	 * 功能描述：检查输入参数合法性
+	 *
+	 * @author 严峥(yanzheng)
+	 * @param @return
+	 * @return boolean
+	 * @date 2014-4-26 下午3:16:20
+	 *
+	 * 修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private boolean checkET(){
+		if(TextUtils.isEmpty(mSelectTv.getText())){
+			MyToast.showToast(mActivity,mActivity.getString(PayResource.getInstance(mActivity).mgp_payment_way_card_game_null_toast));
+			return false;
+		}
+		if(TextUtils.isEmpty(mNumberEt.getText())){
+			MyToast.showToast(mActivity,mActivity.getString(PayResource.getInstance(mActivity).mgp_payment_way_card_number_null_toast));
+			return false;
+		}
+		if(TextUtils.isEmpty(mPasswordEt.getText())){
+			MyToast.showToast(mActivity,mActivity.getString(PayResource.getInstance(mActivity).mgp_payment_way_card_password_null_toast));
+			return false;
+		}
+		if(mNumberEt.getText().length()<12){
+			MyToast.showToast(mActivity,mActivity.getString(PayResource.getInstance(mActivity).mgp_payment_way_card_number_error_toast));
+			return false;
+		}
+		if(mPasswordEt.getText().length()<9){
+			MyToast.showToast(mActivity,mActivity.getString(PayResource.getInstance(mActivity).mgp_payment_way_card_password_error_toast));
+			return false;
+		}
+		return true;
+	}
+	
+	/**
+	 * 
+	 * 功能描述：加密明文密码
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param @param password
+	 * @param @return
+	 * @return String
+	 * @date 2014-3-4 下午7:24:31
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private String desPassword(String password) {
+		String result = null;
+		try {
+			result = new DesUtil().encrypt(password);
+		} catch (Exception e) {
+			log.e(e);
+		}
+		return result;
+	}
+	
+	/**
+	 * 
+	 * 功能描述：动态设置温馨提示
+	 *
+	 * @author 严峥(yanzheng)
+	 * @param @param type
+	 * @return void
+	 * @date 2014-5-5 下午3:23:15
+	 *
+	 * 修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void setPromptTv(String type){
+		if(CY.equals(type)){
+			this.mPromptTv1.setText(PayResource.getInstance(mActivity).mgp_payment_way_card_prompt2_cycard_tv1);
+		}
+	}
+	
+	/**
+	 * 
+	 * 功能描述：格式化EditText为四位一组空一格
+	 *
+	 * @author 严峥(yanzheng)
+	 * @param @param editText
+	 * @param @param a
+	 * @return void
+	 * @date 2014-5-5 下午3:00:20
+	 *
+	 * 修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void setEditTextListener(final EditText editText,final int a){
+		editText.addTextChangedListener(new TextWatcher() {  
+            int beforeTextLength = 0;  
+            int onTextLength = 0;  
+            boolean isChanged = false;  
+  
+            int location = 0;// 记录光标的位置  
+            private char[] tempChar;  
+            private StringBuffer buffer = new StringBuffer();  
+            int konggeNumberB = 0;  
+  
+            @Override  
+            public void onTextChanged(CharSequence s, int start, int before, int count) {  
+                // TODO Auto-generated method stub  
+                onTextLength = s.length();  
+                buffer.append(s.toString());  
+                if (onTextLength == beforeTextLength || onTextLength <= 3 || isChanged) {  
+                    isChanged = false;  
+                    return;  
+                }  
+                isChanged = true;  
+            }  
+  
+            @Override  
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {  
+                // TODO Auto-generated method stub  
+                beforeTextLength = s.length();  
+                if (buffer.length() > 0) {  
+                    buffer.delete(0, buffer.length());  
+                }  
+                konggeNumberB = 0;  
+                for (int i = 0; i < s.length(); i++) {  
+                    if (s.charAt(i) == ' ') {  
+                        konggeNumberB++;  
+                    }  
+                }  
+            }  
+  
+            @Override  
+            public void afterTextChanged(Editable s) {  
+                // TODO Auto-generated method stub  
+                if (isChanged) {  
+                    location = editText.getSelectionEnd();  
+                    int index = 0;  
+                    while (index < buffer.length()) {  
+                        if (buffer.charAt(index) == ' ') {  
+                            buffer.deleteCharAt(index);  
+                        } else {  
+                            index++;  
+                        }  
+                    }  
+  
+                    index = 0;  
+                    int konggeNumberC = 0;  
+                    while (index < buffer.length()) {  
+                        if ((index == 4 || index == 9 || index == 14 || index == 19 || index == 24)) {  
+                            buffer.insert(index, ' ');  
+                            konggeNumberC++;  
+                        }  
+                        index++;  
+                    }  
+  
+                    if (konggeNumberC > konggeNumberB) {  
+                        location += (konggeNumberC - konggeNumberB);
+                    }  
+  
+                    tempChar = new char[buffer.length()];  
+                    buffer.getChars(0, buffer.length(), tempChar, 0); 
+                    String str = buffer.toString();
+                    if (location > str.length()) {  
+                        location = str.length();
+                    } else if (location < 0) {  
+                        location = 0;  
+                    }  
+  
+                    editText.setText(str);  
+                    if(str.length()<=a){
+                    	Editable etable = editText.getText();  
+                    	Selection.setSelection(etable, location);  
+                    }
+                    isChanged = false;  
+                }  
+            }  
+        });
+	}
+	
+	/**
+	 * 
+	 * 功能描述：畅游一卡通支付
+	 *
+	 * @author 严峥(yanzheng)
+	 * @param 
+	 * @return void
+	 * @date 2014-5-5 下午3:22:58
+	 *
+	 * 修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void oneCardPay(){
+		if(NetWorkUtils.isNetworkConnected(mActivity)){
+			final String uid=mBundle.getString(Params.UID);
+			final String orderId=mBundle.getString(Params.ORDER_ID);
+			final String channelId=mActivity.getString(PayResource.getInstance(mActivity).mgp_channel_cy);
+			String cardNum=mNumberEt.getText().toString().replace(" ","");
+			String cardPwd=mPasswordEt.getText().toString().replace(" ","");
+			MyHttpClient mHttpClient = new MyHttpClient(mActivity);
+			RequestParams params = new RequestParams();
+			params.put("uid", uid);
+			params.put("transactionId", orderId);
+			params.put("cardId", cardNum);
+			params.put("password", desPassword(cardPwd));
+			params.put("gameType", MetaDataValueUtils.getAppKey(mActivity));
+			params.put("channelId", channelId);
+			params.put("callBackUrl", HttpContants.getOneCardPayNotifyUrl());
+			mHttpClient.post(HttpContants.getURL(HttpContants.ONE_CARD_PAY), params, new MyAsyncResponseHandler(){
+				
+				@Override
+				public void onStart() {
+					showWaitingDialog();
+				}
+				
+				@Override
+				public void onSuccess(int statusCode, String content) {
+					log.d("onSuccess,content:"+content);
+					dismissWaitingDialog();
+					if(!TextUtils.isEmpty(content)){
+						try {
+							JSONObject jsonObject=new JSONObject(content);
+							String message=jsonObject.getString("message");
+							if("success".equals(message)){
+								mBundle.putString("type", "game");
+								((CYMGPaymentActivity)mActivity).changeFragment(Contants.FragmentTag.PAYMENT_WAY_GAME_CARD_PROMPT_FRAGMENT_TAG, mBundle);
+							}else{
+								cardPaySystemException();
+							}
+						} catch (JSONException e) {
+							log.e(e);
+						}
+					}else{
+						cardPaySystemException();
+					}
+				}
+				
+				@Override
+				public void onFailure(int statusCode, Throwable error,
+						String content) {
+					log.d("onFailure,content:"+content);
+					dismissWaitingDialog();
+					if(statusCode==404){
+						cardPaySystemException();
+						return;
+					}
+					if(!StringUtils.isEmpty(content)){
+						try {
+							ErrorInfo info=JSONUtil.getMapper().readValue(content, new TypeReference<ErrorInfo>() {});
+							int error_code=info.getError_code();
+							switch (error_code) {
+							case 220010:
+							case 220011:
+							case 220012:
+							case 220013:
+							case 220014:
+							case 220015:
+							case 220016:
+							case 220017:
+								String msg=info.getClient_message();
+								MyToast.showToast(mActivity, msg);
+								((CYMGPaymentActivity)mActivity).back2PaymentFragment();
+								CYMGPayHelper.getInstance().payException(CYMGPrompt.CODE_PAY_FAILED);
+								break;
+							default:
+								cardPaySystemException();
+								break;
+							}
+						} catch (Exception e) {
+							log.e(e);
+						}
+					}else{
+						cardPaySystemException();
+					}
+				}
+			});
+		}else{
+			MyToast.showToast(mActivity,mActivity.getString(PayResource.getInstance(mActivity).mgp_net_error_hint));
+		}
+	}
+	
+	/**
+	 * 
+	 * 功能描述：骏网一卡通支付
+	 *
+	 * @author 严峥(yanzheng)
+	 * @param 
+	 * @return void
+	 * @date 2014-5-9 上午10:27:00
+	 *
+	 * 修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void JUNCradPay(){
+		if(NetWorkUtils.isNetworkConnected(mActivity)){
+			final String uid=mBundle.getString(Params.UID);
+			final String orderId=mBundle.getString(Params.ORDER_ID);
+			final String channelId=mActivity.getString(PayResource.getInstance(mActivity).mgp_channel_cy);
+			String cardNum=mNumberEt.getText().toString().replace(" ","");
+			String cardPwd=mPasswordEt.getText().toString().replace(" ","");
+			MyHttpClient mHttpClient = new MyHttpClient(mActivity);
+			RequestParams params = new RequestParams();
+			params.put("bill_id",orderId);
+			params.put("bill_time","");
+			params.put("card_type",mType);
+			params.put("card_data",cardNum+","+cardPwd+"0");
+			params.put("pay_amt","0");
+			params.put("notify_url",HttpContants.getJUNPayNotifyUrl());
+			mHttpClient.post(HttpContants.getURL(HttpContants.JUN_PAY), params, new MyAsyncResponseHandler(){
+				
+				@Override
+				public void onStart() {
+					showWaitingDialog();
+				}
+				
+				@Override
+				public void onSuccess(int statusCode, String content) {
+					log.d("onSuccess,content:"+content);
+					dismissWaitingDialog();
+					if(!TextUtils.isEmpty(content)){
+						try {
+							JSONObject jsonObject=new JSONObject(content);
+							String message=jsonObject.getString("message");
+							if("success".equals(message)){
+								mBundle.putString("type", "game");
+								((CYMGPaymentActivity)mActivity).changeFragment(Contants.FragmentTag.PAYMENT_WAY_GAME_CARD_PROMPT_FRAGMENT_TAG, mBundle);
+							}else{
+								cardPaySystemException();
+							}
+						} catch (JSONException e) {
+							log.e(e);
+						}
+					}else{
+						cardPaySystemException();
+					}
+				}
+				
+				@Override
+				public void onFailure(int statusCode, Throwable error,
+						String content) {
+					log.d("onFailure,content:"+content);
+					dismissWaitingDialog();
+					if(statusCode==404){
+						cardPaySystemException();
+						return;
+					}
+					if(!StringUtils.isEmpty(content)){
+						try {
+							ErrorInfo info=JSONUtil.getMapper().readValue(content, new TypeReference<ErrorInfo>() {});
+							int error_code=info.getError_code();
+							switch (error_code) {
+							case 220010:
+							case 220011:
+							case 220012:
+							case 220013:
+							case 220014:
+							case 220015:
+							case 220016:
+							case 220017:
+								String msg=info.getClient_message();
+								MyToast.showToast(mActivity, msg);
+								((CYMGPaymentActivity)mActivity).back2PaymentFragment();
+								CYMGPayHelper.getInstance().payException(CYMGPrompt.CODE_PAY_FAILED);
+								break;
+							default:
+								cardPaySystemException();
+								break;
+							}
+						} catch (Exception e) {
+							log.e(e);
+						}
+					}else{
+						cardPaySystemException();
+					}
+				}
+			});
+		}else{
+			MyToast.showToast(mActivity,mActivity.getString(PayResource.getInstance(mActivity).mgp_net_error_hint));
+		}
+	}
+	
+	/**
+	 * 
+	 * 功能描述：一卡通支付系统异常失败
+	 *
+	 * @author 严峥(yanzheng)
+	 * @param 
+	 * @return void
+	 * @date 2014-5-6 下午6:35:14
+	 *
+	 * 修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void cardPaySystemException(){
+		new Handler(Looper.getMainLooper()).post(new Runnable() {
+			
+			@Override
+			public void run() {
+				String msg=getString(PayResource.getInstance(mActivity).mgp_payment_way_card_toast_error);
+				MyToast.showToast(mActivity, msg);
+			}
+		});
+		((CYMGPaymentActivity)mActivity).back2PaymentFragment();
+		CYMGPayHelper.getInstance().payException(CYMGPrompt.CODE_PAY_FAILED);
+	}
+}

@@ -1,0 +1,364 @@
+package com.changyou.mgp.sdk.mbi.account.ui;
+
+import java.util.List;
+
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
+import android.support.v4.app.DialogFragment;
+import android.support.v4.app.FragmentActivity;
+import android.support.v4.app.FragmentTransaction;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
+import android.view.ViewTreeObserver.OnGlobalLayoutListener;
+import android.widget.BaseAdapter;
+import android.widget.Button;
+import android.widget.ImageButton;
+import android.widget.ImageView;
+import android.widget.Toast;
+import android.widget.LinearLayout.LayoutParams;
+import android.widget.ListView;
+import android.widget.PopupWindow;
+import android.widget.TextView;
+
+import com.changyou.mgp.sdk.mbi.account.id.AccResource;
+import com.changyou.mgp.sdk.mbi.account.utils.CYMGLoginResultUtil;
+import com.changyou.mgp.sdk.mbi.config.Contants;
+import com.changyou.mgp.sdk.mbi.db.CYMGAccBean;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.mbi.manager.CMBILogManager;
+import com.changyou.mgp.sdk.mbi.utils.NetWorkUtils;
+
+public class CYMGSwitchAccountDialogFragment extends BaseDialogFragment implements OnClickListener{
+	
+	private CYLog log = CYLog.getInstance();
+	
+	private static Activity mActivity;
+	
+	private ImageButton mCloseBtn;
+	private Button mCommitBtn;
+	private Button mChangYouBtn;
+	private Button mChengYouBtn;
+    private TextView mSelectTv; 
+    
+    private Bundle mBundle;
+    
+    private CYMGLoadingDialogFragment mLoadingDialog;
+    
+    private AlertDialog.Builder mAlertDialog;
+    
+    private int mSelIndex=0;
+    private int mDelIndex=0;
+	
+    //PopupWindow对象  
+    private PopupWindow selectPopupWindow= null;  
+    //自定义Adapter  
+    private OptionsAdapter optionsAdapter = null;  
+    //下拉框选项数据源  
+    private List<CYMGAccBean> mList;
+ 
+    //下拉框依附组件宽度，也将作为下拉框的宽度  
+    private int popWidth;
+    //展示所有下拉选项的ListView  
+    private ListView mListView = null;   
+    
+    //用来处理选中或者删除下拉项消息  
+    private Handler handler=new Handler(){
+    	public void handleMessage(Message msg) {
+    		Bundle data = msg.getData();  
+            switch(msg.what){  
+                case 1:  
+                    //选中下拉项，下拉框消失  
+                    int selIndex = data.getInt("selIndex");
+                    String selAcc=mList.get(selIndex).getmAcc();
+                    mSelectTv.setText(selAcc.substring(6, selAcc.length())); 
+                    setDrawable(selAcc);
+                    popupWindwDismiss();  
+                    break;  
+                case 2:  
+                    //移除下拉项数据  
+                    int delIndex = data.getInt("delIndex");
+                    ((CYMGMainDialogFragmentActivity)mActivity).getmCYMGDBMaster().delete(mList.get(delIndex));
+                    //刷新下拉列表  
+                    mList=((CYMGMainDialogFragmentActivity)mActivity).getmCYMGDBMaster().getAccList(5);
+                    if(!mList.isEmpty()){
+                    	String account=mList.get(0).getmAcc();
+                        mSelectTv.setText(account.substring(6, account.length())); 
+                        setDrawable(account);
+                    }else{
+                    	mSelectTv.setText("");
+        				((CYMGMainDialogFragmentActivity)mActivity).changeDialogFragment(Contants.DialogFragmentTag.QUICK_INTO, null);
+        				dismiss();
+                    }
+                    optionsAdapter.setList(mList);
+                    optionsAdapter.notifyDataSetChanged();  
+                    break;  
+            } 
+    	};
+    };
+	
+	@Override
+	public View onCreateView(LayoutInflater inflater, ViewGroup container,
+			Bundle savedInstanceState) {
+		View view=inflater.inflate(AccResource.getInstance(mActivity).mgp_sdk_2_0_dialog_switch_account, container,false);
+		initView(view);
+		initData();
+		initEvent();
+		return view;
+	}
+	
+	@Override
+	protected void initView(View view) {
+		mCloseBtn=(ImageButton) view.findViewById(AccResource.getInstance(mActivity).mgp_sdk_2_0_switch_account_close_ImageButton);
+		mCommitBtn=(Button) view.findViewById(AccResource.getInstance(mActivity).mgp_sdk_2_0_switch_account_commit_Button);
+		mChengYouBtn=(Button) view.findViewById(AccResource.getInstance(mActivity).mgp_sdk_2_0_switch_account_chengyou_Button);
+		mChangYouBtn=(Button) view.findViewById(AccResource.getInstance(mActivity).mgp_sdk_2_0_switch_account_changyou_Button);
+		mSelectTv = (TextView)view.findViewById(AccResource.getInstance(mActivity).mgp_sdk_2_0_switch_account_select_TextView);
+		mLoadingDialog=CYMGLoadingDialogFragment.newInewInstance(mActivity);
+		mLoadingDialog.setMessage(mActivity.getString(AccResource.getInstance(mActivity).mgp_sdk_2_0_loading_login));
+		this.mAlertDialog = new AlertDialog.Builder(mActivity);
+		this.mAlertDialog.setTitle(mActivity.getString(AccResource.getInstance(mActivity).mgp_sdk_2_0_switch_account_str_6));
+		this.mAlertDialog.setMessage(mActivity.getString(AccResource.getInstance(mActivity).mgp_sdk_2_0_switch_account_str_7));
+		this.mAlertDialog.setPositiveButton(mActivity.getString(AccResource.getInstance(mActivity).mgp_sdk_2_0_switch_account_str_8), new DialogInterface.OnClickListener() {
+			
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+                Message msg = new Message();  
+                Bundle data = new Bundle();  
+                //设置删除索引  
+                data.putInt("delIndex", mDelIndex);  
+                msg.setData(data);  
+                msg.what = 2;  
+                handler.sendMessage(msg);
+			}
+		});
+		this.mAlertDialog.setNegativeButton(mActivity.getString(AccResource.getInstance(mActivity).mgp_sdk_2_0_switch_account_str_9), new DialogInterface.OnClickListener() {
+			
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+				
+			}
+		});
+		ViewTreeObserver vto2 = mSelectTv.getViewTreeObserver();
+    	vto2.addOnGlobalLayoutListener(new OnGlobalLayoutListener() {
+    		@Override
+    		public void onGlobalLayout() {
+    			mSelectTv.getViewTreeObserver().removeGlobalOnLayoutListener(this);
+    			popWidth=mSelectTv.getWidth();
+    			initPopuWindow(); 
+    		}
+    	});
+    	CMBILogManager.printEventLog(mActivity, "0", "130002", "");
+	}
+
+	@Override
+	protected void initData() {
+		mBundle=getArguments();
+		mList=((CYMGMainDialogFragmentActivity)mActivity).getmCYMGDBMaster().getAccList(5);
+		if(!mList.isEmpty()){
+			String account=mList.get(mSelIndex).getmAcc();
+            mSelectTv.setText(account.substring(6, account.length())); 
+            setDrawable(account);
+		}
+	}
+
+	@Override
+	protected void initEvent() {
+		mCloseBtn.setOnClickListener(this);
+		mCommitBtn.setOnClickListener(this);
+		mChengYouBtn.setOnClickListener(this);
+		mChangYouBtn.setOnClickListener(this);
+		mSelectTv.setOnClickListener(this);
+	}
+	
+	public static CYMGSwitchAccountDialogFragment newInewInstance(Activity activity,Bundle bundle){
+		mActivity=activity;
+		CYMGSwitchAccountDialogFragment cYMGQuickIntoDialogFragment=new CYMGSwitchAccountDialogFragment();
+		cYMGQuickIntoDialogFragment.setArguments(bundle);
+		cYMGQuickIntoDialogFragment.setStyle(DialogFragment.STYLE_NORMAL, AccResource.getInstance(mActivity).mgp_sdk_2_0_mian_dialog);
+		return cYMGQuickIntoDialogFragment;
+	}
+
+	@Override
+	public void onCancel(DialogInterface dialog) {
+		mActivity.finish();
+	}
+	
+	@Override
+	public void onClick(View v) {
+		if(v.getId()==AccResource.getInstance(mActivity).mgp_sdk_2_0_switch_account_close_ImageButton){
+			CMBILogManager.printEventLog(mActivity, "0", "132004", "");
+			mActivity.finish();
+		}else if(v.getId()==AccResource.getInstance(mActivity).mgp_sdk_2_0_switch_account_commit_Button){
+			CMBILogManager.printEventLog(mActivity, "0", "132001", "");
+			try {
+				if(mList.isEmpty()){
+					return;
+				}
+				String uid=mList.get(mSelIndex).getmUID();
+				String token=mList.get(mSelIndex).getmToken();
+				String acc=mList.get(mSelIndex).getmAcc();
+				String type="";
+				if(acc.startsWith(Contants.ACC_TYPE_CHENGYOU)){
+					type=Contants.LOGIN_CHENGYOU_TYPE;
+		    	}else if(acc.startsWith(Contants.ACC_TYPE_CHANGYOU)){
+		    		type=Contants.LOGIN_CHANGYOU_TYPE;
+		    	}
+				if(!NetWorkUtils.isNetworkConnected(mActivity)){
+					Toast.makeText(mActivity, AccResource.getInstance(mActivity).mgp_sdk_2_0_error_common_net, Toast.LENGTH_SHORT).show();
+					return;
+				}
+				CYMGLoginResultUtil.loginCallback(mActivity, acc,uid, token,type);
+			} catch (Exception e) {
+				log.e(e);
+			}
+		}else if(v.getId()==AccResource.getInstance(mActivity).mgp_sdk_2_0_switch_account_chengyou_Button){
+			CMBILogManager.printEventLog(mActivity, "0", "132002", "");
+			((CYMGMainDialogFragmentActivity)mActivity).changeDialogFragment(Contants.DialogFragmentTag.CHENGYOU_LOGIN, null);
+		}else if(v.getId()==AccResource.getInstance(mActivity).mgp_sdk_2_0_switch_account_changyou_Button){
+			CMBILogManager.printEventLog(mActivity, "0", "132003", "");
+			((CYMGMainDialogFragmentActivity)mActivity).changeDialogFragment(Contants.DialogFragmentTag.CHANGYOU_LOGIN, null);
+		}else if(v.getId()==AccResource.getInstance(mActivity).mgp_sdk_2_0_switch_account_select_TextView){
+			popupWindwShowing(); 
+		}
+	}
+  
+    private void initPopuWindow(){   
+        //PopupWindow浮动下拉框布局  
+        View loginwindow = (View)mActivity.getLayoutInflater().inflate(AccResource.getInstance(mActivity).mgp_sdk_2_0_dialog_switch_account_drop_down_pop, null);   
+        mListView = (ListView) loginwindow.findViewById(AccResource.getInstance(mActivity).mgp_sdk_2_0_dialog_switch_account_drop_down_pop_ListView);   
+        //设置自定义Adapter  
+        optionsAdapter = new OptionsAdapter(mActivity, handler, mList);   
+        mListView.setAdapter(optionsAdapter);   
+        selectPopupWindow = new PopupWindow(loginwindow, popWidth,LayoutParams.WRAP_CONTENT, true);   
+        selectPopupWindow.setOutsideTouchable(true);   
+        //这一句是为了实现弹出PopupWindow后，当点击屏幕其他部分及Back键时PopupWindow会消失，  
+        //没有这一句则效果不能出来，但并不会影响背景  
+        //本人能力极其有限，不明白其原因，还望高手、知情者指点一下  
+        selectPopupWindow.setBackgroundDrawable(new BitmapDrawable());
+        optionsAdapter.notifyDataSetChanged();
+    }
+  
+    public void popupWindwShowing() {   
+       //将selectPopupWindow作为parent的下拉框显示，并指定selectPopupWindow在Y方向上向上偏移3pix，  
+       //这是为了防止下拉框与文本框之间产生缝隙，影响界面美化  
+       //（是否会产生缝隙，及产生缝隙的大小，可能会根据机型、Android系统版本不同而异吧，不太清楚）  
+       selectPopupWindow.showAsDropDown(mSelectTv,0,-3);   
+    }   
+  
+    public void popupWindwDismiss(){   
+        selectPopupWindow.dismiss();   
+    }
+    
+    private void setDrawable(String account){
+    	Drawable leftDrawable=null;
+    	Drawable rightDrawable=mActivity.getResources().getDrawable(AccResource.getInstance(mActivity).mgp_sdk_2_0_dialog_fall_sanjiao);
+    	if(account.startsWith(Contants.ACC_TYPE_CHENGYOU)){
+    		leftDrawable= mActivity.getResources().getDrawable(AccResource.getInstance(mActivity).mgp_sdk_2_0_dialog_chengyou_small_logo);
+    	}else if(account.startsWith(Contants.ACC_TYPE_CHANGYOU)){
+    		leftDrawable= mActivity.getResources().getDrawable(AccResource.getInstance(mActivity).mgp_sdk_2_0_dialog_changyou_small_logo);
+    	}
+    	leftDrawable.setBounds(0, 0, leftDrawable.getMinimumWidth(), leftDrawable.getMinimumHeight());
+    	rightDrawable.setBounds(0, 0, rightDrawable.getMinimumWidth(), rightDrawable.getMinimumHeight());
+        mSelectTv.setCompoundDrawables(leftDrawable,null,rightDrawable,null);
+    }
+	
+	class OptionsAdapter extends BaseAdapter {  
+		  
+	    private List<CYMGAccBean> list ;  
+	    private Activity activity = null;   
+	    private Handler handler;  
+	    
+	    public void setList(List<CYMGAccBean> list){
+	    	this.list=list;
+	    }
+  
+	    public OptionsAdapter(Activity activity,Handler handler,List<CYMGAccBean> list){  
+	        this.activity = activity;
+	        this.handler = handler;
+	        this.list = list;
+	    }  
+	      
+	    @Override  
+	    public int getCount() {  
+	        return list.size();  
+	    }  
+	  
+	    @Override  
+	    public Object getItem(int position) {  
+	        return list.get(position);  
+	    }  
+	  
+	    @Override  
+	    public long getItemId(int position) {  
+	        return position;  
+	    }  
+	  
+	    @Override  
+	    public View getView(final int position, View convertView, ViewGroup parent) {  
+	        ViewHolder holder = null;   
+	        if (convertView == null) {   
+	            holder = new ViewHolder();
+	            //下拉项布局  
+	            convertView = LayoutInflater.from(activity).inflate(AccResource.getInstance(mActivity).mgp_sdk_2_0_dialog_switch_account_drop_down_pop_item, null);   
+	            holder.textView = (TextView) convertView.findViewById(AccResource.getInstance(mActivity).mgp_sdk_2_0_dialog_switch_account_drop_down_pop_item_account_TextView);   
+	            holder.imageView1 = (ImageView) convertView.findViewById(AccResource.getInstance(mActivity).mgp_sdk_2_0_dialog_switch_account_drop_down_pop_item_logo_ImageView);   
+	            holder.imageView2 = (ImageView) convertView.findViewById(AccResource.getInstance(mActivity).mgp_sdk_2_0_dialog_switch_account_drop_down_pop_item_del_ImageView);   
+	            convertView.setTag(holder);   
+	        } else {   
+	            holder = (ViewHolder) convertView.getTag();   
+	        }   
+	        final String account = list.get(position).getmAcc();
+	        if(account.startsWith(Contants.ACC_TYPE_CHANGYOU)){
+	        	holder.imageView1.setImageDrawable(mActivity.getResources().getDrawable(AccResource.getInstance(mActivity).mgp_sdk_2_0_dialog_changyou_small_logo));
+	        }else if(account.startsWith(Contants.ACC_TYPE_CHENGYOU)){
+	        	holder.imageView1.setImageDrawable(mActivity.getResources().getDrawable(AccResource.getInstance(mActivity).mgp_sdk_2_0_dialog_chengyou_small_logo));
+	        }
+	        holder.textView.setText(account.substring(6, account.length()));
+	        //为下拉框选项文字部分设置事件，最终效果是点击将其文字填充到文本框  
+	        holder.textView.setOnClickListener(new View.OnClickListener() {  
+	            @Override  
+	            public void onClick(View v) {  
+	                Message msg = new Message();  
+	                Bundle data = new Bundle();  
+	                //设置选中索引  
+	                mSelIndex=position;
+	                data.putInt("selIndex", mSelIndex);  
+	                msg.setData(data); 
+	                msg.what = 1;  
+	                handler.sendMessage(msg);
+	            }  
+	        });  
+	          
+	        //为下拉框选项删除图标部分设置事件，最终效果是点击将该选项删除  
+	        holder.imageView2.setOnClickListener(new View.OnClickListener() {
+	            @Override  
+	            public void onClick(View v) {
+	                mDelIndex=position;
+	            	mAlertDialog.show();
+	            }  
+	        });  
+	        return convertView;   
+	    }  
+	}  
+	  
+	class ViewHolder {   
+	    TextView textView;   
+	    ImageView imageView1;   
+	    ImageView imageView2;   
+	} 
+	
+	public void showDialog() {
+		FragmentTransaction transaction=((FragmentActivity)mActivity).getSupportFragmentManager().beginTransaction();
+		transaction.add(android.R.id.content, CYMGSwitchAccountDialogFragment.this).commitAllowingStateLoss();
+//		show(transaction, Contants.DialogFragmentTag.SWITCH_ACCOUNT);
+	}
+}

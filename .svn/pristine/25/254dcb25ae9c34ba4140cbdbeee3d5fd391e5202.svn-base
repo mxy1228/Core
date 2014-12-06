@@ -1,0 +1,366 @@
+package com.changyou.mgp.sdk.mbi.update.ui;
+
+import org.json.JSONObject;
+
+import android.content.pm.ActivityInfo;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.os.Bundle;
+import android.support.v4.app.FragmentManager;
+import android.support.v4.app.FragmentTransaction;
+import android.util.Log;
+import android.widget.Toast;
+
+import com.changyou.mgp.sdk.downloader.bean.DownloadAppInfo;
+import com.changyou.mgp.sdk.mbi.R;
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannel;
+import com.changyou.mgp.sdk.mbi.common.CYMGCallback;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolConfig;
+import com.changyou.mgp.sdk.mbi.config.Contants;
+import com.changyou.mgp.sdk.mbi.config.HttpContants;
+import com.changyou.mgp.sdk.mbi.http.MyAsyncResponseHandler;
+import com.changyou.mgp.sdk.mbi.http.MyHttpClient;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.mbi.manager.CMBILogManager;
+import com.changyou.mgp.sdk.mbi.platform.CYMGChannelHelper;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPlatform;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPlatformConfiguration;
+import com.changyou.mgp.sdk.mbi.ui.base.BaseActivity;
+import com.changyou.mgp.sdk.mbi.update.id.UpdateResource;
+import com.changyou.mgp.sdk.mbi.utils.MetaDataValueUtils;
+import com.changyou.mgp.sdk.mbi.utils.NetWorkUtils;
+import com.changyou.mgp.sdk.mbi.utils.UpdateSpUtil;
+import com.loopj.android.http.RequestParams;
+
+/**
+ * 
+ * @ClassName: CYMGSplashActivity 
+ * @Description: 处理闪屏逻辑
+ * @author J.Beyond 
+ * @date 2014年8月12日 下午4:05:07 
+ *
+ */
+public class CYMGSplashActivity extends BaseActivity {
+	
+	CYLog mLog = CYLog.getInstance();
+	
+	private CYMGSplashFragment mSplashFragment;
+	private CYMGUpdateDownloadDialogFragment mDownloadDialogFragment;
+	private CYMGUpdateForceNoticeDialogFragment mUpdateForceNoticeDialogFragment;
+	private CYMGUpdateNetErrorDialogFragment mNetErrorDialogFragment;
+	private CYMGUpdateNoForceNoticeDialogFragment mUpdateNoForceDialogFragment;
+	private CYMGUpdateWifiNoticeDialogFragment mWifiNoticeDialogFragment;
+	
+	protected static final int GET_NEW_PACKAGE_INFO_SUCCESS = 0;
+	protected static final int GET_NEW_PACKAGE_INFO_FAILURE = 1;
+	public static final int ON_ANIMATION_END = 2;
+	private boolean isNewVersionAvailable = false;
+	private boolean isDownloaded = false;  //标示是否下载过
+	private int mScreenOrientation;
+	private UpdateResource mRes;
+	private DownloadAppInfo mAppInfo;
+	private int package_size;
+
+	private boolean isPreDownloadCanceled;
+	private boolean isDownloadedCompleted;
+	private boolean isWillingDownloadWithoutWifi = false;//标示用户是否愿意在非WIFI环境下载，默认为FALSE
+
+	private FragmentManager mFragmentManager;
+
+	private boolean isDownloadCancled = false;
+	private boolean isNetConnected;
+	private boolean isWifiConnected;
+
+	private String mResult;
+
+	
+	public boolean isWillingDownloadWithoutWifi() {
+		return isWillingDownloadWithoutWifi;
+	}
+
+	public void setWillingDownloadWithoutWifi(boolean isWillingDownloadWithoutWifi) {
+		this.isWillingDownloadWithoutWifi = isWillingDownloadWithoutWifi;
+	}
+	
+	public boolean isNetConnected() {
+		return isNetConnected;
+	}
+
+	public void setNetConnected(boolean isNetConnected) {
+		this.isNetConnected = isNetConnected;
+	}
+
+	public boolean isWifiConnected() {
+		return isWifiConnected;
+	}
+
+	public void setWifiConnected(boolean isWifiConnected) {
+		this.isWifiConnected = isWifiConnected;
+	}
+
+	public boolean isDownloaded() {
+		return isDownloaded;
+	}
+
+	public void setDownloaded(boolean isDownloaded) {
+		this.isDownloaded = isDownloaded;
+	}
+
+	public void setDownloadCancled(boolean isDownloadCancled) {
+		//下载过了才保存，便于下次进入游戏时弹出未下载完的提醒
+		if (isDownloaded()) {
+			UpdateSpUtil.setIsUpdateCanceled(this, isDownloadCancled);
+		}
+		this.isDownloadCancled  = isDownloadCancled;
+		finishActivity();
+	}
+
+	@Override
+	protected void onCreate(Bundle arg0) {
+		super.onCreate(arg0);
+		mRes = UpdateResource.getInstance(this);
+		initScreenOrientation();
+		setContentView(mRes.mgp_sdk_2_0_splash_root);
+		initView();
+		initData();
+	}
+	
+
+	/**
+	 * 
+	 * @Title: initScreenOrientation 
+	 * @Description:初始化屏幕方向
+	 * @param  
+	 * @return void
+	 * @throws
+	 */
+	private void initScreenOrientation() {
+		mScreenOrientation = getIntent().getIntExtra("ScreenOrientation"
+				,ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+		//横屏
+		if (mScreenOrientation == CYMGProtocolConfig.LANDSCAPE) {
+			setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+		}else {//竖屏
+			setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+		}
+		
+	}
+
+	@Override
+	protected void initView() {
+		changeDialogFragment(Contants.DialogFragmentTag.SPLASH_FRAGMENT);
+	}
+
+	@Override
+	protected void initData() {
+		mResult = getIntent().getStringExtra("result");
+		//1、从sp中获取参数
+		isPreDownloadCanceled = UpdateSpUtil.isUpdateCanceled(this);
+		isDownloadedCompleted = UpdateSpUtil.isDownloadCompleted(this);
+	}
+	
+	public void change2UpdateDialog() {
+		//0没有最新版本不更新1有最新版本可选更新2有最新版本强制更新
+		int update_level = mAppInfo.getUpdate_level();
+		if (update_level == 0) {
+			finish();
+		}else if (update_level == 1) {
+			if (isPreDownloadCanceled || isDownloadedCompleted) {
+				changeDialogFragment(Contants.DialogFragmentTag.UPDATE_DOWNLOAD);
+			}else {
+				changeDialogFragment(Contants.DialogFragmentTag.UPDATE_NO_FORCE_NOTICE);
+			}
+		}else if(update_level == 2){
+			if (isPreDownloadCanceled || isDownloadedCompleted) {
+				changeDialogFragment(Contants.DialogFragmentTag.UPDATE_DOWNLOAD);
+			}else {
+				changeDialogFragment(Contants.DialogFragmentTag.UPDATE_FORCE_NOTICE);
+			}
+		}
+	}
+	
+	@Override
+	protected void onSaveInstanceState(Bundle outState) {
+		
+	}
+	
+	/**
+	 * 
+	 * @Title: changeDialogFragment 
+	 * @Description: 切换DialogFragment
+	 * @param @param tag
+	 * @param @param bundle 
+	 * @return void
+	 * @throws
+	 */
+	public void changeDialogFragment(String tag){
+		if (tag.equals(Contants.DialogFragmentTag.SPLASH_FRAGMENT)) {
+			mFragmentManager=getSupportFragmentManager();
+			FragmentTransaction mFT=mFragmentManager.beginTransaction();
+			CYMGSplashFragment mSplashFragment=new CYMGSplashFragment();
+			Bundle bundle = new Bundle();
+			bundle.putInt("ScreenOrientation", mScreenOrientation);
+			mSplashFragment.setArguments(bundle);
+			mFT.replace(mRes.mgp_sdk_2_0_splash_root_ll, mSplashFragment,Contants.DialogFragmentTag.SPLASH_FRAGMENT);
+			mFT.commit();
+		}else if(tag.equals(Contants.DialogFragmentTag.UPDATE_DOWNLOAD)){
+			mLog.i("change to CYMGUpdateDownloadDialogFragment");
+			Bundle bundle = new Bundle();
+			bundle.putSerializable("DownloadAppInfo", mAppInfo);
+			bundle.putInt("package_size", package_size);
+			bundle.putBoolean("isPreDownloadCanceled", isPreDownloadCanceled);
+			mDownloadDialogFragment=CYMGUpdateDownloadDialogFragment.newInstance(this,bundle);
+			if (!mDownloadDialogFragment.isVisible()) {
+				mDownloadDialogFragment.showDialog();
+			}
+		}else if(tag.equals(Contants.DialogFragmentTag.UPDATE_FORCE_NOTICE)){
+			mLog.i("change to CYMGUpdateForceNoticeDialogFragment");
+			Bundle bundle = new Bundle();
+			bundle.putSerializable("DownloadAppInfo", mAppInfo);
+			bundle.putInt("package_size", package_size);
+			mUpdateForceNoticeDialogFragment=CYMGUpdateForceNoticeDialogFragment.newInstance(this,bundle);
+//			if (!mUpdateForceNoticeDialogFragment.isVisible()) {
+				mUpdateForceNoticeDialogFragment.showDialog();
+//			}
+		}else if(tag.equals(Contants.DialogFragmentTag.UPDATE_NETERROR_NOTICE)){
+			mLog.i("change to CYMGUpdateNetErrorDialogFragment");
+			mNetErrorDialogFragment = CYMGUpdateNetErrorDialogFragment.newInstance(this);
+//			if (!mNetErrorDialogFragment.isVisible()) {
+				mNetErrorDialogFragment.showDialog();
+//			}
+		}else if(tag.equals(Contants.DialogFragmentTag.UPDATE_NO_FORCE_NOTICE)){
+			mLog.i("change to CYMGUpdateNoForceNoticeDialogFragment");
+			Bundle bundle = new Bundle();
+			bundle.putSerializable("DownloadAppInfo", mAppInfo);
+			bundle.putInt("package_size", package_size);
+			mUpdateNoForceDialogFragment=CYMGUpdateNoForceNoticeDialogFragment.newInstance(this,bundle);
+			if (!mUpdateNoForceDialogFragment.isVisible()) {
+				mUpdateNoForceDialogFragment.showDialog();
+			}
+		}else if(tag.equals(Contants.DialogFragmentTag.UPDATE_WIFI_NOTICE)){
+			mLog.i("change to CYMGUpdateWifiNoticeDialogFragment");
+			Bundle bundle = new Bundle();
+			bundle.putSerializable("DownloadAppInfo", mAppInfo);
+			mWifiNoticeDialogFragment=CYMGUpdateWifiNoticeDialogFragment.newInstance(this,bundle);
+			if (!mWifiNoticeDialogFragment.isVisible()) {
+				mWifiNoticeDialogFragment.showDialog();
+			}
+		}
+	}
+	
+	public void finishActivity() {
+		CYMGCallback callback = CYMGPlatform.getInstance().getCYMGCallback();
+		callback.onFinished(mResult);
+		this.finish();
+		overridePendingTransition(mRes.mgp_game_update_zoom_out,0);
+	}
+	
+	/**
+	 * 
+	 * @Title: getNewVersionInfo 
+	 * @Description: 开启子线程获取服务端游戏更新参数 
+	 * @param  
+	 * @return void
+	 * @throws
+	 */
+	public void getNewVersionInfo() {
+		//判断网络是否可用
+		if (!NetWorkUtils.isNetworkConnected(this)) {
+			Toast.makeText(this, mRes.mgp_net_error_hint, Toast.LENGTH_LONG).show();
+			return;
+		}
+		try {
+			RequestParams params = new RequestParams();
+			String versionName = getPkgVersion();
+			//判断versionName是否为空串
+			if ("".equals(versionName)) {
+				return;
+			}
+			params.put("app_version",versionName);
+			MyHttpClient httpClient = new MyHttpClient(this);
+			httpClient.get(HttpContants.getURL(HttpContants.GAME_UPDATE_URL), params,
+					new MyAsyncResponseHandler() {
+
+						@Override
+						public void onStart() {
+							mLog.d("request start!");
+							CMBILogManager.printEventLog(CYMGSplashActivity.this, "0", "110080", "");
+						}
+
+						@Override
+						public void onSuccess(int statusCode, String content) {
+							mLog.i("获取游戏更新数据成功::"+content);
+							try {
+								CMBILogManager.printEventLog(CYMGSplashActivity.this, "0", "120080", "");
+								JSONObject obj = new JSONObject(content);
+								String download_url = obj.getString("download_url");
+								int update_level = obj.getInt("update_level");
+								String app_new_version = obj.getString("app_new_version");
+								String update_title = obj.getString("update_title");
+								String update_description = obj.getString("update_description");
+								package_size = obj.getInt("package_size");
+								if (update_level != 0) {
+	 								isNewVersionAvailable = true;
+	 								mAppInfo = new DownloadAppInfo();
+	 								mAppInfo.setDownload_url(download_url);
+	 								mAppInfo.setUpdate_level(update_level);
+	 								mAppInfo.setApp_new_version(app_new_version);
+	 								mAppInfo.setUpdate_title(update_title);
+	 								mAppInfo.setUpdate_description(update_description);
+	 								change2UpdateDialog();
+								}else {
+									isNewVersionAvailable = false;
+									mLog.d("游戏暂时没有更新");
+									finishActivity();
+								}
+							} catch (Exception e) {
+								mLog.e(e);
+								finishActivity();
+							}
+						}
+						
+						@Override
+						public void onFailure(int statusCode, Throwable error,
+								String content) {
+							mLog.e("获取游戏更新数据失败::statusCode:"+statusCode+",content:"+content);
+							CMBILogManager.printEventLog(CYMGSplashActivity.this, "0", "120080", "");
+							CYMGSplashActivity.this.finish();
+						}
+					});
+		} catch (Exception e) {
+			mLog.e(e);
+		}
+	}
+	
+	/**
+	 * 
+	 * @Title: getPkgVersion 
+	 * @Description: 获取游戏版本号名称
+	 * @param @return 
+	 * @return String
+	 * @throws
+	 */
+	private String getPkgVersion(){
+		 String versionName = "";    
+		    try {    
+		        // ---get the package info---    
+		        PackageManager pm = getPackageManager();    
+		        PackageInfo pi = pm.getPackageInfo(getPackageName(), 0);    
+		        versionName = pi.versionName;    
+		        if (versionName == null || versionName.length() <= 0) {    
+		            return "";    
+		        }    
+		    } catch (Exception e) {    
+		        Log.e("VersionInfo", "Exception", e);    
+		    }    
+		    return versionName;    
+	}
+	
+	
+	@Override
+	protected void initEvent() {
+		
+	}
+
+
+}

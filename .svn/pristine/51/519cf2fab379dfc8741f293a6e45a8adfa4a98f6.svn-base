@@ -1,0 +1,256 @@
+package com.changyou.mgp.sdk.mbi.channel.impl;
+
+import android.app.Activity;
+import android.content.Context;
+import android.content.pm.ActivityInfo;
+import android.os.Bundle;
+
+import com.changyou.mgp.sdk.mbi.account.id.AccResource;
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannel;
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannelEntity;
+import com.changyou.mgp.sdk.mbi.common.CYMGCallback;
+import com.changyou.mgp.sdk.mbi.common.CYMGCallbackHelper;
+import com.changyou.mgp.sdk.mbi.config.CYMGPrompt;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolKeys;
+import com.changyou.mgp.sdk.mbi.config.HttpContants;
+import com.changyou.mgp.sdk.mbi.config.Params;
+import com.changyou.mgp.sdk.mbi.entity.GoodsItem;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPayHelper;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPlatform;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPlatformConfiguration;
+import com.changyou.mgp.sdk.mbi.utils.MetaDataValueUtils;
+import com.changyou.mgp.sdk.mbi.utils.NetWorkUtils;
+import com.changyou.mgp.sdk.mbi.utils.SystemUtils;
+import com.lenovo.lsf.open.LenovoGameSdk;
+import com.lenovo.lsf.open.LenovoGameSdk.OnAuthenListener;
+import com.lenovo.mpay.ifmgr.IPayResultCallback;
+import com.lenovo.mpay.ifmgr.SDKApi;
+import com.lenovo.mpay.tools.PayRequest;
+
+public class CYMGLenovoImpl implements CYMGChannel {
+
+	private CYLog log = CYLog.getInstance();
+	private String mChannelId;
+	
+	@Override
+	public void init(CYMGPlatformConfiguration config) {
+		final Context context = config.getmContext();
+		String appId = MetaDataValueUtils.getLenovoAppId(context);
+		// 设置SDK的横竖屏显示
+		int screenOrientation;
+		if (config.getmScreenOrientation() == ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT) {
+			screenOrientation = SDKApi.PORTRAIT;
+		}else {
+			screenOrientation = SDKApi.LANDSCAPE;
+		}
+		// 支付接口初始化，设置支付界面为横屏，详情参见文档.建议此方法在进入游戏时调用
+		SDKApi.init((Activity)context, screenOrientation, appId);
+		// 支付预读接口（init的时候调用）
+		SDKApi.preGettingData((Activity)context, appId);
+		CYMGCallbackHelper.callbackResult(CYMGCallbackHelper.getCommonResult(CYMGPrompt.CODE_INIT_SUCCESS, null));
+	}
+
+	@Override
+	public void doLogin(CYMGChannelEntity entity) {
+		final Context context = entity.getmContext();
+		mChannelId = MetaDataValueUtils.getChannelID(context);
+		if (context == null) {
+			log.e("LenovoImpl#doLogin,context is null!!");
+			return;
+		}
+		quickLogin(context);
+//		generalLogin(context);
+	}
+
+	/**
+	 * 功能描述: 快速登录
+	 * @param @param context  
+	 * @return void    返回类型 
+	 * @author 欧阳海冰(OuyangHaibing)
+	 * @date 2014-4-30 下午7:01:03
+	 */
+	private void quickLogin(final Context context) {
+		Bundle loginOption = new Bundle();
+		//该参数控制：是否显示登录成功后 浮动在界面上面的欢迎条
+		loginOption.putBoolean(LenovoGameSdk.SHOW_WELCOME, true);
+		LenovoGameSdk.quickLogin(context, new OnAuthenListener() {
+			
+			@Override
+			public void onFinished(boolean ret, String data) {
+				processLoginResult(context, ret, data,false);
+			}
+		}, loginOption);
+	}
+
+	/**
+	 * 
+	 * 功能描述: 普通登录
+	 * @param @param context  
+	 * @param @param isLogout 标识注销后弹出的登录页中进行的登录操作
+	 * @return void    返回类型 
+	 * @author 欧阳海冰(OuyangHaibing)
+	 * @date 2014-4-27 下午3:46:31
+	 */
+	private void generalLogin(final Context context) {
+		LenovoGameSdk.getStData((Activity)context, new LenovoGameSdk.OnAuthenListener() {
+
+			@Override
+			public void onFinished(boolean ret, String data) {
+				processLoginResult(context, ret, data, true);
+			}
+		},true);
+	}
+	
+	/**
+	 * 
+	 * 功能描述: 处理联想登录后回调的数据
+	 * @param @param context
+	 * @param @param ret
+	 * @param @param data
+	 * @param @param isLogout
+	 * @return void    返回类型 
+	 * @author 欧阳海冰(OuyangHaibing)
+	 * @date 2014-4-30 下午7:06:51
+	 */
+	private void processLoginResult(final Context context, boolean ret,String data,boolean isLogout) {
+		if (ret) {//登录成功
+			log.d("Lenovo login success!");
+			String realm = MetaDataValueUtils.getLenovoRealm(context);
+			String appkey = MetaDataValueUtils.getLenovoAppKey(context);
+			String userIp = NetWorkUtils.getLocalIpAddress(context);
+			String deviceid = SystemUtils.getDeviceId(context);
+			String channelId = context.getString(AccResource.getInstance(context).mgp_channel_lenovo);
+			Bundle b = new Bundle();
+ 			b.putString(CYMGProtocolKeys.LPSUST, data);
+ 			b.putString(CYMGProtocolKeys.REALM,realm);
+ 			b.putString(CYMGProtocolKeys.USERIP,userIp);
+ 			b.putString(CYMGProtocolKeys.DEVICEID,deviceid);
+ 			b.putString(CYMGProtocolKeys.APPKEY_LENOVO,appkey);
+ 			b.putString(CYMGProtocolKeys.CHANNEL_ID, channelId);
+			b.putString(CYMGProtocolKeys.OPCODE, "10001");
+			CYMGCallbackHelper.callbackResult(CYMGCallbackHelper.getLoginResult(CYMGPrompt.CODE_LOGIN_SUCCESS, b,context));
+		} else {//登录失败
+			log.w("Lenovo login faliure!");
+			if (!isLogout) {
+				log.w("Lenovo login faliure!");
+				CYMGCallbackHelper.callbackResult(CYMGCallbackHelper.getLoginResult(CYMGPrompt.CODE_LOGIN_FAILED, null,context));
+			}
+		}
+	}
+
+	@Override
+	public void doPay(CYMGChannelEntity entity) {
+		final Context context = entity.getmContext();
+		
+		String appId = MetaDataValueUtils.getLenovoAppId(context);
+		final String appKey = MetaDataValueUtils.getLenovoAppKey(context);
+		
+		Bundle bundle = entity.getBundle();
+		final String uid = bundle.getString(Params.UID);
+		final String orderId = bundle.getString(Params.ORDER_ID);
+		final GoodsItem item = (GoodsItem)bundle.getSerializable(Params.GOODSITEM);
+		final String priceStr = item.getGoods_price();
+		int price=(int) Double.parseDouble(priceStr);
+		
+		
+		PayRequest payRequest = new PayRequest();
+		// 请填写商品参数
+		payRequest.addParam("notifyurl", HttpContants.getLenovoNotifyUrl());
+		payRequest.addParam("appid", appId);
+		payRequest.addParam("waresid", item.getGoods_register_id());
+		payRequest.addParam("exorderno", orderId);
+		payRequest.addParam("price", price);
+		payRequest.addParam("cpprivateinfo", "123456");
+		// 生成签名，创建请求url
+		String paramUrl = payRequest.genSignedUrlParamString(appKey);
+		SDKApi.startPay((Activity)context, paramUrl, new IPayResultCallback() {
+			@Override
+			public void onPayResult(int resultCode, String signValue,
+					String resultInfo) {// resultInfo = 应用编号&商品编号&外部订单号
+				CYMGPayHelper cymgPayHelper = CYMGPayHelper.getInstance();
+				cymgPayHelper.setContext((Activity)context);
+				if (SDKApi.PAY_SUCCESS == resultCode) {//支付成功
+					log.d("lenovo pay signValue = "+ signValue);
+					if (null == signValue) {//没有签名值
+						// 没有签名值，默认采用finish()，请根据需要修改
+						log.e("lenovo pay, signValue is null ");
+						cymgPayHelper.payException(CYMGPrompt.CODE_PAY_FAILED);
+					}
+					boolean flag = PayRequest.isLegalSign(signValue,appKey);
+					if (flag) {//支付成功
+						log.d("lenovo pay success:islegalsign: true");
+						// 合法签名值，支付成功，请添加支付成功后的业务逻辑
+						cymgPayHelper.paySuccess(uid, item, orderId);
+					} else {//验证签名失败
+						// 非法签名值，默认采用finish()，请根据需要修改
+						cymgPayHelper.payException(CYMGPrompt.CODE_PAY_FAILED);
+					}
+				} else if (SDKApi.PAY_CANCEL == resultCode) {//取消支付
+					// 取消支付处理，默认采用finish()，请根据需要修改
+					log.d("lenovo pay cancel");
+					cymgPayHelper.payException(CYMGPrompt.CODE_PAY_CANCEL);
+					
+				} else {//支付失败
+					// 计费失败处理，默认采用finish()，请根据需要修改
+					log.e("lenovo pay failure");
+					cymgPayHelper.payException(CYMGPrompt.CODE_PAY_FAILED);
+					
+				}
+			}
+		});
+	}
+
+	@Override
+	public void doLogout(CYMGChannelEntity entity) {
+		final Context context = entity.getmContext();
+		LenovoGameSdk.setLogoutFinishListener(new LenovoGameSdk.OnLogoutFinishListener() {
+			
+			@Override
+			public void onLogoutFinish() {
+				//告知接入方注销成功
+				CYMGCallbackHelper.callbackResult(CYMGCallbackHelper.getCommonResult(CYMGPrompt.CODE_LOGOUT_SUCCESS, null));
+				//重新调出登录页
+//				generalLogin(context);
+			}
+		});
+		//联想的注销有点QiPa，需要调出通行证页面让用户手动注销
+		LenovoGameSdk.showAccountPage(context);
+	}
+
+	@Override
+	public void doDestroy(CYMGChannelEntity entity) {
+		//在注销时已释放资源
+	}
+
+	@Override
+	public void doCustomerService(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void doShowUserCenter(CYMGChannelEntity entity) {
+		Context context = entity.getmContext();
+		LenovoGameSdk.showAccountPage(context);
+	}
+
+	@Override
+	public void doResume(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void doPause(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void doStop(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+		
+	}
+
+}

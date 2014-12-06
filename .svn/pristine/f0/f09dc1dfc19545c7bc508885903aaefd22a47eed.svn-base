@@ -1,0 +1,139 @@
+package com.changyou.mgp.sdk.mbi.pay.ui;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import android.app.Activity;
+import android.os.Bundle;
+import android.text.Html;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemClickListener;
+import android.widget.Button;
+import android.widget.ImageButton;
+import android.widget.ListView;
+import android.widget.TextView;
+
+import com.changyou.mgp.sdk.mbi.config.Contants;
+import com.changyou.mgp.sdk.mbi.entity.RechargeCenterItem;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.mbi.manager.CMBILogManager;
+import com.changyou.mgp.sdk.mbi.pay.adapter.RechargeCenterAdapter;
+import com.changyou.mgp.sdk.mbi.pay.id.PayResource;
+import com.changyou.mgp.sdk.mbi.ui.base.BaseFragment;
+
+public class CYMGRechargeCenterFragment extends BaseFragment implements OnClickListener {
+	
+	private CYLog log = CYLog.getInstance();
+	
+	private Activity mActivity;
+
+	private View mTitle;
+	private ImageButton mBackIBtn;
+	private Button mServiceBtn;
+	private ImageButton mServiceImgBtn;
+	private TextView mTitleTv;
+	
+	
+	private Bundle mBundle;
+
+	private ListView mRechargeCenterLv;
+
+	private List<RechargeCenterItem> mRechargeCenterList;
+
+	private TextView mTipTv;
+	
+	@Override
+	public void onAttach(Activity activity) {
+		// TODO Auto-generated method stub
+		super.onAttach(activity);
+		this.mActivity = activity;
+	}
+
+	@Override
+	public View onCreateView(LayoutInflater inflater, ViewGroup container,
+			Bundle savedInstanceState) {
+		View view = inflater.inflate(PayResource.getInstance(mActivity).mgp_payment_recharge_center, null);
+		initTitle(view);
+		initView(view);
+		initData();
+		initEvent();
+		return view;
+	}
+	
+	@Override
+	public void onResume() {
+		super.onResume();
+	}
+
+	private void initTitle(View view) {
+		this.mTitle = view.findViewById(PayResource.getInstance(mActivity).mgp_payment_recharge_center_title);
+		this.mBackIBtn = (ImageButton)mTitle.findViewById(PayResource.getInstance(mActivity).mgp_title_left_ibtn);
+		this.mTitleTv = (TextView)mTitle.findViewById(PayResource.getInstance(mActivity).mgp_title_tv);
+		this.mTitleTv.setText(PayResource.getInstance(mActivity).mgp_title_tv_charge_center);
+		this.mServiceBtn = (Button)mTitle.findViewById(PayResource.getInstance(mActivity).mgp_title_right_btn);
+		this.mServiceImgBtn = (ImageButton)mTitle.findViewById(PayResource.getInstance(mActivity).mgp_title_right_imgbtn);
+		this.mServiceBtn.setVisibility(View.GONE);
+		this.mServiceImgBtn.setVisibility(View.GONE);
+	}
+	
+	private void initView(View view){
+		mRechargeCenterLv = (ListView) view.findViewById(PayResource.getInstance(mActivity).mgp_recharge_center_lv);
+		mTipTv = (TextView) view.findViewById(PayResource.getInstance(mActivity).mgp_recharge_center_tip);
+		
+	}
+
+	@Override
+	protected void initData() {
+		mBundle=getArguments();
+		mTipTv.setText(Html.fromHtml(getString(PayResource.getInstance(mActivity).mgp_payment_charge_center_info2)));
+		mRechargeCenterList = new ArrayList<RechargeCenterItem>();
+		
+		RechargeCenterItem mobileChargeItem = new RechargeCenterItem();
+		mobileChargeItem.setImageId(PayResource.getInstance(mActivity).mgp_payment_way_phone_card);
+		mobileChargeItem.setChagrgeType(getString(PayResource.getInstance(mActivity).mgp_payment_charge_center_mobile));
+		mobileChargeItem.setChargeInfo(getString(PayResource.getInstance(mActivity).mgp_payment_charge_center_mobile_info));
+		mobileChargeItem.setFragmentTag(Contants.FragmentTag.PAYMENT_WAY_PHONE_CARD_FRAGMENT_TAG);
+		
+		RechargeCenterItem gameChargeItem = new RechargeCenterItem();
+		gameChargeItem.setImageId(PayResource.getInstance(mActivity).mgp_payment_way_game_card);
+		gameChargeItem.setChagrgeType(getString(PayResource.getInstance(mActivity).mgp_payment_charge_center_game));
+		gameChargeItem.setChargeInfo(getString(PayResource.getInstance(mActivity).mgp_payment_charge_center_game_info));
+		gameChargeItem.setFragmentTag(Contants.FragmentTag.PAYMENT_WAY_GAME_CARD_FRAGMENT_TAG);
+		
+		mRechargeCenterList.add(mobileChargeItem);
+		mRechargeCenterList.add(gameChargeItem);
+		
+		RechargeCenterAdapter rechargeCenterAdapter = new RechargeCenterAdapter(mActivity, mRechargeCenterList);
+		mRechargeCenterLv.setAdapter(rechargeCenterAdapter);
+		
+	}
+
+	@Override
+	protected void initEvent() {
+		this.mBackIBtn.setOnClickListener(this);
+		mRechargeCenterLv.setOnItemClickListener(new OnItemClickListener() {
+
+			@Override
+			public void onItemClick(AdapterView<?> arg0, View arg1, int position,
+					long id) {
+				if(position==0){
+				}else{
+				}
+				if (mRechargeCenterList != null) {
+					((CYMGPaymentActivity)mActivity).changeFragment(mRechargeCenterList.get(position).getFragmentTag(), mBundle);
+				}
+			}
+		});
+	}
+
+	@Override
+	public void onClick(View v) {
+		if(v.getId()==PayResource.getInstance(mActivity).mgp_title_left_ibtn){
+			((CYMGPaymentActivity)mActivity).goback();
+		}
+	}
+}

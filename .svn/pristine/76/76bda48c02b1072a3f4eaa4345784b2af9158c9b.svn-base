@@ -1,0 +1,210 @@
+package com.changyou.mgp.sdk.mbi.channel;
+
+import java.io.InputStream;
+import java.util.Properties;
+
+import android.content.Context;
+import android.text.TextUtils;
+
+import com.changyou.mgp.sdk.mbi.config.CYMGChannelID;
+import com.changyou.mgp.sdk.mbi.config.CYMGFunID;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPlatformConfiguration;
+import com.changyou.mgp.sdk.mbi.utils.MetaDataValueUtils;
+
+public class CYMGChannelHelper {
+
+	private static final String CHANNEL_PRO_NAME = "channel.properties";//第三方渠道执行的配置文件名称
+	private static final String ERROR_CHANNEL_ID_IS_NULL = "channelID is null";//若配置的ChannelID为空则报该异常
+	//若没有从channel.properties中根据channelID查到对应的类则报该异常
+	private static final String ERROR_CLASS_NAME_IS_NULL = "No class found is mgp_login.properties by channelID,please check your mgp_login.properties";
+	//若根据类名反射失败则报该异常
+	private static final String ERROR_FOR_CLASS = "Class for name error";
+	
+	private Context mContext;
+	private CYLog log = CYLog.getInstance();
+	
+//	private CYMGChannel mMGPChannel;
+	
+	public CYMGChannelHelper(Context context){
+		this.mContext = context;
+	}
+	
+	public void init(CYMGPlatformConfiguration config){
+		String channelID = MetaDataValueUtils.getChannelID(mContext);
+		if(channelID == null || TextUtils.isEmpty(channelID)){
+			throw new IllegalAccessError(ERROR_CHANNEL_ID_IS_NULL);
+		}
+		try {
+			getChannel(channelID, CYMGFunID.INIT).init(config);
+		} catch (Exception e) {
+			log.e(e);
+		}
+	}
+	
+	/**
+	 * 
+	 * 功能描述：执行第三方渠道登录
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param @param channelID
+	 * @return void
+	 * @date 2014-2-20 下午2:09:56
+	 *
+	 */
+	public void login(CYMGChannelEntity entity){
+		String channelID = MetaDataValueUtils.getChannelID(mContext);
+		getChannel(channelID, CYMGFunID.ACCOUNT).doLogin(entity);
+	}
+	
+	/**
+	 * 
+	 * 功能描述：执行第三方渠道支付
+	 *
+	 * @author 严峥(yanzheng)
+	 * @param @param entity
+	 * @return void
+	 * @date 2014-2-24 下午12:43:49
+	 *
+	 * 修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public void pay(CYMGChannelEntity entity){
+		String channelID = MetaDataValueUtils.getChannelID(mContext);
+		getChannel(channelID, CYMGFunID.PAY).doPay(entity);
+	}
+	
+	/**
+	 * 
+	 * 功能描述：执行第三方渠道支付
+	 *
+	 * @author 严峥(yanzheng)
+	 * @param @param entity
+	 * @return void
+	 * @date 2014-2-24 下午12:43:49
+	 *
+	 * 修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public void logout(CYMGChannelEntity entity){
+		String channelID = MetaDataValueUtils.getChannelID(mContext);
+		getChannel(channelID, CYMGFunID.ACCOUNT).doLogout(entity);
+	}
+	
+	/**
+	 * 
+	 * 功能描述：执行第三方渠道重启
+	 *
+	 * @author 严峥(yanzheng)
+	 * @param @param entity
+	 * @return void
+	 * @date 2014-2-24 下午12:43:49
+	 *
+	 * 修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public void onResume(CYMGChannelEntity entity){
+		String channelID = MetaDataValueUtils.getChannelID(mContext);
+		getChannel(channelID, CYMGFunID.INIT).doResume(entity);
+	}
+	
+	/**
+	 * 
+	 * 功能描述：执行第三方渠道暂停
+	 *
+	 * @author 严峥(yanzheng)
+	 * @param @param entity
+	 * @return void
+	 * @date 2014-2-24 下午12:43:49
+	 *
+	 * 修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public void onPause(CYMGChannelEntity entity){
+		String channelID = MetaDataValueUtils.getChannelID(mContext);
+		getChannel(channelID, CYMGFunID.INIT).doPause(entity);
+	}
+	
+	/**
+	 * 
+	 * 功能描述：执行第三方渠道停止
+	 *
+	 * @author 严峥(yanzheng)
+	 * @param @param entity
+	 * @return void
+	 * @date 2014-2-24 下午12:43:49
+	 *
+	 * 修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public void onStop(CYMGChannelEntity entity){
+		String channelID = MetaDataValueUtils.getChannelID(mContext);
+		getChannel(channelID, CYMGFunID.INIT).doStop(entity);
+	}
+	
+	/**
+	 * 
+	 * 功能描述：执行第三方渠道销毁
+	 *
+	 * @author 严峥(yanzheng)
+	 * @param @param entity
+	 * @return void
+	 * @date 2014-2-24 下午12:43:49
+	 *
+	 * 修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public void onDestroy(CYMGChannelEntity entity){
+		String channelID = MetaDataValueUtils.getChannelID(mContext);
+		getChannel(channelID, CYMGFunID.INIT).doDestroy(entity);
+	}
+	
+	/**
+	 * 
+	 * 功能描述: 第三方渠道的用户管理界面
+	 * @param @param entity  
+	 * @return void    返回类型 
+	 * @author 欧阳海冰(OuyangHaibing)
+	 * @date 2014-4-28 下午8:23:26
+	 */
+	public void showUserCenter(CYMGChannelEntity entity) {
+		String channelID = MetaDataValueUtils.getChannelID(mContext);
+		getChannel(channelID,CYMGFunID.USER_CENTER).doShowUserCenter(entity);
+		
+	}
+	
+	/**
+	 * 
+	 * 功能描述：根据ChannelID获取对应的执行类名
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param @param channelID
+	 * @param @return
+	 * @return String
+	 * @date 2014-2-20 下午2:08:31
+	 *
+	 */
+	public CYMGChannel getChannel(String channelID,int funID){
+		Properties pro = new Properties();
+		try {
+			InputStream is = mContext.getAssets().open(CHANNEL_PRO_NAME);
+			if(is == null){
+				log.e("is null");
+				return null;
+			}
+			pro.load(is);
+			String sClass = Integer.valueOf(channelID) == CYMGChannelID.CHANNEL_CY 
+					? pro.getProperty("channel_"+String.valueOf(funID)+"_"+channelID) 
+							: pro.getProperty("channel_"+channelID);
+			if(sClass == null){
+				log.e("sClass is null");
+				return null;
+			}
+			log.d("sClass = "+sClass);
+			Class<?> mClass = null;
+			try {
+				mClass = Class.forName(sClass);
+			} catch (Exception e) {
+				log.e(e);
+			}
+			return (CYMGChannel)mClass.newInstance();
+		} catch (Exception e) {
+			log.e(e);
+		}
+		return null;
+	}
+}

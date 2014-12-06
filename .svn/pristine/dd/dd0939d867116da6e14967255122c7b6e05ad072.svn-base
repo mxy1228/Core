@@ -1,0 +1,197 @@
+package com.changyou.mgp.sdk.mbi.channel.impl;
+
+import android.content.Context;
+import android.os.Bundle;
+import android.text.TextUtils;
+
+import com.changyou.mgp.sdk.mbi.R;
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannel;
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannelEntity;
+import com.changyou.mgp.sdk.mbi.config.CYMGPrompt;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolKeys;
+import com.changyou.mgp.sdk.mbi.config.Params;
+import com.changyou.mgp.sdk.mbi.entity.GoodsItem;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.platform.CYMGInitHelper;
+import com.changyou.mgp.sdk.mbi.platform.CYMGLoginHelper;
+import com.changyou.mgp.sdk.mbi.platform.CYMGLoginOutHelpr;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPayHelper;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPlatformConfiguration;
+import com.changyou.mgp.sdk.mbi.utils.MetaDataValueUtils;
+import com.downjoy.CallbackListener;
+import com.downjoy.Downjoy;
+import com.downjoy.DownjoyError;
+
+public class CYMGDangLeImpl implements CYMGChannel {
+	
+	private CYLog log = CYLog.getInstance();
+	
+	private static final float MIN_PRICE = 0.0f;
+
+	@Override
+	public void init(CYMGPlatformConfiguration config) {
+		log.d("CYMGDangLeImpl:init");
+		Context context = config.getmContext();
+		// 初始化当乐游戏中心
+        final String merchantId = MetaDataValueUtils.getDangLeMerchantId(context); // 当乐分配的MERCHANT_ID
+        final String appId = MetaDataValueUtils.getDangLeAppId(context); // 当乐分配的APP_ID
+        final String serverSeqNum = MetaDataValueUtils.getDangLeServerSeqNum(context); // 当乐分配的 SERVER_SEQ_NUM，
+        final String appKey = MetaDataValueUtils.getDangLeAppKey(context); // 当乐分配的 APP_KEY
+        if(TextUtils.isEmpty(merchantId)||TextUtils.isEmpty(appId)||TextUtils.isEmpty(serverSeqNum)||TextUtils.isEmpty(appKey)){
+        	CYMGInitHelper.getInstance().onInitResult(CYMGPrompt.CODE_INIT_FAILED, null);
+        	return;
+        }
+        // 获取当乐游戏中心的实例
+        Downjoy downjoy=Downjoy.getInstance(context, merchantId, appId, serverSeqNum, appKey);
+        CYMGInitHelper.getInstance().onInitResult(CYMGPrompt.CODE_INIT_SUCCESS, null);
+        // 设置登录成功后属否显示当乐游戏中心的悬浮按钮，注意：
+        // 此处应在调用登录接口之前设置，默认值是true，即登录成功后自动显示当乐游戏中心的悬浮按钮。
+        // 如果此处设置为false，登录成功后，不显示当乐游戏中心的悬浮按钮。
+        downjoy.showDownjoyIconAfterLogined(true);
+        downjoy.setInitLocation(Downjoy.LOCATION_CENTER_HORIZONTAL_BOTTOM);
+	}
+
+	@Override
+	public void doLogin(CYMGChannelEntity entity) {
+		log.d("CYMGDangLeImpl:doLogin");
+		final Context context = entity.getmContext();
+		Downjoy.getInstance().openLoginDialog(context, new CallbackListener() {
+
+            @Override
+            public void onLoginSuccess(Bundle bundle) {
+                String memberId = bundle.getString(Downjoy.DJ_PREFIX_STR + "mid");
+                String token = bundle.getString(Downjoy.DJ_PREFIX_STR + "token");
+                Bundle b = new Bundle();
+				b.putString(CYMGProtocolKeys.UID, memberId);
+				b.putString(CYMGProtocolKeys.TOKEN,token);
+				b.putString(CYMGProtocolKeys.CHANNEL_ID, context.getString(R.string.mgp_channel_dangle));
+				CYMGLoginHelper.getInstance().loginResult(CYMGPrompt.CODE_LOGIN_SUCCESS,b);
+            }
+
+            @Override
+            public void onLoginError(DownjoyError error) {
+                int errorCode = error.getMErrorCode();
+                String errorMsg = error.getMErrorMessage();
+                log.e("onLoginError:"+"errorCode:" + errorCode + ",errorMsg:" + errorMsg);
+                CYMGLoginHelper.getInstance().loginResult(CYMGPrompt.CODE_LOGIN_FAILED, null);
+            }
+
+            @Override
+            public void onError(Error error) {
+                String errorMessage = error.getMessage();
+                log.e("onError:"+"errorMessage:" + errorMessage);
+                CYMGLoginHelper.getInstance().loginResult(CYMGPrompt.CODE_LOGIN_FAILED, null);
+            }
+        });
+	}
+
+	@Override
+	public void doPay(CYMGChannelEntity entity) {
+		log.d("CYMGDangLeImpl:doPay");
+		Context context = entity.getmContext();
+		Bundle bundle=entity.getBundle();
+		final GoodsItem goodsItem = (GoodsItem)bundle.getSerializable(Params.GOODSITEM);
+		final String uid = bundle.getString(Params.UID);
+		final String currentOrderID = bundle.getString(Params.ORDER_ID);
+		if (goodsItem == null) {
+			log.e("mGoodsItem is null");
+			return;
+		}
+		if(uid == null){
+			log.e("uid is null");
+			return;
+		}
+		if(currentOrderID == null){
+			log.e("order_id is null");
+			return;
+		}
+		float price=Float.valueOf(goodsItem.getGoods_price());
+		if(price < MIN_PRICE){
+			log.e("price < "+MIN_PRICE);
+			return;
+		}
+        String productName = goodsItem.getGoods_name(); // 商品名称
+        String extInfo = currentOrderID; // CP自定义信息，多为CP订单号
+        // 打开支付界面,获得订单号
+        Downjoy.getInstance().openPaymentDialog(context, price, productName, extInfo,
+                new CallbackListener() {
+
+                    @Override
+                    public void onPaymentSuccess(String orderNo) {
+                    	CYMGPayHelper.getInstance().paySuccess(uid,goodsItem, currentOrderID);
+                    }
+
+                    @Override
+                    public void onPaymentError(DownjoyError error,
+                            String orderNo) {
+                    	int errorCode = error.getMErrorCode();
+                        String errorMsg = error.getMErrorMessage();
+                        log.e("onLoginError:"+"errorCode:" + errorCode + ",errorMsg:" + errorMsg);
+                        CYMGPayHelper.getInstance().payException(CYMGPrompt.CODE_PAY_FAILED);
+                    }
+
+                    @Override
+                    public void onError(Error error) {
+                    	String errorMessage = error.getMessage();
+                        log.e("onError:"+"errorMessage:" + errorMessage);
+                        CYMGPayHelper.getInstance().payException(CYMGPrompt.CODE_PAY_FAILED);
+                    }
+                });
+	}
+
+	@Override
+	public void doLogout(CYMGChannelEntity entity) {
+		log.d("CYMGDangLeImpl:doLogout");
+		Context context = entity.getmContext();
+		DangLeLogout(context);
+	}
+
+	@Override
+	public void doDestroy(CYMGChannelEntity entity) {
+		log.d("CYMGDangLeImpl:doDestroy");
+		Context context = entity.getmContext();
+		DangLeLogout(context);
+		if(Downjoy.getInstance()!=null){
+			Downjoy.getInstance().destroy();
+		}
+	}
+
+	@Override
+	public void doCustomerService(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+
+	}
+	
+	private void DangLeLogout(Context context){
+		Downjoy.getInstance().logout(context, new CallbackListener() {
+
+            @Override
+            public void onLogoutSuccess() {
+            	CYMGLoginOutHelpr.getInstance().logoutResult(CYMGPrompt.CODE_LOGOUT_SUCCESS);
+            }
+
+            @Override
+            public void onLogoutError(DownjoyError error) {
+            	int errorCode = error.getMErrorCode();
+                String errorMsg = error.getMErrorMessage();
+                log.e("onLoginError:"+"errorCode:" + errorCode + ",errorMsg:" + errorMsg);
+                CYMGLoginOutHelpr.getInstance().logoutResult(CYMGPrompt.CODE_LOGOUT_FAILED);
+            }
+
+            @Override
+            public void onError(Error error) {
+            	String errorMessage = error.getMessage();
+                log.e("onError:"+"errorMessage:" + errorMessage);
+            	CYMGLoginOutHelpr.getInstance().logoutResult(CYMGPrompt.CODE_LOGOUT_FAILED);
+            }
+        });
+	}
+
+	@Override
+	public void doShowUserCenter(CYMGChannelEntity entity) {
+		Context context = entity.getmContext();
+		Downjoy.getInstance().openMemberCenterDialog(context, new CallbackListener() {
+		});
+	}
+
+}

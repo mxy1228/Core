@@ -1,0 +1,257 @@
+package com.changyou.mgp.sdk.mbi.config;
+
+/**
+ * 
+ * 功能描述：定义字符串常量
+ *
+ * @author 徐萌阳(xumengyang)
+ *
+ * @date 2013-12-30
+ */
+public class Contants {
+	
+	public static final String INTERFACE_NAME_FOR_REGISTER = "mgpsdk";//注册时和JS交互的接口名
+	public static final int PAGE_SIZE = 10;//分页请求的一页条数
+	
+	public static final String KEY_APP_ID_91 = "APP_ID_91";
+	public static final String KEY_APP_KEY_91 = "APP_KEY_91";
+	
+	public static final String KEY_APP_KEY_WDJ = "APP_KEY_WDJ";
+	public static final String KEY_APP_SECRET_WDJ = "APP_SECRET_WDJ";
+	
+	public static final String KEY_APP_CPID_UC = "APP_CPID_UC";
+	public static final String KEY_APP_GAMEID_UC = "APP_GAMEID_UC";
+	public static final String KEY_APP_SERVERID_UC = "APP_SERVERID_UC";
+	public static final String KEY_APP_APIKEY_UC = "APP_APIKEY_UC";
+	
+	public static final String KEY_CHANNLE_ID = "CYMG_CHANNEL_ID";
+	public static final String KEY_APPKEY = "CYMG_APP_KEY";
+	public static final String KEY_APPSECRET = "CYMG_APP_SECRET";
+	public static final String KEY_QQ_APPID = "CYMG_QQ_APP_ID";
+	public static final String KEY_SINA_APPKEY = "CYMG_SINA_APP_KEY";
+	public static final String KEY_SINA_APPSECRET = "CYMG_SINA_APP_SECRET";
+	
+	public static final String KEY_APP_ID_DUOKU = "APP_ID_DUOKU";
+	public static final String KEY_APP_KEY_DUOKU = "APP_KEY_DUOKU";
+	public static final String KEY_APP_SCERET_DUOKU = "APP_SCERET_DUOKU";
+	
+	public static final String KEY_APP_ID_MI = "APP_ID_MI";
+	public static final String KEY_APP_KEY_MI = "APP_KEY_MI";
+	
+	public static final String KEY_APP_KEY_ANZHI = "APP_KEY_ANZHI";
+	public static final String KEY_APP_SECRET_ANZHI = "APP_SECRET_ANZHI";
+	
+	public static final String KEY_APP_KEY_OPPO = "APP_KEY_OPPO";
+	public static final String KEY_APP_SECRET_OPPO = "APP_SECRET_OPPO";
+	
+	public static final String KEY_APP_ID_LENOVO = "APP_ID_LENOVO";
+	public static final String KEY_APP_KEY_LENOVO = "APP_KEY_LENOVO";
+	public static final String KEY_APP_SECRET_LENOVO = "APP_SECRET_LENOVO";
+	
+	public static final String KEY_APP_ID_DANGLE = "APP_ID_DANGLE";
+	public static final String KEY_APP_KEY_DANGLE = "APP_KEY_DANGLE";
+	public static final String KEY_MERCHANT_ID_DANGLE = "MERCHANT_ID_DANGLE";
+	public static final String KEY_SERVER_SEQ_NUM_DANGLE = "SERVER_SEQ_NUM_DANGLE";
+	
+	/**
+	 * 
+	 * 功能描述：各个Fragment的tag名称
+	 *
+	 * @author 严峥(yanzheng)
+	 * @date 2014-3-4 下午7:48:10
+	 * 修改历史：(修改人，修改时间，修改原因/内容)
+	 */
+	public static class FragmentTag{
+		//登陆
+		public static final String LOGIN_FRAGMENT_TAG = "LoginFragment";
+		//快速进入
+		public static final String QUICKINTO_FRAGMENT_TAG = "QuickIntoFragment";
+		//商品列表
+		public static final String PAYMENT_FRAGMENT_TAG = "PaymentFragment";
+		//订单记录
+		public static final String PAYMENT_ORDER_FRAGMENT_TAG = "ChargeRecorderFragment";
+		//支付方式
+		public static final String PAYMENT_WAY_FRAGMENT_TAG = "PaymentWayFragment";
+		//邮箱注册
+		public static final String REGISTERFORMAIL_FRAGMENT_TAG = "RegistForMailFragment";
+		//邮箱注册成功
+		public static final String REGIST_FOR_MAIL_COMPLETE = "RegistForMailComplete";
+		//手机注册&邮箱注册
+		public static final String REGISTER_CONTAINER_TAG = "RegistContainer";
+		//畅游协议
+		public static final String CYOUPROTOCOL_FRAGMENT_TAG = "CyouProtocolFragment";
+		//支付宝Wrap支付页面
+		public static final String ALIPAY_WRAP_FRAGMENT = "AlipayWrapFragment";
+		//在线客服
+		public static final String ONLINESERVER_FEEDBACK_FRAGMENT = "MGPOnlineServerFeedbackFragment";
+		//客服工单
+		public static final String ONLINESERVER_WORDORDER_FRAGMENT = "MGPOnlineServerWordOrderFragment";
+	}
+
+	/**
+	 * 
+	 * 功能描述：支付订单状态码
+	 *
+	 * @author 严峥(yanzheng)
+	 * @date 2014-3-4 下午7:49:08
+	 * 修改历史：(修改人，修改时间，修改原因/内容)
+	 */
+	public static class OrderStatus{
+		
+		public static final int PAY_WAIT = 1;//等待支付
+		
+		public static final int PAY_SUCCEED = 2;//成功支付
+		
+		public static final int PAY_IN_PROGRESS = 3;//处理中
+		
+		public static final int PAY_ABNORMAL = 4;//支付异常
+		
+		public static final int PAY_LOSE = 5;//失效
+	}
+	
+	/**
+	 * 
+	 * 功能描述：CYOU登录相关参数
+	 *
+	 * @author 严峥(yanzheng)
+	 * @date 2014-3-4 下午7:51:18
+	 * 修改历史：(修改人，修改时间，修改原因/内容)
+	 */
+	public static class LoginParams{
+		
+		public static final String SP_USER_INFO = "MGP_USER_CONFIG";
+		
+		public static final String USERNAME = "username";
+		
+		public static final String PASSWORD = "password";
+		
+		public static final String LOGINMODE = "loginMode";
+		
+		public static final String LOGINMODE_CYOU = "cyou";
+		
+		public static final String LOGINMODE_QQ = "qq";
+		
+		public static final String LOGINMODE_SINA = "sina";
+		
+		public static final String TYPE_CYOU = "c";
+		
+		public static final String TYPE_QQ = "q";
+		
+		public static final String TYPE_SINA = "w";
+		
+		public static final String UID = "uid";
+		
+		public static final String TOKEN = "token";
+		
+		public static final String EXPIRES_IN = "expires_in";
+		
+		public static final String SP_SWITCH_NAME = "MGP_SWITCH_CONFIG";
+		
+		public static final String ISLANDSCAPE= "isLandscape";
+		
+		public static final String ISWMADD = "isWMAdd";
+	}
+
+	/**
+	 * 
+	 * 功能描述：sina微博登录相关参数
+	 *
+	 * @author 严峥(yanzheng)
+	 * @date 2014-3-4 下午7:51:58
+	 * 修改历史：(修改人，修改时间，修改原因/内容)
+	 */
+	public static class WeiboLoginParams{
+	    /** 
+	     * 当前 DEMO 应用的回调页，第三方应用可以使用自己的回调页。
+	     * 
+	     * <p>
+	     * 注：关于授权回调页对移动客户端应用来说对用户是不可见的，所以定义为何种形式都将不影响，
+	     * 但是没有定义将无法使用 SDK 认证登录。
+	     * 建议使用默认回调页：https://api.weibo.com/oauth2/default.html
+	     * </p>
+	     */
+	    public static final String REDIRECT_URL = "https://api.weibo.com/oauth2/default.html";
+
+	    /**
+	     * Scope 是 OAuth2.0 授权机制中 authorize 接口的一个参数。通过 Scope，平台将开放更多的微博
+	     * 核心功能给开发者，同时也加强用户隐私保护，提升了用户体验，用户在新 OAuth2.0 授权页中有权利
+	     * 选择赋予应用的功能。
+	     * 
+	     * 我们通过新浪微博开放平台-->管理中心-->我的应用-->接口管理处，能看到我们目前已有哪些接口的
+	     * 使用权限，高级权限需要进行申请。
+	     * 
+	     * 目前 Scope 支持传入多个 Scope 权限，用逗号分隔。
+	     * 
+	     * 有关哪些 OpenAPI 需要权限申请，请查看：http://open.weibo.com/wiki/%E5%BE%AE%E5%8D%9AAPI
+	     * 关于 Scope 概念及注意事项，请查看：http://open.weibo.com/wiki/Scope
+	     */
+	    public static final String SCOPE = 
+	            "email,direct_messages_read,direct_messages_write,"
+	            + "friendships_groups_read,friendships_groups_write,statuses_to_me_read,"
+	            + "follow_app_official_microblog," + "invitation_write";
+	    
+	    /** 注销地址（URL） */
+	    public static final String REVOKE_OAUTH_URL = "https://api.weibo.com/oauth2/revokeoauth2";
+	    
+	    /** 通过 code 获取 Token 的 URL */
+	    public static final String OAUTH2_ACCESS_TOKEN_URL = "https://open.weibo.cn/oauth2/access_token";
+	}
+	
+	/**
+	 * 
+	 * 功能描述：QQ登录相关参数
+	 *
+	 * @author 严峥(yanzheng)
+	 * @date 2014-3-4 下午7:52:15
+	 * 修改历史：(修改人，修改时间，修改原因/内容)
+	 */
+	public static class QQLoginParams{
+		
+		/**应用需要用户增量授权权限,由“,”分隔。例如：“get_user_info,add_topic”,全部可写为all*/
+		public static final String SCOPE = "all";
+		
+		/**QQ登陆返回的用户标识,用于唯一标识用户身份（每一个openid与QQ号码对应）。*/
+		public static final String QQOPEN_ID = "openid";
+		
+		/**用户进行应用邀请、分享、支付等基本业务请求的凭据。*/
+		public static final String QQACCESS_TOKEN = "access_token";
+	}
+	
+	/**
+	 * 
+	 * 功能描述：支付宝相关参数
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 *
+	 * @date 2014-1-15
+	 */
+	public static class Alipay{
+		
+	}
+	
+	/**
+	 * 
+	 * 功能描述：订单记录DB相关字段
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 *
+	 * @date 2014-1-17
+	 */
+	public static class ORDER_DB_ABOUT{
+		public static final String TABLE_NAME = "_order";//Table Name
+		public static final String ID = "id";
+		public static final String ORDER_ID = "order_id";//订单号
+		public static final String ORDER_STATE = "order_state";//订单状态，1=支付成功，0=支付失败
+//		public static final String ORDER_LOCAL_STATE = "order_local_state";//订单本地状态，1=支付成功，0=支付失败
+		public static final String ORDER_DATE = "order_date";//生成订单时间
+		public static final int SUCCESS = 1;//订单支付成功
+		public static final int FAILED = 2;//订单支付失败
+		public static final int DEALING = 3;//订单正在处理
+		public static final String GOODS_ID = "goods_id";//商品主键
+		public static final String GOODS_REGISTER_ID = "goods_register_id";//商品注册id
+	}
+	
+	public static class SP_NAME{
+		public static final String SETTING = "setting";
+	}
+}

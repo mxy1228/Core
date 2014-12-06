@@ -1,0 +1,69 @@
+package com.changyou.mgp.sdk.mbi.pay.impl;
+
+import android.content.Context;
+import android.os.Bundle;
+import android.text.TextUtils;
+
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannel;
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannelEntity;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolKeys;
+import com.changyou.mgp.sdk.mbi.config.Contants;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.R;
+import com.changyou.mgp.sdk.mbi.pay.ui.CYMGPaymentActivity;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPlatformConfiguration;
+import com.changyou.mgp.sdk.mbi.utils.MyToast;
+import com.changyou.mgp.sdk.mbi.utils.StringUtils;
+import com.changyou.mgp.sdk.mbi.utils.UserInfoSPUtil;
+
+public class CYMGCyouImpl implements CYMGChannel {
+
+	private CYLog log = CYLog.getInstance();
+
+	@Override
+	public void init(CYMGPlatformConfiguration config) {
+		
+	}
+
+	@Override
+	public void doLogin(CYMGChannelEntity entity) {
+		
+	}
+
+	@Override
+	public void doPay(CYMGChannelEntity entity) {
+		log.d("------MGPCyouImpl:doPay");
+		Context context = entity.getmContext();
+		if(context == null){
+			log.e("context is null");
+			return;
+		}
+		Bundle bundle=entity.getBundle();
+		if (TextUtils.isEmpty(bundle.getString(CYMGProtocolKeys.UID)) || bundle.getString(CYMGProtocolKeys.UID) == null) {
+			throw new IllegalAccessError("uid is null");
+		}
+		if (!StringUtils.isEmpty(bundle.getString(CYMGProtocolKeys.UID))) {
+			((CYMGPaymentActivity)context).changeFragment(Contants.FragmentTag.PAYMENT_WAY_FRAGMENT_TAG, Contants.FragmentTag.PAYMENT_WAY_FRAGMENT_TAG, bundle);
+		} else {
+			MyToast.showToast(context,context.getResources().getString(R.string.mgp_not_login));
+//			Intent intent = new Intent(context, CYMGLoginActivity.class);
+//			context.startActivity(intent);
+		}
+	}
+
+	@Override
+	public void doLogout(CYMGChannelEntity entity) {
+	}
+	
+	@Override
+	public void doDestroy(CYMGChannelEntity entity) {
+		log.d("------MGPCyouImpl:doDestroy");
+	}
+	
+	@Override
+	public void doCustomerService(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+		
+	}
+	
+}

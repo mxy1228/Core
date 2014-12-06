@@ -1,0 +1,492 @@
+package com.changyou.mgp.sdk.mbi.platform;
+
+import java.io.ByteArrayOutputStream;
+
+import org.json.JSONObject;
+
+import android.app.Activity;
+import android.content.Context;
+import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.Bitmap.CompressFormat;
+import android.os.Bundle;
+import android.text.TextUtils;
+import android.view.View;
+
+import com.changyou.mgp.sdk.mbi.account.id.AccResource;
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannel;
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannelEntity;
+import com.changyou.mgp.sdk.mbi.common.CYMGCallback;
+import com.changyou.mgp.sdk.mbi.config.CYMGPrompt;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolConfig;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolKeys;
+import com.changyou.mgp.sdk.mbi.config.Params;
+import com.changyou.mgp.sdk.mbi.config.SDKConfig;
+import com.changyou.mgp.sdk.mbi.cts.ui.CYMGCustomerServiceActivity;
+import com.changyou.mgp.sdk.mbi.entity.GoodsItem;
+import com.changyou.mgp.sdk.mbi.image.MGPImageLoader;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.mbi.manager.CMBILogManager;
+import com.changyou.mgp.sdk.mbi.mbi.manager.MBILogManager;
+import com.changyou.mgp.sdk.mbi.mbi.manager.MBIServiceManager;
+import com.changyou.mgp.sdk.mbi.pay.ui.CYMGPaymentActivity;
+import com.changyou.mgp.sdk.mbi.utils.MetaDataValueUtils;
+import com.changyou.mgp.sdk.mbi.utils.SettingSPUtil;
+
+/**
+ * 
+ * 功能描述：sdk开放接口
+ * 
+ * @author 严峥(yanzheng)
+ * @date 2013-12-30 上午10:04:46 修改历史：(修改人，修改时间，修改原因/内容)
+ */
+public class CYMGPlatform {
+
+	// 初始化时config为null时报错
+	private static final String ERROR_INIT_CONFIG_NULL = "MGPSDK configuration can not be initialized with null";
+
+	private static CYMGPlatform instance;
+
+	private CYLog log = CYLog.getInstance();
+
+	private CYMGCallback mCYMGCallback;
+	
+	private MBIServiceManager mbiServiceManager;
+	
+	private CYMGChannel channel;
+
+	/**
+	 * 单例模式
+	 */
+	private CYMGPlatform() {
+	}
+
+	public static CYMGPlatform getInstance() {
+		if (instance == null) {
+			instance = new CYMGPlatform();
+		}
+		return instance;
+	}
+	
+	public CYMGCallback getCYMGCallback(){
+		return mCYMGCallback;
+	}
+
+	/**
+	 * 
+	 * 功能描述：初始化方法，接入时最先调用
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param @param config
+	 * @return void
+	 * @date 2014-2-21 下午12:25:51
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public void init(CYMGPlatformConfiguration config,CYMGCallback callback) {
+		if (config == null) {
+			throw new IllegalAccessError(ERROR_INIT_CONFIG_NULL);
+		}
+		if(callback == null){
+			throw new IllegalAccessError("CYMGCallback is null");
+		}
+		try {
+			CMBILogManager.printEventLog(config.getmContext(), "0", "110001", "");
+			this.mCYMGCallback=callback;
+			SettingSPUtil.setIsLandScape(config.getmContext(),
+					config.getmScreenOrientation());
+			MGPImageLoader.getInstance(config.getmContext());
+			//从manifest.xml里根据"CYMG_CHANNEL_ID"来生成
+			Context mContext=config.getmContext();
+			String  channelID=MetaDataValueUtils.getChannelID(mContext);
+			channel=CYMGChannelHelper.getChannel(mContext, channelID);
+		    //初始化渠道
+		    channel.init(config);
+
+		} catch (Exception e) {
+			log.e(e);
+			try {
+				JSONObject obj = new JSONObject();
+				obj.put(CYMGProtocolKeys.STATE_CODE, CYMGPrompt.CODE_EXCEPTION);
+				obj.put(CYMGProtocolKeys.MSG, CYMGPrompt.getContentByCode(CYMGPrompt.CODE_EXCEPTION));
+				callback.onFinished(obj.toString());
+			} catch (Exception e2) {
+				log.e(e2);
+			}
+		}
+
+	}
+
+	/**
+	 * 
+	 * 功能描述：MGPSDK登陆
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param @param context
+	 * @param @param mgpLoginListener
+	 * @return void
+	 * @date 2014-1-3 下午6:54:29
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public void login(Activity activity, boolean isAutoLogin) {
+		try {
+			MBILogManager.printLoginButLog(activity);
+			MBILogManager.printSDKStartLog(activity);
+			CYMGChannelEntity entity=new CYMGChannelEntity();
+			entity.setmContext(activity);
+			Bundle b=new Bundle();
+			b.putBoolean(Params.ISAUTOLOGIN, isAutoLogin);
+			entity.setBundle(b);
+
+			if(channel!=null){
+				this.channel.doLogin(entity);
+			}
+		} catch (Exception e) {
+			log.e(e);
+		}
+	}
+
+	/**
+	 * 
+	 * 功能描述：MGPSDK支付
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param @param context
+	 * @return void
+	 * @date 2013-12-30 上午10:10:03
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public void payment(Activity activity,Bundle bundle) {
+		try {
+			CYMGPayHelper.getInstance().setContext(activity);
+			if(CYMGPayHelper.getInstance().checkNesessaryParam(bundle,activity)
+					&&CYMGPayHelper.getInstance().checkNesessaryImg(activity)){
+				MBILogManager.printRechargeButLog(activity);
+				int type = bundle.getInt(CYMGProtocolKeys.PAYMENT_METHOD);
+				if(type == CYMGProtocolConfig.PAY_WAY){
+					if(MetaDataValueUtils.getChannelID(activity).equals(activity.getString(AccResource.getInstance(activity).mgp_channel_cy))){
+						Intent intent = new Intent(activity,CYMGPaymentActivity.class);
+						intent.putExtras(bundle);
+						activity.startActivity(intent);
+					}else{
+						GoodsItem item=new GoodsItem();
+						item.setGoods_id(bundle.getString(CYMGProtocolKeys.GOODS_ID));
+						item.setGoods_register_id(bundle.getString(CYMGProtocolKeys.GOODS_REGIST_ID));
+						item.setGoods_number(bundle.getString(CYMGProtocolKeys.GOODS_NUMBER));
+						item.setGoods_price(Double.valueOf(bundle.getString(CYMGProtocolKeys.GOODS_PRICE)));
+						item.setGoods_name(bundle.getString(CYMGProtocolKeys.GOODS_NAME));
+						CYMGPayHelper.getInstance().createOrderFromServer(bundle, item);
+					}
+				}else{
+					Intent intent = new Intent(activity,CYMGPaymentActivity.class);
+					//根据CP传进来的Activity获取截屏，当做商品列表的背景传给CYMGPaymentActivity
+					View callerView = activity.getWindow().getDecorView();
+					callerView.setDrawingCacheEnabled(true);
+					callerView.buildDrawingCache();
+					Bitmap b = callerView.getDrawingCache();
+					ByteArrayOutputStream bos = new ByteArrayOutputStream();
+					//对Bitmap进行质量压缩，赞设置为截图质量的2/5，否则会报!!! FAILED BINDER TRANSACTION !!!，这是因为Android进行Intent传递时参数bytes不能超过40K
+					//可参考http://blog.csdn.net/glony/article/details/7596430
+					b.compress(CompressFormat.JPEG, 20, bos);
+					byte[] bytes = bos.toByteArray();
+					//将截图以流的方式进行传递，进入到CYMGPaymentActivity后再对流进行组装
+					bundle.putByteArray("callerCapture", bytes);
+					intent.putExtras(bundle);
+					activity.startActivity(intent);
+				}
+			}else{
+				log.e("checkNessaryParam Error");
+			}
+		} catch (Exception e) {
+			log.e(e);
+		}
+		
+	}
+	
+	/*
+	 * 功能描述：MGPSDK充值记录接口
+	 * @param activity
+	 * @param bundle
+	 */
+	public void chargeRecorder(Activity activity,Bundle bundle) {
+		try {
+			String uid = bundle.getString(CYMGProtocolKeys.UID);
+			if(TextUtils.isEmpty(uid)){
+				log.e("ChargeRecorder,uid is null");
+				return;
+			}
+			Intent intent = new Intent(activity,CYMGPaymentActivity.class);
+			bundle.putInt(CYMGProtocolKeys.PAYMENT_METHOD, CYMGProtocolConfig.PAY_RECORD);
+			intent.putExtras(bundle);
+			activity.startActivity(intent);
+		} catch (Exception e) {
+			log.e(e);
+		}
+		
+	}
+	
+	/**
+	 * 
+	 * 功能描述：启动客服功能
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param @param activity
+	 * @param @param b
+	 * @param @param callBack
+	 * @return void
+	 * @date 2014-3-25 下午3:23:01
+	 *
+	 */
+	public void customerService(Activity activity,Bundle bundle){
+		try {
+			//首先反射出PaymentActivity，若PaymentActivity不存在则在catch中警告接入者检车功能jar包是否包含支付功能
+//			Class<?> ctsActivity = Class.forName("com.changyou.mgp.sdk.mbi.cts.ui.CYMGCustomerServiceActivity");
+			String gameName = bundle.getString(CYMGProtocolKeys.GAME_NAME);
+			String role_id = bundle.getString(CYMGProtocolKeys.ROLE_ID);
+			String serverName = bundle.getString(CYMGProtocolKeys.SERVER_NAME);
+			String uid =bundle.getString(CYMGProtocolKeys.UID);
+			if(TextUtils.isEmpty(gameName)){
+				log.e("customerService,gameName is null");
+				return;
+			}
+			if(TextUtils.isEmpty(role_id)){
+				log.e("customerService,role_id is null");
+				return;
+			}
+			if(TextUtils.isEmpty(uid)){
+				log.e("customerService,uid is null");
+				return;
+			}
+			if(TextUtils.isEmpty(serverName)){
+				log.e("customerService,serverName is null");
+				return;
+			}
+			Intent intent = new Intent(activity,CYMGCustomerServiceActivity.class);
+			intent.putExtras(bundle);
+			activity.startActivity(intent);
+		} catch (Exception e) {
+			log.e(e);
+		}
+		
+	}
+
+	/**
+	 * 
+	 * 功能描述：MGPSDK注销
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param @param context
+	 * @param @param token
+	 * @return void
+	 * @date 2013-12-30 上午10:09:50
+	 * 
+	 *       修改历史 ：(修改人：欧阳海冰，修改时间，修改原因/内容) 增加一个string参数，微博注销的时候才需要传递，其他情况只需传空串
+	 */
+	public void logout(Activity activity,Bundle bundle) {
+
+		try{
+			CYMGChannelEntity entity=new CYMGChannelEntity();
+			entity.setBundle(bundle);
+			entity.setmContext(activity);
+			if(channel!=null){
+				this.channel.doLogout(entity);
+			}
+		}catch(Exception e){
+			log.e(e);
+		}
+	}
+	
+	/**
+	 * 
+	 * 功能描述：重启
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param
+	 * @return void
+	 * @date 2014-2-13 上午10:32:43
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public void onResume(Activity activity) {
+
+		try{
+			CYMGChannelEntity entity=new CYMGChannelEntity();
+			entity.setmContext(activity);
+			if(channel!=null){
+				this.channel.doResume(entity);
+			}
+		}catch(Exception e){
+			log.e(e);
+		}
+	}
+	
+	/**
+	 * 
+	 * 功能描述：暂停
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param
+	 * @return void
+	 * @date 2014-2-13 上午10:32:43
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public void onPause(Activity activity) {
+
+		try{
+			CYMGChannelEntity entity=new CYMGChannelEntity();
+			entity.setmContext(activity);
+			if(channel!=null){
+				this.channel.doPause(entity);
+			}
+		}catch(Exception e){
+			log.e(e);
+		}
+	}
+	
+	/**
+	 * 
+	 * 功能描述：停止
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param
+	 * @return void
+	 * @date 2014-2-13 上午10:32:43
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public void onStop(Activity activity) {
+
+		try{
+			CYMGChannelEntity entity=new CYMGChannelEntity();
+			entity.setmContext(activity);
+			if(channel!=null){
+				this.channel.doStop(entity);
+			}
+		}catch(Exception e){
+			log.e(e);
+		}
+	}
+	
+	/**
+	 * 
+	 * 功能描述：MGPSDK销毁
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param
+	 * @return void
+	 * @date 2014-2-13 上午10:32:43
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public void onDestroy(Activity activity) {
+
+		try{
+			CYMGChannelEntity entity=new CYMGChannelEntity();
+			entity.setmContext(activity);
+			if(channel!=null){
+				this.channel.doDestroy(entity);
+			}
+			if(mbiServiceManager!=null){
+				mbiServiceManager.onDestroy();
+			}
+		}catch(Exception e){
+			log.e(e);
+		}
+	}
+	
+	/**
+	 * 
+	 * 功能描述: 用户中心接口
+	 * @param @param activity
+	 * @param @param callback  
+	 * @return void    返回类型 
+	 * @author 欧阳海冰(OuyangHaibing)
+	 * @date 2014-4-28 下午8:29:04
+	 */
+	public void userCenter(Activity activity) {
+
+		try{
+			CYMGChannelEntity entity=new CYMGChannelEntity();
+			entity.setmContext(activity);
+			if(channel!=null){
+				this.channel.doShowUserCenter(entity);
+			}
+		}catch(Exception e){
+			log.e(e);
+		}
+	}
+	
+	/**
+	 * 
+	 * 功能描述：初始化mbi
+	 *
+	 * @author 严峥(yanzheng)
+	 * @param @param activity
+	 * @param @param logDirName
+	 * @param @param isDebug
+	 * @return void
+	 * @date 2014-6-4 下午6:16:44
+	 *
+	 * 修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public void initMBI(Activity activity,String logDirName,boolean isDebug){
+		try{
+			mbiServiceManager = MBIServiceManager.getInstance();
+			mbiServiceManager.setActivity(activity);
+			mbiServiceManager.setLogDirName(logDirName);
+			mbiServiceManager.setDebug(isDebug);
+			mbiServiceManager.onCreate();
+		}catch(Exception e){
+			log.e(e);
+		}
+	}
+
+	/**
+	 * 显示/隐藏悬浮窗
+	 */
+	public void floatWindow(Activity activity,Bundle bundle){
+		try{
+			CYMGChannelEntity entity = new CYMGChannelEntity();
+			entity.setmContext(activity);
+			entity.setBundle(bundle);
+			if(channel!=null){
+				this.channel.doFloatWindow(entity);
+			}
+		}catch(Exception e){
+			log.e(e);
+		}
+	}
+
+	/**
+	 * 渠道通用扩展接口
+	 * @param activity
+	 * @param bundle
+	 */
+	public void extCommonAPI(Activity activity,Bundle bundle){
+		try{
+			CYMGChannelEntity entity = new CYMGChannelEntity();
+			entity.setmContext(activity);
+			entity.setBundle(bundle);
+			if(channel!=null){
+				this.channel.doExtCommomAPI(entity);
+			}
+		}catch(Exception e){
+			log.e(e);
+		}
+	}
+	
+	/**
+	 * 获取SDK版本号
+	 * 功能描述：
+	 *
+	 * @param @return
+	 * @return String
+	 *
+	 */
+	public String getSDKVersion(){
+		return SDKConfig.VERSION;
+	}
+}

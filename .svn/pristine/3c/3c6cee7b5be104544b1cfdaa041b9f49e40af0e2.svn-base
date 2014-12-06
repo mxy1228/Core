@@ -1,0 +1,462 @@
+package com.changyou.mgp.sdk.mbi.pay.id;
+
+import android.content.Context;
+
+import com.changyou.mgp.sdk.mbi.utils.ResourceUtil;
+
+public class PayResource {
+
+	private static PayResource instance = null;
+	private boolean mHadInit;//标记是否已经初始化
+	private ResourceUtil mResourceUtil; 
+
+	public static PayResource getInstance(Context context) {
+		if (instance == null) {
+			synchronized (PayResource.class) {
+				if (instance == null) {
+					instance = new PayResource(context);
+				}
+			}
+		}
+		return instance;
+	}
+	
+	private PayResource(Context context) {
+		mResourceUtil = ResourceUtil.getInstance(context);
+		if(mHadInit){
+			return;
+		}else{
+			init();
+		}
+	}
+	
+	//id
+	public int mgp_payment_item_1_03_goodsIcon_ImageView ;
+	public int mgp_payment_item_1_03_goodsName_TextView ;
+	public int mgp_payment_item_1_03_goodsDescribe_TextView ;
+	public int mgp_payment_item_1_03_goodsPrice_TextView ;
+	public int mgp_payment_item_1_03_goodsPrice_LinearLayout ;
+	public int mgp_payment_item_1_03_goodsBuy_LinearLayout ;
+	public int mgp_payment_item_1_03_LinearLayout ;
+	public int mgp_payment_item_way_logo_iv ;
+	public int mgp_payment_item_way_name_tv ;
+	public int mgp_payment_item_way_describe_tv ;
+	public int mgp_charge_recorder_item_time_tv ;
+	public int mgp_charge_recorder_item_date_tv ;
+	public int mgp_charge_recorder_item_id_tv2 ;
+	public int mgp_charge_recorder_item_name_tv ;
+	public int mgp_charge_recorder_item_price_tv ;
+	public int mgp_charge_recorder_state_view ;
+	public int mgp_charge_recorder_item_state_dot_view ;
+	public int mgp_charge_recorder_item_triangle_iv ;
+	public int mgp_payment_1_03_null_ll ;
+	public int mgp_payment_1_03_error_ll ;
+	public int mgp_payment_1_03_goodslist_ListView ;
+	public int mgp_title_left_ibtn ;
+	public int mgp_title_right_btn ;
+	public int mgp_title_right_imgbtn ;
+	public int mgp_title_tv ;
+	public int mgp_net_error_refresh_btn_id ;
+	public int mgp_payment_recharge_center_title ;
+	public int mgp_recharge_center_lv ;
+	public int mgp_recharge_center_tip ;
+	public int mgp_payment_way_card_title ;
+	public int mgp_payment_way_card_select_TextView ;
+	public int mgp_payment_way_card_number_EditText ;
+	public int mgp_payment_way_card_Password_EditText ;
+	public int mgp_payment_way_card_pay_Button ;
+	public int mgp_payment_way_card_prompt_LinearLayout ;
+	public int mgp_payment_way_card_prompt2_TextView1 ;
+	public int mgp_payment_way_card_prompt2_TextView2 ;
+	public int mgp_payment_way_card_prompt2_TextView3 ;
+	public int mgp_payment_way_card_prompt2_TextView4 ;
+	public int mgp_payment_way_card_prompt2_TextView5 ;
+	public int mgp_payment_way_card_prompt2_TextView6 ;
+	public int mgp_payment_way_card_prompt2_TextView7 ;
+	public int mgp_payment_way_phone_card_RadioGroup ;
+	public int mgp_payment_way_phone_card_RadioButton1 ;
+	public int mgp_payment_way_phone_card_RadioButton2 ;
+	public int mgp_payment_way_phone_card_RadioButton3 ;
+	public int mgp_payment_way_game_card_RadioGroup ;
+	public int mgp_payment_way_game_card_RadioButton1 ;
+	public int mgp_payment_way_game_card_RadioButton2 ;
+	public int mgp_payment_way_game_card_RadioButton3 ;
+	public int mgp_payment_way_game_card_RadioButton4 ;
+	public int mgp_payment_way_game_card_RadioButton5 ;
+	public int mgp_payment_way_game_card_RadioButton6 ;
+	public int mgp_payment_way_card_prompt_title ;
+	public int mgp_payment_way_card_prompt_btn ;
+	public int mgp_payment_way_card_prompt_TextView1 ;
+	public int mgp_payment_way_card_prompt_TextView2 ;
+	public int mgp_payment_lv;
+	public int payment_title;
+	public int payment_root_layout;
+	public int mgp_alipay_wrap_wv;
+	public int mgp_alipay_wrap_error_ll;
+	public int mgp_charge_recorder_lv;
+	public int mgp_charge_empty_ll;
+	public int mgp_charge_recorder_line;
+	public int mgp_charge_recorder_empty_ll;
+	public int mgp_charge_recorder_empty_iv;
+	public int mgp_charge_recorder_net_error;
+	public int mgp_charge_item_iv;
+	public int mgp_charge_item_type_name;
+	public int mgp_charge_item_type_info;
+	public int pull_fresh_tipstv;
+	public int pull_fresh_timetv;
+	public int pull_fresh_arrowiv;
+	public int pull_fresh_pb;
+	public int drop_down_list_footer_button;
+	public int mgp_tenpay_wv;
+	public int mgp_tenpay_error_ll;
+	public int mgp_payment_way_card_txt_title;
+	public int mgp_payment_mo9_WebView;
+	public int mgp_payment_mo9_NetErrorView;
+	public int mgp_payment_mo9_title;
+	//layout
+	public int mgp_payment_item_1_03 ;
+	public int mgp_payment_1_03 ;
+	public int mgp_payment_recharge_center ;
+	public int mgp_payment_way_card ;
+	public int mgp_payment_way_phone_card_dialog ;
+	public int mgp_payment_way_game_card_dialog ;
+	public int mgp_payment_way_card_prompt ;
+	public int mgp_payment_way;
+	public int mgp_alipay_wrap;
+	public int mgp_charge_recorder;
+	public int mgp_payment_root;
+	public int mgp_charge_recorder_item;
+	public int mgp_payment_way_item;
+	public int mgp_pament_recharge_center_listitem;
+	public int mgp_pull_fresh_head;
+	public int mgp_drop_down_list_footer;
+	public int mgp_tenpay;
+	public int mgp_payment_mo9_wrap;
+	//drawable
+	public int mgp_payment_item_icon ;
+	public int mgp_payment_list_suixingou_item_xbg_1_03 ;
+	public int mgp_payment_list_item_xbg_1_03 ;
+	public int mgp_payment_way_phone_card ;
+	public int mgp_payment_way_game_card ;
+	public int mgp_payment_way_alipay;
+	public int mgp_payment_way_uppay;
+	public int mgp_payment_way_mdo;
+	public int mgp_payment_way_cft;
+	public int mgp_payment_way_mo9;
+	//string
+	public int mgp_loading ;
+	public int mgp_title_tv_payment ;
+	public int mgp_payment_tv_payrecord ;
+	public int mgp_net_error_hint ;
+	public int mgp_payment_charge_center_info2 ;
+	public int mgp_payment_charge_center_mobile ;
+	public int mgp_payment_charge_center_mobile_info ;
+	public int mgp_payment_charge_center_game ;
+	public int mgp_payment_charge_center_game_info ;
+	public int mgp_title_tv_charge_center ;
+	public int mgp_title_tv_payment_way_phone_card ;
+	public int mgp_payment_way_card_select1_tv ;
+	public int mgp_paying ;
+	public int mgp_payment_way_card_dialog_title ;
+	public int mgp_payment_way_card_dialog_message ;
+	public int mgp_payment_way_card_dialog_commit ;
+	public int mgp_payment_way_card_dialog_cannel ;
+	public int mgp_payment_way_card_phone1 ;
+	public int mgp_payment_way_card_phone2 ;
+	public int mgp_payment_way_card_phone3 ;
+	public int mgp_payment_way_card_phone_null_toast ;
+	public int mgp_payment_way_card_number_null_toast ;
+	public int mgp_payment_way_card_password_null_toast ;
+	public int mgp_payment_way_card_number_error_toast ;
+	public int mgp_payment_way_card_password_error_toast ;
+	public int mgp_payment_way_card_prompt2_szx_tv1 ;
+	public int mgp_payment_way_card_prompt2_szx_tv2 ;
+	public int mgp_payment_way_card_prompt2_szx_tv3 ;
+	public int mgp_payment_way_card_prompt2_szx_tv4 ;
+	public int mgp_payment_way_card_prompt2_szx_tv5 ;
+	public int mgp_payment_way_card_prompt2_szx_tv6 ;
+	public int mgp_payment_way_card_prompt2_szx_tv7 ;
+	public int mgp_payment_way_card_prompt2_unicom_tv1 ;
+	public int mgp_payment_way_card_prompt2_unicom_tv2 ;
+	public int mgp_payment_way_card_prompt2_telecom_tv1 ;
+	public int mgp_payment_way_card_prompt2_telecom_tv2 ;
+	public int mgp_payment_way_card_prompt2_telecom_tv3 ;
+	public int mgp_payment_way_card_toast_error ;
+	public int mgp_title_tv_payment_way_game_card ;
+	public int mgp_payment_way_card_select2_tv ;
+	public int mgp_payment_way_card_game1 ;
+	public int mgp_payment_way_card_game2 ;
+	public int mgp_payment_way_card_game3 ;
+	public int mgp_payment_way_card_game4 ;
+	public int mgp_payment_way_card_game5 ;
+	public int mgp_payment_way_card_game6 ;
+	public int mgp_payment_way_card_game_null_toast ;
+	public int mgp_payment_way_card_prompt2_cycard_tv1 ;
+	public int mgp_payment_way_card_prompt2_juncard_tv1 ;
+	public int mgp_payment_way_card_prompt2_juncard_tv2 ;
+	public int mgp_payment_way_card_prompt2_juncard_tv3_1 ;
+	public int mgp_payment_way_card_prompt2_juncard_tv3_2 ;
+	public int mgp_payment_way_card_prompt2_juncard_tv4 ;
+	public int mgp_payment_way_card_prompt2_juncard_tv5 ;
+	public int mgp_channel_cy ;
+	public int mgp_payment_way_card_prompt_tv2 ;
+	public int mgp_payment_way_card_prompt_tv3 ; 
+	public int mgp_title_tv_payment_way;
+	public int mgp_onlineserver_feedback_server_tel;
+	public int mgp_feedback_refresh_nodata_text;
+	public int mgp_drop_down_list_footer_default_text;
+	public int mgp_order_price;
+	public int mgp_order_date;
+	public int mgp_dealing_with_order;
+	public int mgp_validate_order_failed;
+	public int mgp_validate_order_success;
+	public int mgp_drop_down_list_header_pull_text;
+	public int mgp_drop_down_list_header_release_text;
+	public int mgp_drop_down_list_header_loading_text;
+	public int mgp_pull_to_refresh_update_time;
+	public int mgp_drop_down_list_footer_loading_text;
+	public int mgp_pay_success_title;
+	//style
+	public int mgp_onlineserver_custom_dialog_style;
+	//array
+	public int mgp_payment_way_with_mdo;
+	public int mgp_payment_way_without_mdo;
+	public int mgp_day_of_week;
+	public int mgp_order_state_color;
+	public int mgp_order_state_value;
+	public int mgp_pay_result_txt;
+	//color
+	public int mgp_order_item_price;
+	//dimen
+	public int mgp_list_line_margin_left;
+	public int mgp_list_item_triangle_margin_bottom;
+	public int mgp_order_item_state_dot_size;
+	public int mgp_order_item_time_margin_left;
+	public int mgp_order_item_state_dot_big_radius;
+	public int mgp_order_item_state_dot_small_radius;
+	//styleable
+	public int[] mgp_drop_down_list_attr;
+	public int mgp_drop_down_list_attr_isOpenDropDown;
+
+	public void init() {
+		//ID
+		mgp_payment_item_1_03_goodsIcon_ImageView = mResourceUtil.getId("mgp_payment_item_1_03_goodsIcon_ImageView");
+		mgp_payment_item_1_03_goodsName_TextView = mResourceUtil.getId("mgp_payment_item_1_03_goodsName_TextView");
+		mgp_payment_item_1_03_goodsDescribe_TextView = mResourceUtil.getId("mgp_payment_item_1_03_goodsDescribe_TextView");
+		mgp_payment_item_1_03_goodsPrice_TextView = mResourceUtil.getId("mgp_payment_item_1_03_goodsPrice_TextView");
+		mgp_payment_item_1_03_goodsPrice_LinearLayout = mResourceUtil.getId("mgp_payment_item_1_03_goodsPrice_LinearLayout");
+		mgp_payment_item_1_03_goodsBuy_LinearLayout = mResourceUtil.getId("mgp_payment_item_1_03_goodsBuy_LinearLayout");
+		mgp_payment_item_1_03_LinearLayout = mResourceUtil.getId("mgp_payment_item_1_03_LinearLayout");
+		mgp_payment_item_way_logo_iv = mResourceUtil.getId("mgp_payment_item_way_logo_iv");
+		mgp_payment_item_way_name_tv = mResourceUtil.getId("mgp_payment_item_way_name_tv");
+		mgp_payment_item_way_describe_tv = mResourceUtil.getId("mgp_payment_item_way_describe_tv");
+		mgp_charge_recorder_item_time_tv = mResourceUtil.getId("mgp_charge_recorder_item_time_tv");
+		mgp_charge_recorder_item_date_tv = mResourceUtil.getId("mgp_charge_recorder_item_date_tv");
+		mgp_charge_recorder_item_id_tv2 = mResourceUtil.getId("mgp_charge_recorder_item_id_tv2");
+		mgp_charge_recorder_item_name_tv = mResourceUtil.getId("mgp_charge_recorder_item_name_tv");
+		mgp_charge_recorder_item_price_tv = mResourceUtil.getId("mgp_charge_recorder_item_price_tv");
+		mgp_charge_recorder_state_view = mResourceUtil.getId("mgp_charge_recorder_state_view");
+		mgp_charge_recorder_item_state_dot_view = mResourceUtil.getId("mgp_charge_recorder_item_state_dot_view");
+		mgp_charge_recorder_item_triangle_iv = mResourceUtil.getId("mgp_charge_recorder_item_triangle_iv");
+		mgp_payment_1_03_null_ll = mResourceUtil.getId("mgp_payment_1_03_null_ll");
+		mgp_payment_1_03_error_ll = mResourceUtil.getId("mgp_payment_1_03_error_ll");
+		mgp_payment_1_03_goodslist_ListView = mResourceUtil.getId("mgp_payment_1_03_goodslist_ListView");
+		payment_title = mResourceUtil.getId("payment_title");
+		mgp_title_left_ibtn = mResourceUtil.getId("mgp_title_left_ibtn");
+		mgp_title_right_btn = mResourceUtil.getId("mgp_title_right_btn");
+		mgp_title_right_imgbtn = mResourceUtil.getId("mgp_title_right_imgbtn");
+		mgp_title_tv = mResourceUtil.getId("mgp_title_tv");
+		mgp_net_error_refresh_btn_id = mResourceUtil.getId("mgp_net_error_refresh_btn_id");
+		mgp_payment_recharge_center_title = mResourceUtil.getId("mgp_payment_recharge_center_title");
+		mgp_recharge_center_lv = mResourceUtil.getId("mgp_recharge_center_lv");
+		mgp_recharge_center_tip = mResourceUtil.getId("mgp_recharge_center_tip");
+		mgp_payment_way_card_title = mResourceUtil.getId("mgp_payment_way_card_title");
+		mgp_payment_way_card_select_TextView = mResourceUtil.getId("mgp_payment_way_card_select_TextView");
+		mgp_payment_way_card_number_EditText = mResourceUtil.getId("mgp_payment_way_card_number_EditText");
+		mgp_payment_way_card_Password_EditText = mResourceUtil.getId("mgp_payment_way_card_Password_EditText");
+		mgp_payment_way_card_pay_Button = mResourceUtil.getId("mgp_payment_way_card_pay_Button");
+		mgp_payment_way_card_prompt_LinearLayout = mResourceUtil.getId("mgp_payment_way_card_prompt_LinearLayout");
+		mgp_payment_way_card_prompt2_TextView1 = mResourceUtil.getId("mgp_payment_way_card_prompt2_TextView1");
+		mgp_payment_way_card_prompt2_TextView2 = mResourceUtil.getId("mgp_payment_way_card_prompt2_TextView2");
+		mgp_payment_way_card_prompt2_TextView3 = mResourceUtil.getId("mgp_payment_way_card_prompt2_TextView3");
+		mgp_payment_way_card_prompt2_TextView4 = mResourceUtil.getId("mgp_payment_way_card_prompt2_TextView4");
+		mgp_payment_way_card_prompt2_TextView5 = mResourceUtil.getId("mgp_payment_way_card_prompt2_TextView5");
+		mgp_payment_way_card_prompt2_TextView6 = mResourceUtil.getId("mgp_payment_way_card_prompt2_TextView6");
+		mgp_payment_way_card_prompt2_TextView7 = mResourceUtil.getId("mgp_payment_way_card_prompt2_TextView7");
+		mgp_payment_way_phone_card_RadioGroup = mResourceUtil.getId("mgp_payment_way_phone_card_RadioGroup");
+		mgp_payment_way_phone_card_RadioButton1 = mResourceUtil.getId("mgp_payment_way_phone_card_RadioButton1");
+		mgp_payment_way_phone_card_RadioButton2 = mResourceUtil.getId("mgp_payment_way_phone_card_RadioButton2");
+		mgp_payment_way_phone_card_RadioButton3 = mResourceUtil.getId("mgp_payment_way_phone_card_RadioButton3");
+		mgp_payment_way_game_card_RadioGroup = mResourceUtil.getId("mgp_payment_way_game_card_RadioGroup");
+		mgp_payment_way_game_card_RadioButton1 = mResourceUtil.getId("mgp_payment_way_game_card_RadioButton1");
+		mgp_payment_way_game_card_RadioButton2 = mResourceUtil.getId("mgp_payment_way_game_card_RadioButton2");
+		mgp_payment_way_game_card_RadioButton3 = mResourceUtil.getId("mgp_payment_way_game_card_RadioButton3");
+		mgp_payment_way_game_card_RadioButton4 = mResourceUtil.getId("mgp_payment_way_game_card_RadioButton4");
+		mgp_payment_way_game_card_RadioButton5 = mResourceUtil.getId("mgp_payment_way_game_card_RadioButton5");
+		mgp_payment_way_game_card_RadioButton6 = mResourceUtil.getId("mgp_payment_way_game_card_RadioButton6");
+		mgp_payment_way_card_prompt_title = mResourceUtil.getId("mgp_payment_way_card_prompt_title");
+		mgp_payment_way_card_prompt_btn = mResourceUtil.getId("mgp_payment_way_card_prompt_btn");
+		mgp_payment_way_card_prompt_TextView1 = mResourceUtil.getId("mgp_payment_way_card_prompt_TextView1");
+		mgp_payment_way_card_prompt_TextView2 = mResourceUtil.getId("mgp_payment_way_card_prompt_TextView2");
+		mgp_payment_lv = mResourceUtil.getId("mgp_payment_lv");
+		payment_root_layout = mResourceUtil.getId("payment_root_layout");
+		mgp_alipay_wrap_wv = mResourceUtil.getId("mgp_alipay_wrap_wv");
+		mgp_alipay_wrap_error_ll = mResourceUtil.getId("mgp_alipay_wrap_error_ll");
+		mgp_charge_recorder_lv = mResourceUtil.getId("mgp_charge_recorder_lv");
+		mgp_charge_empty_ll = mResourceUtil.getId("mgp_charge_empty_ll");
+		mgp_charge_recorder_line = mResourceUtil.getId("mgp_charge_recorder_line");
+		mgp_charge_recorder_empty_ll = mResourceUtil.getId("mgp_charge_recorder_empty_ll");
+		mgp_charge_recorder_empty_iv = mResourceUtil.getId("mgp_charge_recorder_empty_iv");
+		mgp_charge_recorder_net_error = mResourceUtil.getId("mgp_charge_recorder_net_error");
+		mgp_charge_item_iv = mResourceUtil.getId("mgp_charge_item_iv");
+		mgp_charge_item_type_name = mResourceUtil.getId("mgp_charge_item_type_name");
+		mgp_charge_item_type_info = mResourceUtil.getId("mgp_charge_item_type_info");
+		pull_fresh_tipstv = mResourceUtil.getId("pull_fresh_tipstv");
+		pull_fresh_timetv = mResourceUtil.getId("pull_fresh_timetv");
+		pull_fresh_arrowiv = mResourceUtil.getId("pull_fresh_arrowiv");
+		pull_fresh_pb = mResourceUtil.getId("pull_fresh_pb");
+		drop_down_list_footer_button = mResourceUtil.getId("drop_down_list_footer_button");
+		mgp_tenpay_wv = mResourceUtil.getId("mgp_tenpay_wv");
+		mgp_tenpay_error_ll = mResourceUtil.getId("mgp_tenpay_error_ll");
+		mgp_payment_way_card_txt_title = mResourceUtil.getId("mgp_payment_way_card_txt_title");
+		mgp_payment_mo9_WebView = mResourceUtil.getId("mgp_payment_mo9_WebView");
+		mgp_payment_mo9_NetErrorView = mResourceUtil.getId("mgp_payment_mo9_NetErrorView");
+		mgp_payment_mo9_title = mResourceUtil.getId("mgp_payment_mo9_title");
+		
+		//Drawable
+		mgp_payment_item_icon = mResourceUtil.getDrawableId("mgp_payment_item_icon");
+		mgp_payment_list_suixingou_item_xbg_1_03 = mResourceUtil.getDrawableId("mgp_payment_list_suixingou_item_xbg_1_03");
+		mgp_payment_list_item_xbg_1_03 = mResourceUtil.getDrawableId("mgp_payment_list_item_xbg_1_03");
+		mgp_payment_way_phone_card = mResourceUtil.getDrawableId("mgp_payment_way_phone_card");
+		mgp_payment_way_game_card = mResourceUtil.getDrawableId("mgp_payment_way_game_card");
+		mgp_payment_way_alipay = mResourceUtil.getDrawableId("mgp_payment_way_alipay");
+		mgp_payment_way_uppay = mResourceUtil.getDrawableId("mgp_payment_way_uppay");
+		mgp_payment_way_mdo = mResourceUtil.getDrawableId("mgp_payment_way_mdo");
+		mgp_payment_way_cft = mResourceUtil.getDrawableId("mgp_payment_way_cft");
+		mgp_payment_way_mo9 = mResourceUtil.getDrawableId("mgp_payment_way_mo9");
+		
+		//Layout
+		mgp_payment_item_1_03 = mResourceUtil.getLayoutId("mgp_payment_item_1_03");
+		mgp_payment_1_03 = mResourceUtil.getLayoutId("mgp_payment_1_03");
+		mgp_payment_recharge_center = mResourceUtil.getLayoutId("mgp_payment_recharge_center");
+		mgp_payment_way_card = mResourceUtil.getLayoutId("mgp_payment_way_card");
+		mgp_payment_way_phone_card_dialog = mResourceUtil.getLayoutId("mgp_payment_way_phone_card_dialog");
+		mgp_payment_way_game_card_dialog = mResourceUtil.getLayoutId("mgp_payment_way_game_card_dialog");
+		mgp_payment_way_card_prompt = mResourceUtil.getLayoutId("mgp_payment_way_card_prompt");
+		mgp_payment_way = mResourceUtil.getLayoutId("mgp_payment_way");
+		mgp_alipay_wrap = mResourceUtil.getLayoutId("mgp_alipay_wrap");
+		mgp_charge_recorder = mResourceUtil.getLayoutId("mgp_charge_recorder");
+		mgp_payment_root = mResourceUtil.getLayoutId("mgp_payment_root");
+		mgp_charge_recorder_item = mResourceUtil.getLayoutId("mgp_charge_recorder_item");
+		mgp_payment_way_item = mResourceUtil.getLayoutId("mgp_payment_way_item");
+		mgp_pament_recharge_center_listitem = mResourceUtil.getLayoutId("mgp_pament_recharge_center_listitem");
+		mgp_pull_fresh_head = mResourceUtil.getLayoutId("mgp_pull_fresh_head");
+		mgp_drop_down_list_footer = mResourceUtil.getLayoutId("mgp_drop_down_list_footer");
+		mgp_tenpay = mResourceUtil.getLayoutId("mgp_tenpay");
+		mgp_payment_mo9_wrap = mResourceUtil.getLayoutId("mgp_payment_mo9_wrap");
+		
+		//String
+		mgp_loading = mResourceUtil.getStringId("mgp_loading");
+		mgp_title_tv_payment = mResourceUtil.getStringId("mgp_title_tv_payment");
+		mgp_payment_tv_payrecord = mResourceUtil.getStringId("mgp_payment_tv_payrecord");
+		mgp_net_error_hint = mResourceUtil.getStringId("mgp_net_error_hint");
+		mgp_payment_charge_center_info2 = mResourceUtil.getStringId("mgp_payment_charge_center_info2");
+		mgp_payment_charge_center_mobile = mResourceUtil.getStringId("mgp_payment_charge_center_mobile");
+		mgp_payment_charge_center_mobile_info = mResourceUtil.getStringId("mgp_payment_charge_center_mobile_info");
+		mgp_payment_charge_center_game = mResourceUtil.getStringId("mgp_payment_charge_center_game");
+		mgp_payment_charge_center_game_info = mResourceUtil.getStringId("mgp_payment_charge_center_game_info");
+		mgp_title_tv_charge_center = mResourceUtil.getStringId("mgp_title_tv_charge_center");
+		mgp_title_tv_payment_way_phone_card = mResourceUtil.getStringId("mgp_title_tv_payment_way_phone_card");
+		mgp_payment_way_card_select1_tv = mResourceUtil.getStringId("mgp_payment_way_card_select1_tv");
+		mgp_paying = mResourceUtil.getStringId("mgp_paying");
+		mgp_payment_way_card_dialog_title = mResourceUtil.getStringId("mgp_payment_way_card_dialog_title");
+		mgp_payment_way_card_dialog_message = mResourceUtil.getStringId("mgp_payment_way_card_dialog_message");
+		mgp_payment_way_card_dialog_commit = mResourceUtil.getStringId("mgp_payment_way_card_dialog_commit");
+		mgp_payment_way_card_dialog_cannel = mResourceUtil.getStringId("mgp_payment_way_card_dialog_cannel");
+		mgp_payment_way_card_phone1 = mResourceUtil.getStringId("mgp_payment_way_card_phone1");
+		mgp_payment_way_card_phone2 = mResourceUtil.getStringId("mgp_payment_way_card_phone2");
+		mgp_payment_way_card_phone3 = mResourceUtil.getStringId("mgp_payment_way_card_phone3");
+		mgp_payment_way_card_phone_null_toast = mResourceUtil.getStringId("mgp_payment_way_card_phone_null_toast");
+		mgp_payment_way_card_number_null_toast = mResourceUtil.getStringId("mgp_payment_way_card_number_null_toast");
+		mgp_payment_way_card_password_null_toast = mResourceUtil.getStringId("mgp_payment_way_card_password_null_toast");
+		mgp_payment_way_card_number_error_toast = mResourceUtil.getStringId("mgp_payment_way_card_number_error_toast");
+		mgp_payment_way_card_password_error_toast = mResourceUtil.getStringId("mgp_payment_way_card_password_error_toast");
+		mgp_payment_way_card_prompt2_szx_tv1 = mResourceUtil.getStringId("mgp_payment_way_card_prompt2_szx_tv1");
+		mgp_payment_way_card_prompt2_szx_tv2 = mResourceUtil.getStringId("mgp_payment_way_card_prompt2_szx_tv2");
+		mgp_payment_way_card_prompt2_szx_tv3 = mResourceUtil.getStringId("mgp_payment_way_card_prompt2_szx_tv3");
+		mgp_payment_way_card_prompt2_szx_tv4 = mResourceUtil.getStringId("mgp_payment_way_card_prompt2_szx_tv4");
+		mgp_payment_way_card_prompt2_szx_tv5 = mResourceUtil.getStringId("mgp_payment_way_card_prompt2_szx_tv5");
+		mgp_payment_way_card_prompt2_szx_tv6 = mResourceUtil.getStringId("mgp_payment_way_card_prompt2_szx_tv6");
+		mgp_payment_way_card_prompt2_szx_tv7 = mResourceUtil.getStringId("mgp_payment_way_card_prompt2_szx_tv7");
+		mgp_payment_way_card_prompt2_unicom_tv1 = mResourceUtil.getStringId("mgp_payment_way_card_prompt2_unicom_tv1");
+		mgp_payment_way_card_prompt2_unicom_tv2 = mResourceUtil.getStringId("mgp_payment_way_card_prompt2_unicom_tv2");
+		mgp_payment_way_card_prompt2_telecom_tv1 = mResourceUtil.getStringId("mgp_payment_way_card_prompt2_telecom_tv1");
+		mgp_payment_way_card_prompt2_telecom_tv2 = mResourceUtil.getStringId("mgp_payment_way_card_prompt2_telecom_tv2");
+		mgp_payment_way_card_prompt2_telecom_tv3 = mResourceUtil.getStringId("mgp_payment_way_card_prompt2_telecom_tv3");
+		mgp_payment_way_card_toast_error = mResourceUtil.getStringId("mgp_payment_way_card_toast_error");
+		mgp_title_tv_payment_way_game_card = mResourceUtil.getStringId("mgp_title_tv_payment_way_game_card");
+		mgp_payment_way_card_select2_tv = mResourceUtil.getStringId("mgp_payment_way_card_select2_tv");
+		mgp_payment_way_card_game1 = mResourceUtil.getStringId("mgp_payment_way_card_game1");
+		mgp_payment_way_card_game2 = mResourceUtil.getStringId("mgp_payment_way_card_game2");
+		mgp_payment_way_card_game3 = mResourceUtil.getStringId("mgp_payment_way_card_game3");
+		mgp_payment_way_card_game4 = mResourceUtil.getStringId("mgp_payment_way_card_game4");
+		mgp_payment_way_card_game5 = mResourceUtil.getStringId("mgp_payment_way_card_game5");
+		mgp_payment_way_card_game6 = mResourceUtil.getStringId("mgp_payment_way_card_game6");
+		mgp_payment_way_card_game_null_toast = mResourceUtil.getStringId("mgp_payment_way_card_game_null_toast");
+		mgp_payment_way_card_prompt2_cycard_tv1 = mResourceUtil.getStringId("mgp_payment_way_card_prompt2_cycard_tv1");
+		mgp_payment_way_card_prompt2_juncard_tv1 = mResourceUtil.getStringId("mgp_payment_way_card_prompt2_juncard_tv1");
+		mgp_payment_way_card_prompt2_juncard_tv2 = mResourceUtil.getStringId("mgp_payment_way_card_prompt2_juncard_tv2");
+		mgp_payment_way_card_prompt2_juncard_tv3_1 = mResourceUtil.getStringId("mgp_payment_way_card_prompt2_juncard_tv3_1");
+		mgp_payment_way_card_prompt2_juncard_tv3_2 = mResourceUtil.getStringId("mgp_payment_way_card_prompt2_juncard_tv3_2");
+		mgp_payment_way_card_prompt2_juncard_tv4 = mResourceUtil.getStringId("mgp_payment_way_card_prompt2_juncard_tv4");
+		mgp_payment_way_card_prompt2_juncard_tv5 = mResourceUtil.getStringId("mgp_payment_way_card_prompt2_juncard_tv5");
+		mgp_channel_cy = mResourceUtil.getStringId("mgp_channel_cy");
+		mgp_payment_way_card_prompt_tv2 = mResourceUtil.getStringId("mgp_payment_way_card_prompt_tv2");
+		mgp_payment_way_card_prompt_tv3 = mResourceUtil.getStringId("mgp_payment_way_card_prompt_tv3");
+		mgp_title_tv_payment_way = mResourceUtil.getStringId("mgp_title_tv_payment_way");
+		mgp_onlineserver_feedback_server_tel = mResourceUtil.getStringId("mgp_onlineserver_feedback_server_tel");
+		mgp_feedback_refresh_nodata_text = mResourceUtil.getStringId("mgp_feedback_refresh_nodata_text");
+		mgp_drop_down_list_footer_default_text = mResourceUtil.getStringId("mgp_drop_down_list_footer_default_text");
+		mgp_order_price = mResourceUtil.getStringId("mgp_order_price");
+		mgp_order_date = mResourceUtil.getStringId("mgp_order_date");
+		mgp_dealing_with_order = mResourceUtil.getStringId("mgp_dealing_with_order");
+		mgp_validate_order_failed = mResourceUtil.getStringId("mgp_validate_order_failed");
+		mgp_validate_order_success = mResourceUtil.getStringId("mgp_validate_order_success");
+		mgp_drop_down_list_header_pull_text = mResourceUtil.getStringId("mgp_drop_down_list_header_pull_text");
+		mgp_drop_down_list_header_release_text = mResourceUtil.getStringId("mgp_drop_down_list_header_release_text");
+		mgp_drop_down_list_header_loading_text = mResourceUtil.getStringId("mgp_drop_down_list_header_loading_text");
+		mgp_pull_to_refresh_update_time = mResourceUtil.getStringId("mgp_pull_to_refresh_update_time");
+		mgp_drop_down_list_footer_loading_text = mResourceUtil.getStringId("mgp_drop_down_list_footer_loading_text");
+		mgp_pay_success_title = mResourceUtil.getStringId("mgp_pay_success_title");
+		
+		//Style
+		mgp_onlineserver_custom_dialog_style = mResourceUtil.getStyleId("mgp_onlineserver_custom_dialog_style");
+		
+		//array
+		mgp_payment_way_with_mdo = mResourceUtil.getArrayId("mgp_payment_way_with_mdo");
+		mgp_payment_way_without_mdo = mResourceUtil.getArrayId("mgp_payment_way_without_mdo");
+		mgp_day_of_week = mResourceUtil.getArrayId("mgp_day_of_week");
+		mgp_order_state_color = mResourceUtil.getArrayId("mgp_order_state_color");
+		mgp_order_state_value = mResourceUtil.getArrayId("mgp_order_state_value");
+		mgp_pay_result_txt = mResourceUtil.getArrayId("mgp_pay_result_txt");
+		
+		//color
+		mgp_order_item_price = mResourceUtil.getColorId("mgp_order_item_price");
+		
+		//dimen
+		mgp_list_line_margin_left = mResourceUtil.getDimenId("mgp_list_line_margin_left");
+		mgp_list_item_triangle_margin_bottom = mResourceUtil.getDimenId("mgp_list_item_triangle_margin_bottom");
+		mgp_order_item_state_dot_size = mResourceUtil.getDimenId("mgp_order_item_state_dot_size");
+		mgp_order_item_time_margin_left = mResourceUtil.getDimenId("mgp_order_item_time_margin_left");
+		mgp_order_item_state_dot_big_radius = mResourceUtil.getDimenId("mgp_order_item_state_dot_big_radius");
+		mgp_order_item_state_dot_small_radius = mResourceUtil.getDimenId("mgp_order_item_state_dot_small_radius");
+		
+		//styleable
+		mgp_drop_down_list_attr = mResourceUtil.getStyleableIds("mgp_drop_down_list_attr");
+		mgp_drop_down_list_attr_isOpenDropDown = mResourceUtil.getStyleableId("mgp_drop_down_list_attr_isOpenDropDown");
+				
+		//标记已经做完初始化
+		this.mHadInit = true;
+	}
+
+}

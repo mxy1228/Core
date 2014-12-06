@@ -1,0 +1,136 @@
+package com.changyou.mgp.sdk.mbi.account.ui;
+
+import android.app.Activity;
+import android.content.Context;
+import android.os.Bundle;
+import android.support.v4.app.DialogFragment;
+import android.support.v4.app.FragmentActivity;
+import android.support.v4.app.FragmentTransaction;
+import android.text.Spannable;
+import android.text.SpannableString;
+import android.text.TextUtils;
+import android.text.style.ForegroundColorSpan;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.TextView;
+
+import com.changyou.mgp.sdk.mbi.R;
+import com.changyou.mgp.sdk.mbi.config.Contants;
+import com.changyou.mgp.sdk.mbi.utils.NetWorkUtils;
+
+public class CYMGFindPasswordSetAuthCodeDialogFragment extends BaseDialogFragment implements OnClickListener{
+	
+	private static final int CODE_MIN = 6;
+	
+	private static Activity mActivity;
+	
+	private ImageButton mBackBtn;
+	private ImageButton mCloseBtn;
+	private ImageButton mGetAuthCodeBtn;
+	private TextView mPhoneNumTv;
+	private EditText mAuthCodeET;
+	private Button mCommitBtn;
+	
+	private Bundle mBundle;
+	private String mPhoneNum;
+	
+	private String mAuthCodeStr;
+	
+	@Override
+	public View onCreateView(LayoutInflater inflater, ViewGroup container,
+			Bundle savedInstanceState) {
+		View view=inflater.inflate(R.layout.mgp_sdk_2_0_dialog_find_password_set_authcode, container,false);
+		initView(view);
+		initData();
+		initEvent();
+		return view;
+	}
+	
+
+	@Override
+	protected void initView(View view) {
+		mBackBtn=(ImageButton) view.findViewById(R.id.mgp_sdk_2_0_find_password_set_authcode_back_ImageButton);
+		mCloseBtn=(ImageButton) view.findViewById(R.id.mgp_sdk_2_0_find_password_set_authcode_close_ImageButton);
+		mGetAuthCodeBtn=(ImageButton) view.findViewById(R.id.mgp_sdk_2_0_find_password_set_authcode_get_authcode_ImageButton);
+		mPhoneNumTv=(TextView) view.findViewById(R.id.mgp_sdk_2_0_find_password_set_authcode_num_TextView);
+		mAuthCodeET=(EditText) view.findViewById(R.id.mgp_sdk_2_0_find_password_set_authcode_authcode_EditText);
+		mCommitBtn=(Button) view.findViewById(R.id.mgp_sdk_2_0_find_password_set_authcode_commit_Button);
+	}
+
+	@Override
+	protected void initData() {
+		mBundle=getArguments();
+		mPhoneNum=mBundle.getString("phone");
+		if(!TextUtils.isEmpty(mPhoneNum)){
+			StringBuffer buffer = new StringBuffer();
+			buffer.append(mPhoneNum);
+			buffer.insert(3,' ');
+			buffer.insert(8,' ');
+			String numFormat=mActivity.getString(R.string.mgp_sdk_2_0_register_phone_set_authcode_str_2);
+			String numString=String.format(numFormat, buffer.toString());
+			SpannableString spannableString=setStringColor(mActivity,numString,numString.indexOf("号")+1,numString.indexOf("会"),mActivity.getResources().getColor(R.color.mgp_sdk_2_0_c1));
+			mPhoneNumTv.setText(spannableString);
+		}
+	}
+
+	@Override
+	protected void initEvent() {
+		mBackBtn.setOnClickListener(this);
+		mCloseBtn.setOnClickListener(this);
+		mGetAuthCodeBtn.setOnClickListener(this);
+		mCommitBtn.setOnClickListener(this);
+	}
+	
+	public static CYMGFindPasswordSetAuthCodeDialogFragment newInewInstance(Activity activity,Bundle bundle){
+		mActivity=activity;
+		CYMGFindPasswordSetAuthCodeDialogFragment cymgRegisterPhoneSetAuthCodeDialogFragment=new CYMGFindPasswordSetAuthCodeDialogFragment();
+		cymgRegisterPhoneSetAuthCodeDialogFragment.setArguments(bundle);
+		cymgRegisterPhoneSetAuthCodeDialogFragment.setStyle(DialogFragment.STYLE_NORMAL, R.style.mgp_sdk_2_0_mian_dialog);
+		return cymgRegisterPhoneSetAuthCodeDialogFragment;
+	}
+
+	@Override
+	public void onClick(View v) {
+		if(v.getId()==R.id.mgp_sdk_2_0_find_password_set_authcode_back_ImageButton){
+			dismiss();
+		}else if(v.getId()==R.id.mgp_sdk_2_0_find_password_set_authcode_close_ImageButton){
+			mActivity.finish();
+		}else if(v.getId()==R.id.mgp_sdk_2_0_find_password_set_authcode_get_authcode_ImageButton){
+			
+		}else if(v.getId()==R.id.mgp_sdk_2_0_find_password_set_authcode_commit_Button){
+			if(checkET()){
+				
+			}
+		}
+	}
+	
+	private static SpannableString setStringColor(Context context,String str,int start, int end,int color){
+		SpannableString sstr = new SpannableString(str);
+		ForegroundColorSpan span = new ForegroundColorSpan(color);
+		sstr.setSpan(span, start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+		return sstr;
+	}
+	
+	private boolean checkET(){
+		mAuthCodeStr=mAuthCodeET.getText().toString().trim();
+		if(TextUtils.isEmpty(mAuthCodeStr)){
+			return false;
+		}else if(mAuthCodeStr.length()<CODE_MIN){
+			return false;
+		}else if(!NetWorkUtils.isNetworkConnected(mActivity)){
+			return false;
+		}
+		return true;
+	}
+	
+	public void showDialog() {
+		FragmentTransaction transaction=((FragmentActivity)mActivity).getSupportFragmentManager().beginTransaction();
+		show(transaction, Contants.DialogFragmentTag.FIND_PASSWORD_SET_AUTH_CODE);
+	}
+	
+}

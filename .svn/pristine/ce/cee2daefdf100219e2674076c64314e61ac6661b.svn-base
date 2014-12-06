@@ -1,0 +1,632 @@
+package com.changyou.mgp.sdk.mbi.pay.ui;
+
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.UUID;
+
+import org.apache.http.Header;
+import org.codehaus.jackson.type.TypeReference;
+
+import android.app.Activity;
+import android.content.Context;
+import android.content.res.AssetManager;
+import android.content.res.Configuration;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
+import android.os.Bundle;
+import android.text.TextUtils;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.ViewGroup;
+import android.view.ViewStub;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemClickListener;
+import android.widget.Button;
+import android.widget.GridView;
+import android.widget.ImageButton;
+import android.widget.ImageView;
+import android.widget.ImageView.ScaleType;
+import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
+import android.widget.Toast;
+
+import com.changyou.mgp.sdk.mbi.account.id.AccResource;
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannel;
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannelEntity;
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannelHelper;
+import com.changyou.mgp.sdk.mbi.config.CYMGFunID;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolConfig;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolKeys;
+import com.changyou.mgp.sdk.mbi.config.Contants;
+import com.changyou.mgp.sdk.mbi.config.HttpContants;
+import com.changyou.mgp.sdk.mbi.config.Params;
+import com.changyou.mgp.sdk.mbi.config.SDKConfig;
+import com.changyou.mgp.sdk.mbi.entity.GoodsItem;
+import com.changyou.mgp.sdk.mbi.entity.GoodsList;
+import com.changyou.mgp.sdk.mbi.http.MyAsyncResponseHandler;
+import com.changyou.mgp.sdk.mbi.http.MyHttpClient;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.mbi.manager.CMBILogManager;
+import com.changyou.mgp.sdk.mbi.pay.adapter.GoodsListAdapter;
+import com.changyou.mgp.sdk.mbi.pay.id.PayResource;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPayHelper;
+import com.changyou.mgp.sdk.mbi.ui.base.BaseFragment;
+import com.changyou.mgp.sdk.mbi.ui.widget.WaitingDialog;
+import com.changyou.mgp.sdk.mbi.ui.widget.WaitingDialog.MyDialogDismissListener;
+import com.changyou.mgp.sdk.mbi.utils.JSONUtil;
+import com.changyou.mgp.sdk.mbi.utils.MetaDataValueUtils;
+import com.changyou.mgp.sdk.mbi.utils.MyToast;
+import com.changyou.mgp.sdk.mbi.utils.NetWorkUtils;
+import com.changyou.mgp.sdk.mbi.utils.SettingSPUtil;
+import com.changyou.mgp.sdk.mbi.utils.StringUtils;
+import com.changyou.mgp.sdk.mbi.utils.SystemUtils;
+import com.changyou.mgp.sdk.mbi.utils.UserInfoSPUtil;
+import com.loopj.android.http.RequestParams;
+/**
+ * 
+ * 功能描述：商品列表界
+ *
+ * @author 严峥(yanzheng)
+ * @date 2014-1-20 上午10:27:52
+ * 修改历史�?修改人，修改时间，修改原�?内容)
+ */
+public class CYMGPaymentFragment extends BaseFragment implements OnClickListener{
+	
+	private CYLog log = CYLog.getInstance();
+	
+	private Activity mContext;
+	
+//	private NetErrorView mNetErrorView;
+//	private LinearLayout mNullDataView;
+//	private Button mRefreshBtn;
+//	private ListView mListView;
+	private WaitingDialog mWaitingDialog;
+	private GridView mGV;
+	private RelativeLayout mTopRL;
+//	private ImageButton mADIBtn;
+	private ImageButton mCloseIBtn;
+	private ImageButton mRecoredIBtn;
+	private ViewStub mNetErrorView;
+	private Button mNetErrorRefreshBtn;
+	private ImageView mTopIV;
+	private LinearLayout mContentLL;//该LL只有在横版显示时才用到
+//	private View mTitle;
+//	private ImageButton mServiceImgBtn;
+//	private TextView mTitleTv;
+//	private ImageButton mBackIBtn;
+//	private Button mServiceBtn;
+	
+	private List<GoodsItem> mGoodsList;
+	private GoodsListAdapter mAdapter;
+	private MyHttpClient mGoodsRequestHttp;
+	private MyHttpClient mCreateOrderHttp;
+	
+	private String mUID;
+	private int mGoodsWidthLand;//横向显示时商品图片宽度
+	private boolean mIsLandScape;//是否横线显示
+	private Bundle mBundle;
+	private int mGrayLLHeightLand;//横线显示时灰色半透明框的高度
+	private boolean mCreating;//控制狂点商品频繁创建订单
+	private Bitmap mTopBtm;
+	private Bitmap mCloseBtm;
+	private Bitmap mRecordBtm;
+	private WaitingDialog mDialog;
+//	private Bitmap mADBtm;
+	
+	private boolean isConfigurationChanged = false;
+	
+	@Override
+	public void onAttach(Activity activity) {
+		log.i("onAttach");
+		super.onAttach(activity);
+		this.mContext=activity;
+	}
+
+	@Override
+	public View onCreateView(LayoutInflater inflater, ViewGroup container,
+			Bundle savedInstanceState) {
+		log.i("onCreateView");
+		//读取屏幕显示方向，不同的显示方向在页面初始化时会有不同
+		mIsLandScape = SettingSPUtil.getLandScape(mContext) == CYMGProtocolConfig.LANDSCAPE;
+		View view = null;
+		if(mIsLandScape){
+			view = inflater.inflate(PayResource.getInstance(mContext).mgp_payment_1_08,container,false);
+		}else{
+			view = inflater.inflate(PayResource.getInstance(mContext).mgp_payment_1_08,container,false);
+		}
+		initView(view);
+		initData();
+		initEvent();
+		return view;
+	}
+	
+	@Override
+	public void onConfigurationChanged(Configuration newConfig) {
+		super.onConfigurationChanged(newConfig);
+		log.i("onConfigurationChanged");
+		ViewGroup parentView = (ViewGroup) getView();
+		parentView.removeAllViews();
+		LayoutInflater inflater = (LayoutInflater) mContext.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+		View view = inflater.inflate(PayResource.getInstance(mContext).mgp_payment_1_08,parentView, false);
+		initView(view);
+		parentView.addView(view);
+		initData();
+		initEvent();
+	}
+	
+	@Override
+	public void onResume() {
+		log.i("onResume");
+		super.onResume();
+		CMBILogManager.page_A_Goods(mContext);
+	}
+	
+	@Override
+	public void onDestroy() {
+		log.i("onDestroy");
+		super.onDestroy();
+		WaitingDialog.DestroyWaitingDialog(mWaitingDialog);
+		if(mTopBtm != null){
+			mTopBtm.recycle();
+		}
+		if(mCloseBtm != null){
+			mCloseBtm.recycle();
+		}
+		if(mRecordBtm != null){
+			mRecordBtm.recycle();
+		}
+		if(mGoodsRequestHttp != null){
+			mGoodsRequestHttp.cancelRequests(mContext, true);
+		}
+		if(mCreateOrderHttp != null){
+			mCreateOrderHttp.cancelRequests(mContext, true);
+		}
+//		if(mADBtm != null){
+//			mADBtm.recycle();
+//		}
+	}
+	
+	private void initView(View view){
+		this.mDialog = new WaitingDialog(mContext);
+		this.mWaitingDialog = new WaitingDialog(mContext);
+		this.mWaitingDialog.setMessage(mContext.getString(PayResource.getInstance(mContext).mgp_loading));
+		this.mGV = (GridView)view.findViewById(PayResource.getInstance(mContext).cymg_payment_gv);
+		this.mGV.setSelector(new ColorDrawable(Color.TRANSPARENT));
+		this.mTopRL = (RelativeLayout)view.findViewById(PayResource.getInstance(mContext).cymg_payment_top_rl);
+//		this.mADIBtn = (ImageButton)view.findViewById(PayResource.getInstance(mContext).cymg_payment_adv_ibtn);
+		this.mCloseIBtn = (ImageButton)view.findViewById(PayResource.getInstance(mContext).cymg_payment_close_ibtn);
+		this.mRecoredIBtn = (ImageButton)view.findViewById(PayResource.getInstance(mContext).cymg_payment_record_ibtn);
+		this.mNetErrorView = (ViewStub)view.findViewById(PayResource.getInstance(mContext).cymg_payment_net_error_view);
+		this.mNetErrorView.inflate();
+		this.mNetErrorView.setVisibility(View.GONE);
+		this.mNetErrorRefreshBtn = (Button)view.findViewById(PayResource.getInstance(mContext).mgp_payment_net_error_refresh_btn);
+		this.mTopIV = (ImageView)view.findViewById(PayResource.getInstance(mContext).cymg_payment_top_iv);
+//		if(mIsLandScape){
+		this.mContentLL = (LinearLayout)view.findViewById(PayResource.getInstance(mContext).cymg_payment_content_ll_land);
+//		}
+		int sWidth = SystemUtils.getScreenWidthSize(mContext);
+		int closeIBtnWidth;
+		int closeIBtnHeight;
+		int recordIBtnWidth;
+		int recordIBtnHeight;
+		if(mIsLandScape){
+			//横向显示
+			//计算头部RL的高度
+			int topIVHeight = (int)(sWidth / SDKConfig.PAYMENT_TOP_IV_SCALE_LAND);
+			android.widget.LinearLayout.LayoutParams topParams = new android.widget.LinearLayout.LayoutParams(sWidth, topIVHeight);
+			this.mTopRL.setLayoutParams(topParams);
+			int sHeight = SystemUtils.getScreenHeightSize(mContext);
+			//计算显示商品列表的GV及父控件（灰色半透明）的高度，将根据该高度计算商品图片的高度及广告条的高度
+			mGrayLLHeightLand = sHeight - topIVHeight 
+					- mContext.getResources().getDimensionPixelOffset(PayResource.getInstance(mContext).mgp_payment_gv_margin_land);
+			android.widget.LinearLayout.LayoutParams contentParam = new android.widget.LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, mGrayLLHeightLand);
+			contentParam.leftMargin = mContext.getResources().getDimensionPixelOffset(PayResource.getInstance(mContext).mgp_payment_gv_margin_land);
+			contentParam.rightMargin = mContext.getResources().getDimensionPixelOffset(PayResource.getInstance(mContext).mgp_payment_gv_margin_land);
+			mContentLL.setLayoutParams(contentParam);
+			//计算广告条的高度
+//			int adHeightLand = mGrayLLHeightLand - mContext.getResources().getDimensionPixelOffset(PayResource.getInstance(mContext).mgp_payment_ll_padding_land) * 2;
+//			int adWidthLand = (int)(adHeightLand * SDKConfig.PAYMENT_AD_IBTN_SCALE_LAND);
+//			android.widget.LinearLayout.LayoutParams adParam = new android.widget.LinearLayout.LayoutParams(adWidthLand, adHeightLand);
+//			this.mADIBtn.setLayoutParams(adParam);
+//			this.mADIBtn.setScaleType(ScaleType.FIT_XY);
+			int goodsPicHeight = (int)(mGrayLLHeightLand * SDKConfig.PAYMENT_GOODS_PIC_SCALE_IN_LAND);
+			mGoodsWidthLand = (int)(goodsPicHeight * SDKConfig.PAYMENT_GOODS_PIC_SCALE);
+			closeIBtnWidth = (int)(sWidth * SDKConfig.PAYMENT_CLOSE_IN_SCREEN_SCALE_LAND);
+			closeIBtnHeight = (int)(closeIBtnWidth / SDKConfig.PAYMENT_CLOSE_SCALE);
+			recordIBtnWidth = (int)(sWidth * SDKConfig.PAYMENT_RECORD_IN_SCREEN_SCALE_LAND);
+			recordIBtnHeight = (int)(recordIBtnWidth / SDKConfig.PAYMENT_RECORD_SCALE);
+		}else{
+			//竖向显示
+			//计算头部的RL的高度
+			int topIVHeight = sWidth / SDKConfig.PAYMENT_TOP_IV_SCALE;
+			android.widget.LinearLayout.LayoutParams topParams = new android.widget.LinearLayout.LayoutParams(sWidth, topIVHeight);
+			this.mTopRL.setLayoutParams(topParams);
+			//计算广告条的高度
+//			int adIBtnHeight = (int)(sWidth / SDKConfig.PAYMENT_AD_IBTN_SCALE);
+//			android.widget.LinearLayout.LayoutParams adParams = new android.widget.LinearLayout.LayoutParams(sWidth, adIBtnHeight);
+//			this.mADIBtn.setLayoutParams(adParams);
+//			this.mADIBtn.setScaleType(ScaleType.FIT_XY);
+			closeIBtnWidth = (int)(sWidth * SDKConfig.PAYMENT_CLOSE_IN_SCREEN_SCALE);
+			closeIBtnHeight = (int)(closeIBtnWidth / SDKConfig.PAYMENT_CLOSE_SCALE);
+			recordIBtnWidth = (int)(sWidth * SDKConfig.PAYMENT_RECORD_IN_SCREEN_SCALE);
+			recordIBtnHeight = (int)(recordIBtnWidth / SDKConfig.PAYMENT_RECORD_SCALE);
+		}
+		//根据屏幕宽度计算关闭按钮高度和宽度
+		android.widget.RelativeLayout.LayoutParams closeParam = new android.widget.RelativeLayout.LayoutParams(closeIBtnWidth, closeIBtnHeight);
+		closeParam.addRule(RelativeLayout.ALIGN_PARENT_RIGHT,RelativeLayout.TRUE);
+		closeParam.addRule(RelativeLayout.ALIGN_PARENT_TOP, RelativeLayout.TRUE);
+		this.mCloseIBtn.setScaleType(ScaleType.FIT_XY);
+		this.mCloseIBtn.setLayoutParams(closeParam);
+		//根据屏幕宽度计算充值记录按钮的高度和宽度
+		android.widget.RelativeLayout.LayoutParams recordParam = new android.widget.RelativeLayout.LayoutParams(recordIBtnWidth, recordIBtnHeight);
+		recordParam.addRule(android.widget.RelativeLayout.ALIGN_PARENT_RIGHT, RelativeLayout.TRUE);
+		recordParam.addRule(android.widget.RelativeLayout.ALIGN_PARENT_BOTTOM, RelativeLayout.TRUE);
+		this.mRecoredIBtn.setScaleType(ScaleType.FIT_XY);
+		this.mRecoredIBtn.setLayoutParams(recordParam);
+		initCtsImg();
+//		this.mNullDataView= (LinearLayout) view.findViewById(PayResource.getInstance(mContext).mgp_payment_1_03_null_ll);
+//		this.mNetErrorView = (NetErrorView)view.findViewById(PayResource.getInstance(mContext).mgp_payment_1_03_error_ll);
+//		this.mRefreshBtn = mNetErrorView.getRefreshBtn();
+//		this.mListView=(ListView) view.findViewById(PayResource.getInstance(mContext).mgp_payment_1_03_goodslist_ListView);
+		
+//		this.mTitle = view.findViewById(PayResource.getInstance(mContext).payment_title);
+//		this.mBackIBtn = (ImageButton)mTitle.findViewById(PayResource.getInstance(mContext).mgp_title_left_ibtn);
+//		this.mServiceBtn = (Button)mTitle.findViewById(PayResource.getInstance(mContext).mgp_title_right_btn);
+//		this.mServiceImgBtn = (ImageButton)mTitle.findViewById(PayResource.getInstance(mContext).mgp_title_right_imgbtn);
+//		this.mTitleTv = (TextView)mTitle.findViewById(PayResource.getInstance(mContext).mgp_title_tv);
+//		this.mTitleTv.setText(PayResource.getInstance(mContext).mgp_title_tv_payment);
+//		this.mServiceBtn.setText(PayResource.getInstance(mContext).mgp_payment_tv_payrecord);
+		
+		
+	}
+
+	@Override
+	protected void initData() {
+		if(mGoodsList==null){
+			this.mGoodsList=new ArrayList<GoodsItem>();
+		}
+		if(mAdapter==null){
+			this.mAdapter=new GoodsListAdapter(mContext,mGoodsList,mGrayLLHeightLand);
+		}
+//		this.mListView.setAdapter(mAdapter);
+		this.mGV.setAdapter(mAdapter);
+		this.mBundle= getArguments();
+		this.mUID = mBundle.getString(CYMGProtocolKeys.UID);
+		if(TextUtils.isEmpty(this.mUID) || this.mUID == null){
+			log.e("uid is null");
+			showNetErrorView();
+			return;
+		}
+		getPaymentGoodsRequest();
+	}
+
+	@Override
+	protected void initEvent() {
+		this.mCloseIBtn.setOnClickListener(this);
+		this.mRecoredIBtn.setOnClickListener(this);
+		this.mNetErrorRefreshBtn.setOnClickListener(this);
+//		this.mRefreshBtn.setOnClickListener(this);
+		this.mGV.setOnItemClickListener(new OnItemClickListener() {
+//		this.mListView.setOnItemClickListener(new OnItemClickListener() {
+
+			@Override
+			public void onItemClick(AdapterView<?> arg0, View arg1, int arg2,
+					long arg3) {
+				GoodsItem mGoodsItem = mGoodsList.get(arg2);
+				if(mGoodsItem.getType()==3){
+					CMBILogManager.action_A_Goods_Buy(mContext,"01");
+				}else{
+					CMBILogManager.action_A_Goods_Buy(mContext, mGoodsItem.getGoods_price());
+				}
+				if(checkGoodsItem(mGoodsItem)){
+					createOrder(mGoodsItem);
+				}else{
+					MyToast.showDebugToast(mContext, "goodsItem exception");
+				}
+//				mBundle.putInt("type", CYMGPaymentSuccessFragment.GAME_CARD_FAILED);
+//				mBundle.putString("cst_info", "test");
+//				((CYMGPaymentActivity)mContext).changeFragment(Contants.FragmentTag.PAYMENT_SUCCESS_FRAGMENT_TAG, mBundle);
+			}
+		});
+//		this.mBackIBtn.setOnClickListener(this);
+//		this.mServiceBtn.setOnClickListener(this);
+//		this.mServiceImgBtn.setOnClickListener(this);
+	}
+	
+	@Override
+	public void onClick(View v) {
+		if(v.getId() == PayResource.getInstance(mContext).mgp_payment_net_error_refresh_btn){
+			getPaymentGoodsRequest();
+		}else if(v.getId()==PayResource.getInstance(mContext).cymg_payment_record_ibtn){
+			CMBILogManager.action_A_Goods_RechargeRecord(mContext);
+			((CYMGPaymentActivity)mContext).changeFragment(Contants.FragmentTag.PAYMENT_ORDER_FRAGMENT_TAG , null);
+		}else if(v.getId()==PayResource.getInstance(mContext).cymg_payment_close_ibtn){
+			((CYMGPaymentActivity)mContext).goback();
+		}
+		
+	}
+	
+	/**
+	 * 初始化/assets中CP配置的自定义图片资源，并给各个控件设置图片资源
+	 */
+	private void initCtsImg(){
+		Properties pro = new Properties();
+		AssetManager am = mContext.getAssets();
+		try {
+			InputStream is = am.open(CYMGPayHelper.IMG_PRO);
+			pro.load(is);
+			if(mIsLandScape){
+				mTopBtm = BitmapFactory.decodeStream(am.open(pro.getProperty("payment_top_img_land")));
+//				mADBtm = BitmapFactory.decodeStream(am.open(pro.getProperty("payment_ad_img_land")));
+				mCloseBtm = BitmapFactory.decodeStream(am.open(pro.getProperty("payment_close_btn_img_land")));
+				mRecordBtm = BitmapFactory.decodeStream(am.open(pro.getProperty("payment_record_btn_img_land")));
+			}else{
+				mTopBtm = BitmapFactory.decodeStream(am.open(pro.getProperty("payment_top_img")));
+//				mADBtm = BitmapFactory.decodeStream(am.open(pro.getProperty("payment_ad_img")));
+				mCloseBtm = BitmapFactory.decodeStream(am.open(pro.getProperty("payment_close_btn_img")));
+				mRecordBtm = BitmapFactory.decodeStream(am.open(pro.getProperty("payment_record_btn_img")));
+			}
+		} catch (Exception e) {
+			log.e(e);
+		}
+		this.mTopIV.setImageBitmap(mTopBtm);
+		this.mCloseIBtn.setImageBitmap(mCloseBtm);
+		this.mRecoredIBtn.setImageBitmap(mRecordBtm);
+//		this.mADIBtn.setImageBitmap(mADBtm);
+	}
+	
+	/**
+	 * 
+	 * 功能描述：获取商品列�?
+	 *
+	 * @author 徐萌�?xumengyang)
+	 * @param @param context
+	 * @return void
+	 * @date 2014-2-25 下午3:22:40
+	 *
+	 */
+	private void getPaymentGoodsRequest(){
+		if(NetWorkUtils.isNetworkConnected(mContext)){
+			mGoodsRequestHttp = new MyHttpClient(mContext);
+			mGoodsRequestHttp.cancelRequests(mContext, true);
+			RequestParams map = new RequestParams();
+			mGoodsRequestHttp.get(
+					HttpContants.getURL(HttpContants.PAYMENT_GOODS)
+					, map, new MyAsyncResponseHandler(){
+				@Override
+				public void onStart() {
+					if(isDetached()){
+						return;
+					}
+					try {
+						mDialog.setDismissListener(mGoodsRequestHttp.getTimeout(),new MyDialogDismissListener() {
+							
+							@Override
+							public void onTimeOutDismiss() {
+								showNetErrorView();
+							}
+						});
+						mDialog.show();
+					} catch (Exception e) {
+						log.e(e);
+					}
+					
+				}
+		
+				@Override
+				public void onSuccess(int statusCode, String content) {
+					log.d("getPaymentGoodsRequest-----onSuccess,content:"+content);
+					if(isDetached()){
+						return;
+					}
+					try {
+						mDialog.dismiss();
+						if(!StringUtils.isEmpty(content)){
+							GoodsList mList=JSONUtil.getMapper().readValue(JSONUtil.initJsonArrayStr(content), new TypeReference<GoodsList>() {
+							});
+							mGoodsList.clear();
+							mGoodsList.addAll(mList.getData());
+							//只有页面横线显示时才会执行下面的执行逻辑
+							if(mIsLandScape){
+								//首先计算每个商品Item的宽度
+								int goodsItemWidthLand = mGoodsWidthLand 
+										+ mContext.getResources().getDimensionPixelOffset(PayResource.getInstance(mContext).mgp_payment_goods_item_margin)*2;
+								//然后根据数据长度计算GridView的宽度
+								int mGVWidth = goodsItemWidthLand * mList.getData().size();
+								android.widget.LinearLayout.LayoutParams params = new android.widget.LinearLayout.LayoutParams(mGVWidth, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT);
+								mGV.setLayoutParams(params);
+								mGV.setNumColumns(mList.getData().size());
+							}
+							mAdapter.notifyDataSetChanged();
+							if(!mGoodsList.isEmpty()){
+								showGoodsListView();
+							}
+						}else{
+							showNetErrorView();
+						}
+					} catch (Exception e) {
+						log.e(e);
+					}
+				}
+				
+				@Override
+				public void onFailure(int arg0, Header[] arg1, byte[] arg2, Throwable arg3) {
+					if(isDetached()){
+						return;
+					}
+					try {
+						log.e("onFailure,content:"+arg3.getMessage());
+						mDialog.dismiss();
+						showNetErrorView();
+					} catch (Exception e) {
+						log.e(e);
+					}
+				}
+			});
+		}else{
+			showNetErrorView();
+		}
+	}
+	
+	/**
+	 * 
+	 * 功能描述：检测GoodsItem数据的合法�?
+	 *
+	 * @author 徐萌�?xumengyang)
+	 * @param item
+	 * @return boolean
+	 * @date 2014-2-10 下午7:59:28
+	 *
+	 */
+	private boolean checkGoodsItem(GoodsItem item){
+		if(item == null){
+			log.e("item is null");
+			return false;
+		}else if(TextUtils.isEmpty(item.getGoods_name()) || item.getGoods_name() == null){
+			log.e("goodsDescribe is null");
+			return false;
+		}else if(TextUtils.isEmpty(item.getGoods_price()) || item.getGoods_price() == null){
+			log.e("price is null");
+			return false;
+		}else{
+			return true;
+		}
+	}
+	
+	/**
+	 * 
+	 * 功能描述：生成UUID，并将UUID当做OrderID传给服务�?
+	 *
+	 * @author 徐萌�?xumengyang)
+	 * @param @return
+	 * @return String
+	 * @date 2014-2-18 上午11:07:16
+	 *
+	 */
+	private String getOrderID(){
+		return (SDKConfig.DEBUG ? "debug"+UUID.randomUUID().toString().replace("-", "") : UUID.randomUUID().toString().replace("-", "")).substring(0, 31);
+	}
+	
+	/**
+	 * 
+	 * 功能描述：和服务器交互生成订�?
+	 *
+	 * @author 徐萌�?xumengyang)
+	 * @param 
+	 * @return void
+	 * @date 2014-2-17 下午5:26:25
+	 *
+	 */
+	private void createOrder(final GoodsItem item){
+		if(mCreating){
+			return;
+		}
+		mCreating = true;
+		final String orderID = getOrderID();
+		log.d("createOrder : orderID = "+orderID);
+		final String mUID = mBundle.getString(CYMGProtocolKeys.UID);
+		if(TextUtils.isEmpty(mUID) || mUID == null){
+			throw new IllegalAccessError("uid is null");
+		}
+		if(NetWorkUtils.isNetworkConnected(mContext)){
+			log.d("创建订单uid = "+mUID);
+			mCreateOrderHttp = new MyHttpClient(mContext);
+			Map<String,String> params = new HashMap<String, String>();
+			String type = UserInfoSPUtil.getType(mContext);
+			String account_id = UserInfoSPUtil.getUsername(mContext);
+			if(Contants.LoginParams.TYPE_CYOU.equals(type) 
+					&& MetaDataValueUtils.getChannelID(mContext) == mContext.getString(AccResource.getInstance(mContext).mgp_channel_cy)){
+				if(!TextUtils.isEmpty(account_id)&&account_id!=null){
+					params.put("account_id", account_id);
+				}else{
+					params.put("account_id", mUID);
+				}
+			}else{
+				params.put("account_id", mUID);
+			}
+			params.put("user_id", mUID);
+			params.put("goods_id", item.getGoods_id());
+			params.put("goods_register_id",item.getGoods_register_id());
+			params.put("goods_number", item.getGoods_number());
+			params.put("goods_price", String.valueOf(item.getGoods_price()));
+			params.put("order_id", orderID);
+			params.put("push_info", mBundle.getString(CYMGProtocolKeys.PUSH_INFO));
+			params.put("game_channel", MetaDataValueUtils.getCMBIChannelID(mContext));
+			if(mBundle.getString(CYMGProtocolKeys.ROLE_ID) != null){
+				params.put("role_id", mBundle.getString(CYMGProtocolKeys.ROLE_ID));
+			}
+			if(mBundle.getString(CYMGProtocolKeys.GROUP_ID) != null){
+				params.put("group_id", mBundle.getString(CYMGProtocolKeys.GROUP_ID));
+			}
+			mCreateOrderHttp.post(HttpContants.getURL(HttpContants.CREATE_ORDER), params, new MyAsyncResponseHandler(){
+				@Override
+				public void onStart() {
+					WaitingDialog.showWaitingDialog(mWaitingDialog);
+				}
+				
+				@Override
+				public void onSuccess(int statusCode, String content) {
+					log.d("onSuccess:content = "+content);
+					WaitingDialog.DismissWaitingDialog(mWaitingDialog);
+					mBundle.putSerializable(Params.GOODSITEM, item);
+					mBundle.putString(Params.ORDER_ID, orderID);
+					mBundle.putString(Params.UID, mUID);
+					CYMGChannelEntity entity = new CYMGChannelEntity();
+					entity.setBundle(mBundle);
+					entity.setmContext(getActivity());
+					entity.setmScreenOrientation(SettingSPUtil.getLandScape(mContext));
+					try {
+						CYMGChannel channelDo = new CYMGChannelHelper(mContext).getChannel(MetaDataValueUtils.getChannelID(mContext),CYMGFunID.PAY);
+						channelDo.doPay(entity);
+					} catch (Exception e) {
+						log.e(e);
+					}
+					mCreating = false;
+				}
+				
+				@Override
+				public void onFailure(int arg0, Header[] arg1, byte[] arg2, Throwable arg3) {
+					log.e("onFailure:content="+arg3.getMessage());
+					mCreating = false;
+					WaitingDialog.DismissWaitingDialog(mWaitingDialog);
+					Toast.makeText(mContext, PayResource.getInstance(mContext).mgp_net_error_hint, Toast.LENGTH_LONG).show();
+				}
+			});
+		}else{
+			mCreating = false;
+//			showNetErrorView();
+			MyToast.showToast(mContext, mContext.getString(PayResource.getInstance(mContext).mgp_payment_net_error_toast_txt));
+		}
+	}
+	
+	private void showGoodsListView(){
+		this.mNetErrorView.setVisibility(View.GONE);
+		this.mGV.setVisibility(View.VISIBLE);
+		if(mContentLL != null){
+			this.mContentLL.setVisibility(View.VISIBLE);
+		}
+	}
+	
+	private void showNetErrorView(){
+		this.mNetErrorView.setVisibility(View.VISIBLE);
+		this.mGV.setVisibility(View.GONE);
+		if(mContentLL != null){
+			this.mContentLL.setVisibility(View.GONE);
+		}
+	}
+	
+	@Override
+	public void onDestroyView() {
+		super.onDestroyView();
+	}
+	
+	
+	
+}

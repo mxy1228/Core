@@ -1,0 +1,53 @@
+buildscript{
+	repositories{
+		mavenCentral();
+	}
+	dependencies{
+		classpath 'com.android.tools.build:gradle:0.10.+'
+	}
+	tasks.withType(Compile){
+		options.encoding = "UTF-8"
+	}
+}
+
+apply plugin:'android-library'
+
+dependencies{
+	compile project(':channels:cy:CYMGChannelCY')
+	compile project(':channels:cy:CYMGPayLibrary')
+}
+
+android{
+	compileSdkVersion 17
+	buildToolsVersion "19.0.1"
+	enforceUniquePackageName=false
+
+	lintOptions{
+		abortOnError false
+	}
+
+	sourceSets{
+		main{
+			manifest.srcFile 'AndroidManifest.xml'
+			java.srcDirs = ['src']
+		}
+	}
+}
+
+
+build.doLast{
+	
+	copy{
+		from('build/bundles/release/')
+		into('../output')
+		include('classes.jar')
+		rename('classes.jar','core.jar')
+	}
+	
+	copy{
+		from('build/bundles/release/')
+		into('../channels/cy/CYMGChannelCY/libs')
+		include('classes.jar')
+		rename('classes.jar','core.jar')
+	}
+}

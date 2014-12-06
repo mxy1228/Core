@@ -1,0 +1,140 @@
+package com.changyou.mgp.sdk.mbi.config;
+/**
+ * 
+ * 功能描述：SDK提示信息
+ *
+ * @author 徐萌阳(xumengyang)
+ *
+ * @date 2014-2-25
+ */
+public class CYMGPrompt {
+
+	//功能性异常
+	public static final int CODE_EXCEPTION = 99;
+	
+	//支付失败
+	public static final int CODE_PAY_FAILED = 101;
+	//用户取消支付
+	public static final int CODE_PAY_CANCEL = 102;
+	//支付成功
+	public static final int CODE_PAY_SUCCESS = 100;
+	//支付缺少参数
+	public static final int CODE_EMPTY_PARAM = 103;
+	//正在支付
+	public static final int CODE_PAYING = 104;
+	//商品列表资源pro空值
+	public static final int CODE_EMPTY_PRO_KEY = 106;
+	//商品列表资源文件为空
+	public static final int CODE_EMPTY_FILE = 107;
+	
+	//注销失败
+	public static final int CODE_LOGOUT_FAILED = 202;
+	//注销取消
+	public static final int CODE_LOGOUT_CANCEL = 201;
+	//注销成功
+	public static final int CODE_LOGOUT_SUCCESS = 200;
+	//第三方渠道切换账号操作
+	public static final int CODE_CHANGE_USER = 203;
+	//QIHOO进入论坛
+	public static final int CODE_QIHOO_ENTER_FORUM = 204;
+	//QIHOO返回按键或点击右上角X
+	public static final int CODE_QIHOO_CLOSE = 205;
+	
+	
+	//登录成功
+	public static final int CODE_LOGIN_SUCCESS = 300;
+	//登录失败
+	public static final int CODE_LOGIN_FAILED = 301;
+	//token失效，需要重新登录
+	public static final int CODE_NEED_LOGIN = 302;
+	
+	//初始化成功
+	public static final int CODE_INIT_SUCCESS = 400;
+	//初始化失败
+	public static final int CODE_INIT_FAILED = 401;
+	//还未成功初始化
+	public static final int CODE_NOT_INIT = 402;
+
+	//用户中心
+	//退出账号成功
+	public static final int CODE_EXIT_ACCOUNT_SUCCESS = 501;
+	//退出账号失败
+	public static final int CODE_EXIT_ACCOUNT_FAILED = 502;
+	
+	//暂停游戏
+	public static final int CODE_EXIT_PAUSE = 601;
+	//退出游戏
+	public static final int CODE_EXIT_GAME = 602;
+	
+	//360渠道防沉迷相关
+	//未查到该用户的防沉迷信息
+	public static final int CODE_ADDICTION_NO_DATA = 701;
+	//防沉迷查询未成年
+	public static final int CODE_ADDICTION_ILLEGAL = 702;
+	//防沉迷查询已成年
+	public static final int CODE_ADDICTION_LEGAL = 703;
+	/**
+	 * 
+	 * 功能描述：根据code获取支付结果提示内容
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param @param code
+	 * @param @return
+	 * @return String
+	 * @date 2014-2-25 下午5:52:48
+	 *
+	 */
+	public static String getContentByCode(int code){
+		switch (code) {
+		case CODE_PAY_CANCEL:
+			return "取消支付";
+		case CODE_PAY_FAILED:
+			return "支付失败";
+		case CODE_PAY_SUCCESS:
+			return "支付成功";
+		case CODE_EMPTY_PARAM:
+			return "缺少参数";
+		case CODE_PAYING:
+			return "正在支付";
+		case CODE_LOGOUT_FAILED:
+			return "注销失败";
+		case CODE_LOGOUT_CANCEL:
+			return "注销取消";
+		case CODE_LOGOUT_SUCCESS:
+			return "注销成功";
+		case CODE_EXIT_ACCOUNT_SUCCESS:
+			return "退出账号成功";
+		case CODE_EXIT_ACCOUNT_FAILED:
+			return "退出账号失败";
+		case CODE_LOGIN_SUCCESS:
+			return "登录成功";
+		case CODE_LOGIN_FAILED:
+			return "登录失败";
+		case CODE_INIT_SUCCESS:
+			return "初始化成功";
+		case CODE_INIT_FAILED:
+			return "初始化失败";
+		case CODE_NOT_INIT:
+			return "还未初始化";
+		case CODE_EXCEPTION:
+			return "功能异常";
+		case CODE_CHANGE_USER:
+			return "切换账号";
+		case CODE_EXIT_PAUSE:
+			return "退出暂停";
+		case CODE_EXIT_GAME:
+			return "退出游戏";
+		case CODE_ADDICTION_NO_DATA:
+			return "防沉迷：未查询到该用户信息";
+		case CODE_ADDICTION_ILLEGAL:
+			return "防沉迷：该用户未成年";
+		case CODE_ADDICTION_LEGAL:
+			return "防沉迷：该用户已成年";
+			
+		default:
+			break;
+		}
+		return "";
+	}
+	
+}

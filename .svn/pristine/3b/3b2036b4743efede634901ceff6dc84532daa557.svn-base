@@ -1,0 +1,429 @@
+package com.changyou.mgp.sdk.mbi.cts.ui;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.codehaus.jackson.type.TypeReference;
+
+import android.app.Activity;
+import android.graphics.drawable.BitmapDrawable;
+import android.os.Bundle;
+import android.support.v4.app.FragmentManager;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemClickListener;
+import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.ImageButton;
+import android.widget.LinearLayout;
+import android.widget.ListView;
+import android.widget.PopupWindow;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolConfig;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolKeys;
+import com.changyou.mgp.sdk.mbi.config.Contants;
+import com.changyou.mgp.sdk.mbi.config.HttpContants;
+import com.changyou.mgp.sdk.mbi.cts.adapter.WordOrderListAdapter;
+import com.changyou.mgp.sdk.mbi.cts.id.CtsResource;
+import com.changyou.mgp.sdk.mbi.entity.CustomerServiceItem;
+import com.changyou.mgp.sdk.mbi.entity.CustomerServiceList;
+import com.changyou.mgp.sdk.mbi.http.MyAsyncResponseHandler;
+import com.changyou.mgp.sdk.mbi.http.MyHttpClient;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.mbi.manager.CMBILogManager;
+import com.changyou.mgp.sdk.mbi.ui.base.BaseFragment;
+import com.changyou.mgp.sdk.mbi.ui.widget.MGPDropDownListView;
+import com.changyou.mgp.sdk.mbi.ui.widget.MGPDropDownListView.OnBottomListener;
+import com.changyou.mgp.sdk.mbi.ui.widget.MGPDropDownListView.OnDropDownListener;
+import com.changyou.mgp.sdk.mbi.ui.widget.WaitingDialog.MyDialogDismissListener;
+import com.changyou.mgp.sdk.mbi.ui.widget.NetErrorView;
+import com.changyou.mgp.sdk.mbi.ui.widget.WaitingDialog;
+import com.changyou.mgp.sdk.mbi.utils.JSONUtil;
+import com.changyou.mgp.sdk.mbi.utils.NetWorkUtils;
+import com.changyou.mgp.sdk.mbi.utils.SettingSPUtil;
+import com.loopj.android.http.RequestParams;
+
+public class CYMGWordOrderQueryFragment extends BaseFragment implements
+		OnClickListener {
+
+	public static final int HAD_REPLY = 2;
+	public static final int NO_REPLY = 0;
+	public static final int ALL = 9;
+	private static final int SHOW_NET_ERROR_VIEW = 1000;
+	private static final int SHOW_NORMAL_VIEW = 1001;
+	private static final int SHOW_EMPTY_VIEW = 1002;
+	
+	private CYLog log = CYLog.getInstance();
+	private Activity mContext;
+	private CtsResource mResource;
+	private MGPDropDownListView mFeedbackLv;
+	private List<CustomerServiceItem> mAllList;
+
+	private WaitingDialog mWaitingDialog;
+	private Bundle mBundle;
+	private WordOrderListAdapter mOrderListAdapter;
+	private NetErrorView mNetErrorView;
+	private LinearLayout mEmptyLl;
+	private Button mRefreshBtn;
+	private TextView mEmptyTv;
+	private int mPageNo = 1;
+	private TextView mDriverTv;
+	private int mState = ALL;
+	private View mTitle;
+	private ImageButton mBackBtn;
+	private Button mFilterBtn;
+	private TextView mTitleTv;
+	private FragmentManager mFragmentManager;
+	private boolean mLoading;	
+	private boolean isAllDataEmpty;//标志全部数据是否为空
+	private int mListSize;
+	@Override
+	public void onAttach(Activity activity) {
+		super.onAttach(activity);
+		this.mContext = activity;
+	}
+
+	@Override
+	public void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		this.mFragmentManager = getFragmentManager();
+		mResource=CtsResource.getInstance(mContext);
+	}
+	
+	@Override
+	public View onCreateView(LayoutInflater inflater, ViewGroup container,
+			Bundle savedInstanceState) {
+		View view = inflater.inflate(mResource.mgp_feedback_query, null);
+		initTitle(view);
+		initView(view);
+		initDialog();
+		initData();
+		initEvent();
+		return view;
+	}
+	
+	@Override
+	public void onResume() {
+		super.onResume();
+	}
+	
+	@Override
+	public void onDestroy() {
+		super.onDestroy();
+		mWaitingDialog.destory();
+	}
+
+	private void initView(View view) {
+		this.mFeedbackLv = (MGPDropDownListView) view.findViewById(mResource.mgp_feedback_query_lv);
+		this.mDriverTv = (TextView)view.findViewById(mResource.mgp_feedback_query_driver_tv);
+		this.mEmptyLl = (LinearLayout) view.findViewById(mResource.mgp_feedback_query_empty_ll);
+		this.mEmptyTv = (TextView) view.findViewById(mResource.mgp_feedback_query_empty_tv);
+		this.mNetErrorView = (NetErrorView) view.findViewById(mResource.mgp_feedback_query_error_layout);
+		this.mRefreshBtn = mNetErrorView.getRefreshBtn();
+	}
+	
+	private void initTitle(View view){
+		this.mTitle = view.findViewById(mResource.mgp_onlineserver_feedback_query_title);
+		this.mBackBtn = (ImageButton)mTitle.findViewById(mResource.mgp_title_left_ibtn);
+		this.mTitleTv = (TextView)mTitle.findViewById(mResource.mgp_title_tv);
+		this.mTitleTv.setText(mContext.getString(mResource.mgp_title_tv_feedback));
+		this.mFilterBtn = (Button)mTitle.findViewById(mResource.mgp_title_right_btn);
+		this.mFilterBtn.setText(mContext.getString(mResource.mgp_title_btn_feedback));
+	}
+	
+	private void initDialog(){
+		this.mWaitingDialog = new WaitingDialog(mContext);
+		this.mWaitingDialog.setMessage(mContext.getString(mResource.mgp_loading));
+	}
+
+	@Override
+	protected void initData() {
+		this.mAllList = new ArrayList<CustomerServiceItem>();
+		this.mOrderListAdapter = new WordOrderListAdapter(mContext, mAllList);
+		this.mFeedbackLv.setAdapter(mOrderListAdapter);
+		getWorkOrderList(ALL,true,true,false);
+	}
+
+	@Override
+	protected void initEvent() {
+		this.mBackBtn.setOnClickListener(this);
+		this.mFilterBtn.setOnClickListener(this);
+		this.mRefreshBtn.setOnClickListener(this);
+		this.mFeedbackLv.setOnBottomListener(new OnBottomListener() {
+			
+			@Override
+			public void onBottomLoad() {
+				mState = ALL;
+				getWorkOrderList(mState,false,false,false);
+			}
+		});
+		
+		this.mFeedbackLv.setOnDropDownListener(new OnDropDownListener() {
+			
+			@Override
+			public void onDropDown() {
+				mPageNo = 1;
+//				mState = ALL;
+				getWorkOrderList(mState,false,true,false);
+			}
+		});
+	}
+
+	@Override
+	public void onClick(View view) {
+		// 网络异常后，点击刷新按钮执行再次请求
+		if (view == mRefreshBtn) {
+			getWorkOrderList(mState,true,false,false);
+		}else if (view == mBackBtn) {
+			log.d("onClick---->>:MGPWordOrderQueryFragment#mBackBtn");
+			if(this.mFragmentManager.getBackStackEntryCount()==0){
+				mContext.finish();
+				return;
+			}else{
+				this.mFragmentManager.popBackStack();
+			}
+		}else if (view == mFilterBtn) {
+			log.d("onClick---->>:MGPWordOrderQueryFragment#mFilterBtn");
+			int y = mFilterBtn.getBottom() * 3 / 2;
+			int x = getActivity().getWindowManager().getDefaultDisplay().getWidth() / 4;
+			showPopupWindow(x, y);
+		}
+	}
+	
+	/**
+	 * 功能描述: 显示筛选PopupWindow
+	 * @author 欧阳海冰(OuyangHaibing)
+	 * @param @param x
+	 * @param @param y 
+	 * @return void
+	 * @throws
+	 */
+	private void showPopupWindow(int x, int y) {
+		LinearLayout popupLayout = (LinearLayout) LayoutInflater.from(mContext).inflate(
+				mResource.mgp_feedback_query_popup_dialog, null);
+		ListView listView = (ListView) popupLayout.findViewById(mResource.mgp_feedback_query_lv_dialog);
+		listView.setAdapter(new ArrayAdapter<String>(mContext,
+				mResource.mgp_feedback_query_popup_item_text, mResource.tv_text, 
+				getResources().getStringArray(mResource.mgp_feedback_query_filter)));
+
+		final PopupWindow popupWindow = new PopupWindow(mContext);
+		popupWindow.setBackgroundDrawable(new BitmapDrawable());
+		
+		if(SettingSPUtil.getLandScape(mContext)==CYMGProtocolConfig.PORTRAIT){//竖屏
+			popupWindow.setWidth(mContext.getWindowManager().getDefaultDisplay().getWidth() * 7/16);
+			popupWindow.setHeight(mContext.getWindowManager().getDefaultDisplay().getHeight() * 170/800);
+		}else {//横屏
+			popupWindow.setWidth(mContext.getWindowManager().getDefaultDisplay().getWidth() * 211/800);
+			popupWindow.setHeight(mContext.getWindowManager().getDefaultDisplay().getHeight() * 183/480);
+		}
+		popupWindow.setOutsideTouchable(true);
+		popupWindow.setFocusable(true);
+		popupWindow.setContentView(popupLayout);
+		// showAsDropDown会把里面的view作为参照物，所以要那满屏幕parent
+		popupWindow.showAsDropDown(mContext.findViewById(mResource.mgp_title_right_btn), x, 10);
+
+		listView.setOnItemClickListener(new OnItemClickListener() {
+
+			@Override
+			public void onItemClick(AdapterView<?> parent, View view, int position,
+					long id) {
+				switch (position) {
+				case 0:
+					changeState(CYMGWordOrderQueryFragment.ALL);
+					break;
+				case 1:
+					changeState(CYMGWordOrderQueryFragment.HAD_REPLY);
+					break;
+				case 2:
+					changeState(CYMGWordOrderQueryFragment.NO_REPLY);
+					break;
+				}
+				
+				if (popupWindow.isShowing()) {
+					popupWindow.dismiss();
+				}
+			}
+		});
+	}
+
+	/**
+	 * 
+	 * 功能描述：筛选订单
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param @param state
+	 * @return void
+	 * @date 2014-3-7 下午4:45:45
+	 *
+	 */
+	public void changeState(int state){
+		mPageNo = 1;
+		this.mState = state;
+		if (!isAllDataEmpty) {
+			getWorkOrderList(mState,true,true,true);
+		}
+	}
+	
+	/**
+	 * 
+	 * 功能描述: 根据传递的参数显示相应的布局
+	 * @author 欧阳海冰(OuyangHaibing)
+	 * @param @param type 
+	 * @return void
+	 * @throws
+	 */
+	private void changeView(int type) {
+		switch (type) {
+		case SHOW_NET_ERROR_VIEW://显示网络异常布局
+			mNetErrorView.setVisibility(View.VISIBLE);
+			mEmptyLl.setVisibility(View.GONE);
+			mFeedbackLv.setVisibility(View.GONE);
+			mDriverTv.setVisibility(View.GONE);
+			break;
+		case SHOW_NORMAL_VIEW://显示正常布局
+			mFeedbackLv.setVisibility(View.VISIBLE);
+			mDriverTv.setVisibility(View.VISIBLE);
+			mNetErrorView.setVisibility(View.GONE);
+			mEmptyLl.setVisibility(View.GONE);
+			break;
+		case SHOW_EMPTY_VIEW://显示数据为空时布局
+			mFeedbackLv.setVisibility(View.GONE);
+			mDriverTv.setVisibility(View.GONE);
+			mFeedbackLv.setVisibility(View.GONE);
+			mNetErrorView.setVisibility(View.GONE);
+			mEmptyLl.setVisibility(View.VISIBLE);
+			break;
+		}
+		
+	}
+
+	/**
+	 * 
+	 * 功能描述：获取工单列表，根据状态码，0：未回复，2：已回复，9：全部
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param @param order_status:工单类型
+	 * @param @param isDialogShow:控制显示进度条
+	 * @param @param refresh：
+	 * @param @param isFromPopClick：控制点击pop item时候不能土司没有更多
+	 * @return void
+	 * @date 2014-2-21 上午9:53:37
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void getWorkOrderList(final int order_status,final boolean isDialogShow,
+			final boolean refresh,final boolean isFromPopClick) {
+		if (NetWorkUtils.isNetworkConnected(mContext)) {
+			if(mLoading){
+				log.e("requestOrderList ing");
+				return;
+			}
+			mBundle = getArguments();
+			final MyHttpClient mHttpClient = new MyHttpClient(mContext);
+			RequestParams map = new RequestParams();
+			String uid = mBundle.getString(CYMGProtocolKeys.UID);
+			map.put("order_status", String.valueOf(order_status));
+			map.put("user_account", uid);
+			map.put("page_no", String.valueOf(mPageNo));
+			map.put("page_size", Contants.PAGE_SIZE);
+			mHttpClient.get(HttpContants.getURL(HttpContants.WORK_ORDER_LIST), map,
+					new MyAsyncResponseHandler() {
+
+				@Override
+				public void onStart() {
+					mLoading = true;
+					if (isDialogShow) {
+						mWaitingDialog.setDismissListener(mHttpClient.getTimeout(), new MyDialogDismissListener() {
+							
+							@Override
+							public void onTimeOutDismiss() {
+								changeView(SHOW_NET_ERROR_VIEW);
+							}
+						});
+						mWaitingDialog.show();
+					}
+				}
+				
+				@Override
+				public void onSuccess(int statusCode, String content) {
+					CYLog.getInstance().d("getWorkOrderList-----onSuccess,content:"+content);
+					mLoading = false;
+					if (isFromPopClick) {
+						//归零
+						mListSize = 0;
+					}else {
+						mListSize = mAllList.size();
+					}
+					if (isDialogShow) {
+						mAllList.clear();
+						mWaitingDialog.dismiss();
+					}
+					try {
+						CustomerServiceList list = JSONUtil.getMapper().readValue(
+								JSONUtil.initJsonArrayStr(content),
+								new TypeReference<CustomerServiceList>() {});
+						if(list.getData() != null){
+							if (list.getData().size()==0 && mListSize == 0) {
+								mOrderListAdapter.notifyDataSetChanged();
+								//显示数据为空时的view
+								changeView(SHOW_EMPTY_VIEW);
+								switch (order_status) {
+								case 9://全部
+									mEmptyTv.setText(mContext.getString(mResource.mgp_no_feedback_text));
+									isAllDataEmpty = true;
+									break;
+								case 2://已答复
+									mEmptyTv.setText(mContext.getString(mResource.mgp_feedback_replyied_empty_text));
+									break;
+								case 0://未答复
+									mEmptyTv.setText(mContext.getString(mResource.mgp_feedback_noreply_empty_text));
+									break;
+								}
+							}else {
+								changeView(SHOW_NORMAL_VIEW);
+								//解决下拉刷新数据叠加
+								if(mPageNo == 1){
+									mAllList.clear();
+								}
+								if (order_status == ALL) {
+									isAllDataEmpty = false;
+								}
+								mAllList.addAll(list.getData());
+								mOrderListAdapter.notifyDataSetChanged();
+								mPageNo++;
+								if (refresh) {
+									mFeedbackLv.onDropDownComplete();
+								}
+								mFeedbackLv.onBottomComplete(list.getData());
+								if (list.getData().size()==0 && !isFromPopClick) {
+									Toast.makeText(mContext, mContext.getString(mResource.mgp_feedback_refresh_nodata_text), 
+											Toast.LENGTH_SHORT).show();
+								}
+							}
+						}else{
+							log.e("mData is null");
+						}
+					} catch (Exception e) {
+						log.e(e);
+					}
+				}
+				
+				@Override
+				public void onFailure(Throwable error, String content) {
+					CYLog.getInstance().d("getWorkOrderList-----onFailure,content:"+content);
+					//显示网络异常
+					changeView(SHOW_NET_ERROR_VIEW);
+					mWaitingDialog.dismiss();
+				}
+			});
+		}else{
+			//显示网络异常
+			changeView(SHOW_NET_ERROR_VIEW);
+		}
+	}
+}

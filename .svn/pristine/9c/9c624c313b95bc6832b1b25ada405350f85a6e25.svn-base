@@ -1,0 +1,182 @@
+package com.changyou.mgp.sdk.mbi.db;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteStatement;
+
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+
+public class CYMGAccDao {
+
+	private CYLog log = CYLog.getInstance();
+	
+	public static final String TABLE_NAME = "acc";//表名
+	
+	public static class Properties{
+		public final static String ID = "_id";//主键，自增
+		public final static String ACC = "acc";//账号
+		public final static String TOKEN = "token";
+		public final static String STATE = "state";//1：已登录/2：注销
+		public final static String TIME_STAMP = "time_stamp";//最后一次成功登录的时间戳
+		public final static String UID = "uid";
+		
+		public final static String ALL = ACC+","+TOKEN+","+STATE+","+TIME_STAMP+","+UID;
+	}
+	
+	private ReadWriteLock mLock;
+	private Lock mReadLock;
+	private Lock mWriteLock;
+	private CYMGDBHelper mHelper;
+	
+	public CYMGAccDao(CYMGDBHelper helper){
+		mLock = new ReentrantReadWriteLock();
+		mReadLock = mLock.readLock();
+		mWriteLock = mLock.writeLock();
+		this.mHelper = helper;
+	}
+	
+	/**
+	 * 根据账号查找是否已经记录
+	 * @param acc
+	 * @return
+	 */
+	public boolean contain(String acc){
+		mReadLock.lock();
+		SQLiteDatabase database = null;
+		SQLiteStatement stm = null;
+		try {
+			database = mHelper.getReadDatabase();
+			String sql = "SELECT COUNT (*) FROM "+TABLE_NAME+" WHERE "+Properties.ACC+" = ?";
+			stm = database.compileStatement(sql);
+			stm.bindString(1, acc);
+			return stm.simpleQueryForLong() != 0;
+		} catch (Exception e) {
+			log.e(e);
+		}finally{
+			mReadLock.unlock();
+			closeSafely(database, stm);
+		}
+		return false;
+	}
+	
+	/**
+	 * 插入一条账号信息
+	 * @return
+	 */
+	public boolean insert(CYMGAccBean acc){
+		if(contain(acc.getmAcc())){
+			return false;
+		}
+		mWriteLock.lock();
+		SQLiteDatabase database = mHelper.getWriteableDatabase();
+		SQLiteStatement stm = null;
+		try {
+			String sql = "INSERT INTO "+TABLE_NAME+" ("+Properties.ALL+") VALUES (?,?,?,?,?)";
+			stm = database.compileStatement(sql);
+			stm.bindString(1, acc.getmAcc());
+			stm.bindString(2, acc.getmToken());
+			stm.bindLong(3, 1);
+			stm.bindLong(4, System.currentTimeMillis());
+			stm.bindString(5, acc.getmUID());
+			return stm.executeInsert() != 0;
+		} catch (Exception e) {
+			log.e(e);
+		}finally{
+			mWriteLock.unlock();
+			closeSafely(database, stm);
+		}
+		return false;
+	}
+	
+	/**
+	 * 根据用户名删除账号表中对应的记录
+	 * @param acc
+	 */
+	public void delete(String acc){
+		mWriteLock.lock();
+		SQLiteDatabase database = mHelper.getWriteableDatabase();
+		SQLiteStatement stm = null;
+		try {
+			String sql = "DELETE FROM "+TABLE_NAME+" WHERE "+Properties.ACC+" = ?";
+			stm = database.compileStatement(sql);
+			stm.bindString(1, acc);
+			stm.execute();
+		} catch (Exception e) {
+			log.e(e);
+		}finally{
+			mWriteLock.unlock();
+			closeSafely(database, stm);
+		}
+	}
+	
+	/**
+	 * 按时间戳查询最近登录过的5个账号
+	 * @return
+	 */
+	public List<CYMGAccBean> selectLastFive(){
+		mReadLock.lock();
+		SQLiteDatabase database = mHelper.getReadDatabase();
+		Cursor c = null;
+		List<CYMGAccBean> list = new ArrayList<CYMGAccBean>();
+		try {
+			String sql = "SELECT "+Properties.ALL+" FROM "+TABLE_NAME+" ORDER BY "+Properties.TIME_STAMP+" DESC LIMIT 5";
+			c = database.rawQuery(sql, null);
+			while(c.moveToNext()){
+				CYMGAccBean bean = new CYMGAccBean();
+				bean.setmAcc(c.getString(0));
+				bean.setmToken(c.getString(1));
+				bean.setmState(c.getInt(2));
+				bean.setmTimeStamp(c.getLong(3));
+				bean.setmUID(c.getString(4));
+				list.add(bean);
+			}
+		} catch (Exception e) {
+			log.e(e);
+		}finally{
+			closeSafely(database, null);
+			mReadLock.unlock();
+		}
+		return list;
+	}
+	
+	/**
+	 * 更改账号状态
+	 * @param state
+	 * @param acc
+	 */
+	public void updateState(int state,CYMGAccBean bean){
+		mWriteLock.lock();
+		SQLiteDatabase database = null;
+		SQLiteStatement stm = null;
+		try {
+			database = mHelper.getWriteableDatabase();
+			String sql = "UPDATE "+TABLE_NAME+" SET "+Properties.STATE+" = ? ,"+Properties.TOKEN+" = ? WHERE "+Properties.ACC+" = ?";
+			stm = database.compileStatement(sql);
+			stm.bindLong(1, state);
+			stm.bindString(2, bean.getmToken());
+			stm.bindString(3, bean.getmAcc());
+			stm.execute();
+		} catch (Exception e) {
+			log.e(e);
+		}finally{
+			closeSafely(database, stm);
+			mWriteLock.unlock();
+		}
+	}
+	
+	private void closeSafely(SQLiteDatabase database,SQLiteStatement stm){
+		if(database != null){
+			database.close();
+		}
+		if(stm != null){
+			stm.close();
+		}
+		
+	}
+}

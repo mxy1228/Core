@@ -1,0 +1,62 @@
+package com.changyou.mgp.sdk.mbi.platform;
+
+import org.json.JSONObject;
+
+import android.os.Bundle;
+
+import com.changyou.mgp.sdk.mbi.channel.CYMGFunHelper;
+import com.changyou.mgp.sdk.mbi.common.CYMGCallBackManager;
+import com.changyou.mgp.sdk.mbi.config.CYMGFunID;
+import com.changyou.mgp.sdk.mbi.config.CYMGPrompt;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolKeys;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+
+public class CYMGUserCenterHelpr implements CYMGFunHelper {
+	
+	private CYLog log = CYLog.getInstance();
+
+	private static CYMGUserCenterHelpr mInstance;
+	
+	private CYMGUserCenterHelpr(){
+		
+	}
+	
+	public static CYMGUserCenterHelpr getInstance(){
+		if(mInstance == null){
+			mInstance = new CYMGUserCenterHelpr();
+		}
+		return mInstance;
+	}
+	
+	/**
+	 * 
+	 * 功能描述：向�?��接口返回注销结果
+	 *
+	 * @author 严峥(yanzheng)
+	 * @param @param uid
+	 * @param @param token
+	 * @param @param appid
+	 * @param @param appkey
+	 * @return void
+	 * @date 2014-3-5 下午6:07:25
+	 *
+	 * 修改历史 �?修改人，修改时间，修改原�?内容)
+	 */ 
+	public void exitAccountResult(int code){
+		try {
+			JSONObject obj = new JSONObject();
+			obj.put(CYMGProtocolKeys.STATE_CODE,code);
+			obj.put(CYMGProtocolKeys.MSG,CYMGPrompt.getContentByCode(code));
+			CYMGCallBackManager.getAndRemoveCallBack(CYMGFunID.USER_CENTER).onFinished(obj.toString());
+		} catch (Exception e) {
+			log.e(e);
+		}
+	}
+
+	@Override
+	public boolean checkNesessaryParam(Bundle b) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+}

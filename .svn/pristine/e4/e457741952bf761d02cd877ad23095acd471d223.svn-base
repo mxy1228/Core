@@ -1,0 +1,322 @@
+package com.changyou.mgp.sdk.mbi.account.id;
+
+import com.changyou.mgp.sdk.mbi.utils.ResourceUtil;
+
+import android.content.Context;
+
+public class AccResource {
+
+	private static AccResource mInstance;
+	private ResourceUtil mResourceUtil;
+	private boolean mHadInit;
+	
+	private AccResource(Context context){
+		this.mResourceUtil = ResourceUtil.getInstance(context);
+		if(mHadInit){
+			return;
+		}else{
+			init(context);
+		}
+	}
+	
+	public static AccResource getInstance(Context context){
+		if(mInstance == null){
+			synchronized (AccResource.class) {
+				if(mInstance == null){
+					mInstance = new AccResource(context);
+				}
+			}
+		}
+		return mInstance;
+	}
+	
+	//id
+	public int mgp_title_tv;
+	public int cyou_protocal_wv;
+	public int cyou_protocal_title;
+	public int mgp_title_left_ibtn;
+	public int mgp_title_right_btn;
+	public int cyou_protocal_error_ll;
+	public int login_root_layout;
+	public int login_close_ImageView;
+	public int login_btn_login;
+	public int login_btn_oneKeyRegister;
+	public int mgp_login_ll_qq_and_sina_LinearLayout;
+	public int mgp_login_img_qq_ImageView;
+	public int mgp_login_img_sina_ImageView;
+	public int mgp_login_line;
+	public int login_et_account;
+	public int login_et_password;
+	public int login_tv_forgetPassword;
+	public int mgp_regist_container_ll;
+	public int mgp_regist_container_title;
+	public int mgp_register_moving_cursor;
+	public int mgp_register_viewpager;
+	public int mgp_register_tel_tv;
+	public int mgp_register_onekey_tv;
+	public int mgp_regist_for_tel_error_ll;
+	public int mgp_net_error_refresh_btn_id;
+	public int mgp_regist_for_mail_complete_tv1;
+	public int mgp_regist_for_mail_complete_title;
+	public int mgp_regist_for_mail_acc_et;
+	public int mgp_regist_for_mail_pas_et;
+	public int mgp_regist_for_mail_regist_btn;
+	public int mgp_regist_for_mail_protocal_tv;
+	public int mgp_regist_for_tel_acc_et;
+	public int mgp_regist_for_tel_validate_et;
+	public int mgp_regist_for_tel_pass_et;
+	public int mgp_regist_for_tel_validate_btn;
+	public int mgp_regist_for_tel_regist_btn;
+	public int mgp_regist_for_tel_protocal_tv;
+	public int quick_into_btn_know;
+	public int quick_into_account_et;
+	public int quick_into_password_et;
+	public int mgp_auto_login_acc_tv;
+	public int mgp_auto_login_isloging_tv;
+	public int mgp_auto_login_isloging_ellipsis_tv;
+	public int mgp_auto_login_switch_acc_tv;
+	public int mgp_auto_login_success_account_tv;
+	public int mgp_login_tv_account_email_list_item;
+	
+	//layout
+	public int mgp_cyou_protocol;
+	public int mgp_login_root;
+	public int mgp_login_108;
+	public int mgp_regist;
+	public int mgp_regist_container;
+	public int mgp_regist_for_mail_complete;
+	public int mgp_regist_for_mail;
+	public int mgp_regist_for_tel;
+	public int mgp_quick_into;
+	public int mgp_auto_login_custom_dialog;
+	public int mgp_login_success_custom_toast;
+	public int mgp_login_account_email_list_item;
+	
+	//drawable
+	public int mgp_moving_cursor;
+	public int mgp_regist_for_tel_validate_btn_xbg;
+	public int mgp_common_net_error_pic;
+	public int mgp_confirm_btn_xbg;
+	
+	//string
+	public int mgp_protocol_title;
+	public int mgp_loading;
+	public int mgp_login_dialog_title;
+	public int mgp_login_dialog_retry;
+	public int mgp_login_dialog_cancel;
+	public int mgp_net_error_hint;
+	public int mgp_login_toast_account_error;
+	public int mgp_login_dialog_login_failure_21002;
+	public int mgp_login_dialog_login_failure_21003;
+	public int mgp_login_dialog_login_failure;
+	public int mgp_login_toast_password_error;
+	public int mgp_regist_password_error;
+	public int mgp_regist_password_not_valide;
+	public int mgp_regist_username_not_valide;
+	public int mgp_title_tv_regist;
+	public int mgp_regist_mail_complete_hint1;
+	public int mgp_regist_protocal;
+	public int mgp_regist_mail_error;
+	public int mgp_regist_password_error2;
+	public int mgp_regist_registing;
+	public int mgp_regist_tel_acc_error;
+	public int mgp_validate_num_not_valide;
+	public int mgp_regist_get_validate;
+	public int mgp_regist_success;
+	public int mgp_please_wait;
+	public int mgp_count_down;
+	public int mgp_regist_validate_had_send;
+	public int mgp_login_dialog_register_failure_22004;
+	public int mgp_login_dialog_register_failure_22005;
+	public int mgp_login_dialog_register_failure;
+	public int mgp_regist_please_enter_username;
+	public int mgp_regist_check_username_length;
+	public int mgp_regist_please_enter_password;
+	public int mgp_regist_check_password_length;
+	public int mgp_regist_net_state_error;
+	public int mgp_channel_cy;
+	public int mgp_login_dialog_logining;
+	public int mgp_channel_360;
+	public int mgp_channel_duoku;
+	public int mgp_channel_huawei;
+	public int mgp_channel_lenovo;
+	public int mgp_channel_UC;
+	public int mgp_channel_Wdj;
+	public int mgp_not_login;
+	public int mgp_net_error_hint1;
+	public int mgp_net_error_hint2;
+	public int mgp_refresh;
+	public int mgp_login_success_info;
+	
+	//color
+	public int mgp_white;
+	public int mgp_sdk_color;
+	public int mgp_refresh_btn_text_xbg;
+	public int mgp_net_error_tv_color1;
+	public int mgp_auto_login_account_color;
+	public int mgp_login_success_info_color;
+	
+	//style
+	public int mgp_auto_loading_dialog;
+	
+	//array
+	public int regist_email;
+	public int email_ends;
+	
+	//dimen
+	public int mgp_text_max;
+	public int mgp_net_error_tv1_margin_top;
+	public int mgp_net_error_tv2_margin_top;
+	public int mgp_text_small;
+	public int mgp_net_error_btn_margin_top;
+	public int mgp_net_error_btn_padding_left_right;
+	public int mgp_net_error_btn_padding_top_bottom;
+	
+	private void init(Context context){
+		//id
+		this.mgp_title_tv = mResourceUtil.getId("mgp_title_tv");
+		cyou_protocal_wv = mResourceUtil.getId("cyou_protocal_wv");
+		cyou_protocal_title = mResourceUtil.getId("cyou_protocal_title");
+		mgp_title_left_ibtn = mResourceUtil.getId("mgp_title_left_ibtn");
+		mgp_title_right_btn = mResourceUtil.getId("mgp_title_right_btn");
+		cyou_protocal_error_ll = mResourceUtil.getId("cyou_protocal_error_ll");
+		login_root_layout = mResourceUtil.getId("login_root_layout");
+		login_close_ImageView = mResourceUtil.getId("login_close_ImageView");
+		login_btn_login = mResourceUtil.getId("login_btn_login");
+		login_btn_oneKeyRegister = mResourceUtil.getId("login_btn_oneKeyRegister");
+		mgp_login_ll_qq_and_sina_LinearLayout = mResourceUtil.getId("mgp_login_ll_qq_and_sina_LinearLayout");
+		mgp_login_img_qq_ImageView = mResourceUtil.getId("mgp_login_img_qq_ImageView");
+		mgp_login_img_sina_ImageView = mResourceUtil.getId("mgp_login_img_sina_ImageView");
+		mgp_login_line = mResourceUtil.getId("mgp_login_line");
+		login_et_account = mResourceUtil.getId("login_et_account");
+		login_et_password = mResourceUtil.getId("login_et_password");
+		login_tv_forgetPassword = mResourceUtil.getId("login_tv_forgetPassword");
+		mgp_regist_container_ll = mResourceUtil.getId("mgp_regist_container_ll");
+		mgp_register_moving_cursor = mResourceUtil.getId("mgp_register_moving_cursor");
+		mgp_register_viewpager = mResourceUtil.getId("mgp_register_viewpager");
+		mgp_register_tel_tv = mResourceUtil.getId("mgp_register_tel_tv");
+		mgp_register_onekey_tv = mResourceUtil.getId("mgp_register_onekey_tv");
+		mgp_regist_for_tel_error_ll = mResourceUtil.getId("mgp_regist_for_tel_error_ll");
+		mgp_net_error_refresh_btn_id = mResourceUtil.getId("mgp_net_error_refresh_btn_id");
+		mgp_regist_for_mail_complete_tv1 = mResourceUtil.getId("mgp_regist_for_mail_complete_tv1");
+		mgp_regist_for_mail_complete_title = mResourceUtil.getId("mgp_regist_for_mail_complete_title");
+		mgp_regist_for_mail_acc_et = mResourceUtil.getId("mgp_regist_for_mail_acc_et");
+		mgp_regist_for_mail_pas_et = mResourceUtil.getId("mgp_regist_for_mail_pas_et");
+		mgp_regist_for_mail_regist_btn = mResourceUtil.getId("mgp_regist_for_mail_regist_btn");
+		mgp_regist_for_mail_protocal_tv = mResourceUtil.getId("mgp_regist_for_mail_protocal_tv");
+		mgp_regist_for_tel_acc_et = mResourceUtil.getId("mgp_regist_for_tel_acc_et");
+		mgp_regist_for_tel_validate_et = mResourceUtil.getId("mgp_regist_for_tel_validate_et");
+		mgp_regist_for_tel_pass_et = mResourceUtil.getId("mgp_regist_for_tel_pass_et");
+		mgp_regist_for_tel_validate_btn = mResourceUtil.getId("mgp_regist_for_tel_validate_btn");
+		mgp_regist_for_tel_regist_btn = mResourceUtil.getId("mgp_regist_for_tel_regist_btn");
+		mgp_regist_for_tel_protocal_tv = mResourceUtil.getId("mgp_regist_for_tel_protocal_tv");
+		quick_into_btn_know = mResourceUtil.getId("quick_into_btn_know");
+		quick_into_account_et = mResourceUtil.getId("quick_into_account_et");
+		quick_into_password_et = mResourceUtil.getId("quick_into_password_et");
+		mgp_auto_login_acc_tv = mResourceUtil.getId("mgp_auto_login_acc_tv");
+		mgp_auto_login_isloging_tv = mResourceUtil.getId("mgp_auto_login_isloging_tv");
+		mgp_auto_login_isloging_ellipsis_tv = mResourceUtil.getId("mgp_auto_login_isloging_ellipsis_tv");
+		mgp_auto_login_switch_acc_tv = mResourceUtil.getId("mgp_auto_login_switch_acc_tv");
+		mgp_auto_login_success_account_tv = mResourceUtil.getId("mgp_auto_login_success_account_tv");
+		mgp_login_tv_account_email_list_item = mResourceUtil.getId("mgp_login_tv_account_email_list_item");
+		mgp_regist_container_title = mResourceUtil.getId("mgp_regist_container_title");
+		
+		//layout
+		mgp_cyou_protocol = mResourceUtil.getLayoutId("mgp_cyou_protocol");
+		mgp_login_root = mResourceUtil.getLayoutId("mgp_login_root");
+		mgp_login_108 = mResourceUtil.getLayoutId("mgp_login_108");
+		mgp_regist = mResourceUtil.getLayoutId("mgp_regist");
+		mgp_regist_for_mail_complete = mResourceUtil.getLayoutId("mgp_regist_for_mail_complete");
+		mgp_regist_for_mail = mResourceUtil.getLayoutId("mgp_regist_for_mail");
+		mgp_regist_for_tel = mResourceUtil.getLayoutId("mgp_regist_for_tel");
+		mgp_quick_into = mResourceUtil.getLayoutId("mgp_quick_into");
+		mgp_auto_login_custom_dialog = mResourceUtil.getLayoutId("mgp_auto_login_custom_dialog");
+		mgp_login_success_custom_toast = mResourceUtil.getLayoutId("mgp_login_success_custom_toast");
+		mgp_login_account_email_list_item = mResourceUtil.getLayoutId("mgp_login_account_email_list_item");
+		mgp_regist_container = mResourceUtil.getLayoutId("mgp_regist_container");
+		
+		//String
+		mgp_protocol_title = mResourceUtil.getStringId("mgp_protocol_title");
+		mgp_loading = mResourceUtil.getStringId("mgp_loading");
+		mgp_login_dialog_title = mResourceUtil.getStringId("mgp_login_dialog_title");
+		mgp_login_dialog_retry = mResourceUtil.getStringId("mgp_login_dialog_retry");
+		mgp_login_dialog_cancel = mResourceUtil.getStringId("mgp_login_dialog_cancel");
+		mgp_net_error_hint = mResourceUtil.getStringId("mgp_net_error_hint");
+		mgp_login_toast_account_error = mResourceUtil.getStringId("mgp_login_toast_account_error");
+		mgp_login_dialog_login_failure_21002 = mResourceUtil.getStringId("mgp_login_dialog_login_failure_21002");
+		mgp_login_dialog_login_failure_21003 = mResourceUtil.getStringId("mgp_login_dialog_login_failure_21003");
+		mgp_login_dialog_login_failure = mResourceUtil.getStringId("mgp_login_dialog_login_failure");
+		mgp_login_toast_password_error = mResourceUtil.getStringId("mgp_login_toast_password_error");
+		mgp_regist_password_error = mResourceUtil.getStringId("mgp_regist_password_error");
+		mgp_regist_password_not_valide = mResourceUtil.getStringId("mgp_regist_password_not_valide");
+		mgp_regist_username_not_valide = mResourceUtil.getStringId("mgp_regist_username_not_valide");
+		mgp_title_tv_regist = mResourceUtil.getStringId("mgp_title_tv_regist");
+		mgp_regist_mail_complete_hint1 = mResourceUtil.getStringId("mgp_regist_mail_complete_hint1");
+		mgp_regist_protocal = mResourceUtil.getStringId("mgp_regist_protocal");
+		mgp_regist_mail_error = mResourceUtil.getStringId("mgp_regist_mail_error");
+		mgp_regist_password_error2 = mResourceUtil.getStringId("mgp_regist_password_error2");
+		mgp_regist_registing = mResourceUtil.getStringId("mgp_regist_registing");
+		mgp_regist_tel_acc_error = mResourceUtil.getStringId("mgp_regist_tel_acc_error");
+		mgp_validate_num_not_valide = mResourceUtil.getStringId("mgp_validate_num_not_valide");
+		mgp_regist_get_validate = mResourceUtil.getStringId("mgp_regist_get_validate");
+		mgp_regist_success = mResourceUtil.getStringId("mgp_regist_success");
+		mgp_please_wait = mResourceUtil.getStringId("mgp_please_wait");
+		mgp_count_down = mResourceUtil.getStringId("mgp_count_down");
+		mgp_regist_validate_had_send = mResourceUtil.getStringId("mgp_regist_validate_had_send");
+		mgp_login_dialog_register_failure_22004 = mResourceUtil.getStringId("mgp_login_dialog_register_failure_22004");
+		mgp_login_dialog_register_failure_22005 = mResourceUtil.getStringId("mgp_login_dialog_register_failure_22005");
+		mgp_login_dialog_register_failure = mResourceUtil.getStringId("mgp_login_dialog_register_failure");
+		mgp_regist_please_enter_username = mResourceUtil.getStringId("mgp_regist_please_enter_username");
+		mgp_regist_check_username_length = mResourceUtil.getStringId("mgp_regist_check_username_length");
+		mgp_regist_please_enter_password = mResourceUtil.getStringId("mgp_regist_please_enter_password");
+		mgp_regist_check_password_length = mResourceUtil.getStringId("mgp_regist_check_password_length");
+		mgp_regist_net_state_error = mResourceUtil.getStringId("mgp_regist_net_state_error");
+		mgp_channel_cy = mResourceUtil.getStringId("mgp_channel_cy");
+		mgp_channel_360 = mResourceUtil.getStringId("mgp_channel_360");
+		mgp_channel_UC = mResourceUtil.getStringId("mgp_channel_uc");
+		mgp_channel_duoku = mResourceUtil.getStringId("mgp_channel_duoku");
+		mgp_channel_huawei = mResourceUtil.getStringId("mgp_channel_huawei");
+		mgp_channel_Wdj = mResourceUtil.getStringId("mgp_channel_wandoujia");
+		mgp_channel_lenovo = mResourceUtil.getStringId("mgp_channel_lenovo");
+		mgp_not_login = mResourceUtil.getStringId("mgp_not_login");
+		mgp_net_error_hint1 = mResourceUtil.getStringId("mgp_net_error_hint1");
+		mgp_net_error_hint2 = mResourceUtil.getStringId("mgp_net_error_hint2");
+		mgp_refresh = mResourceUtil.getStringId("mgp_refresh");
+		mgp_login_success_info = mResourceUtil.getStringId("mgp_login_success_info");
+		mgp_login_dialog_logining = mResourceUtil.getStringId("mgp_login_dialog_logining");
+		
+		//color
+		mgp_white = mResourceUtil.getColorId("mgp_white");
+		mgp_sdk_color = mResourceUtil.getColorId("mgp_sdk_color");
+		mgp_refresh_btn_text_xbg = mResourceUtil.getColorId("mgp_refresh_btn_text_xbg");
+		mgp_net_error_tv_color1 = mResourceUtil.getColorId("mgp_net_error_tv_color1");
+		mgp_auto_login_account_color = mResourceUtil.getColorId("mgp_auto_login_account_color");
+		mgp_login_success_info_color = mResourceUtil.getColorId("mgp_login_success_info_color");
+		
+		
+		//drawable
+		mgp_moving_cursor = mResourceUtil.getDrawableId("mgp_moving_cursor");
+		mgp_regist_for_tel_validate_btn_xbg = mResourceUtil.getDrawableId("mgp_regist_for_tel_validate_btn_xbg");
+		mgp_common_net_error_pic = mResourceUtil.getDrawableId("mgp_common_net_error_pic");
+		mgp_confirm_btn_xbg = mResourceUtil.getDrawableId("mgp_confirm_btn_xbg");
+		
+		//style
+		mgp_auto_loading_dialog = mResourceUtil.getStyleId("mgp_auto_loading_dialog");
+		
+		//array
+		regist_email = mResourceUtil.getArrayId("regist_email");
+		email_ends = mResourceUtil.getArrayId("email_ends");
+		
+		//dimen
+		mgp_text_max = mResourceUtil.getDimenId("mgp_text_max");
+		mgp_net_error_tv1_margin_top = mResourceUtil.getDimenId("mgp_net_error_tv1_margin_top");
+		mgp_net_error_tv2_margin_top = mResourceUtil.getDimenId("mgp_net_error_tv2_margin_top");
+		mgp_text_small = mResourceUtil.getDimenId("mgp_text_small");
+		mgp_net_error_btn_margin_top = mResourceUtil.getDimenId("mgp_net_error_btn_margin_top");
+		mgp_net_error_btn_padding_left_right = mResourceUtil.getDimenId("mgp_net_error_btn_padding_left_right");
+		mgp_net_error_btn_padding_top_bottom = mResourceUtil.getDimenId("mgp_net_error_btn_padding_top_bottom");
+		
+		mHadInit = true;
+	}
+	
+}

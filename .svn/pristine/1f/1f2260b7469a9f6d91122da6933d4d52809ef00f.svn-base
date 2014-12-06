@@ -1,0 +1,176 @@
+package com.changyou.mgp.sdk.mbi.pay.ui;
+
+import android.app.Activity;
+import android.graphics.Color;
+import android.os.Bundle;
+import android.text.Spannable;
+import android.text.SpannableStringBuilder;
+import android.text.TextUtils;
+import android.text.style.ForegroundColorSpan;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.ImageButton;
+import android.widget.TextView;
+
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.pay.id.PayResource;
+import com.changyou.mgp.sdk.mbi.ui.base.BaseFragment;
+import com.changyou.mgp.sdk.mbi.utils.SystemUtils;
+
+public class CYMGPaymentSuccessFragment extends BaseFragment implements OnClickListener{
+
+	private CYLog log = CYLog.getInstance();
+	/**
+	 * 支付状态分类，该Fragment根据不同的支付结果显示不同的文案，结果类型会随着后续迭代而改变
+	 */
+	public static final int FAILED = 0;//第三方支付、游戏卡支付成功
+	public static final int SUCCESS = 1;//第三方支付取消支付或支付失败
+	public static final int CARD_SUCCESS = 2;//易宝卡成功
+	public static final int CARD_FAILED = 3;//易宝卡失败
+	public static final int GAME_CARD_FAILED = 4;//游戏卡失败
+	private static final String TIME = "1～2";//到账时间字符Flag
+	private static final String CTS_PHONE = "022-27695566";//客服电话字符Flag
+	private static final String COLOR = "#3250A0";
+	
+	private Activity mActivity;
+
+	private ImageButton mServiceImgBtn;
+	private Button mRightBtn;
+	private TextView mTitleTv;
+	private ImageButton mBackIBtn;
+	private View mTitle;
+	private TextView mTxtTitleTV;
+	
+	private TextView mPromptTv1,mPromptTv2;
+	private Button mCommitBtn;
+	
+	private Bundle mBundle;
+	
+	@Override
+	public View onCreateView(LayoutInflater inflater, ViewGroup container,
+			Bundle savedInstanceState) {
+		View view = inflater.inflate(PayResource.getInstance(mActivity).mgp_payment_way_card_prompt, container,false);
+		initTitle(view);
+		initView(view);
+		initData();
+		initEvent();
+		return view;
+	}
+	
+	@Override
+	public void onResume() {
+		super.onResume();
+		SystemUtils.dissmisSoftInput(mActivity);
+	}
+	
+	@Override
+	public void onAttach(Activity activity) {
+		super.onAttach(activity);
+		this.mActivity = activity;
+	}
+	
+	@Override
+	public void onDestroy() {
+		super.onDestroy();
+	}
+	
+	private void initTitle(View view){
+		this.mTitle = view.findViewById(PayResource.getInstance(mActivity).mgp_payment_way_card_prompt_title);
+		this.mTitleTv = (TextView)mTitle.findViewById(PayResource.getInstance(mActivity).mgp_title_tv);
+		this.mTitleTv.setText(PayResource.getInstance(mActivity).mgp_pay_success_title);
+		this.mBackIBtn = (ImageButton)mTitle.findViewById(PayResource.getInstance(mActivity).mgp_title_left_ibtn);
+		this.mRightBtn = (Button)mTitle.findViewById(PayResource.getInstance(mActivity).mgp_title_right_btn);
+		this.mServiceImgBtn = (ImageButton)mTitle.findViewById(PayResource.getInstance(mActivity).mgp_title_right_imgbtn);
+		this.mBackIBtn.setVisibility(View.GONE);
+		this.mRightBtn.setVisibility(View.GONE);
+		this.mServiceImgBtn.setVisibility(View.GONE);
+		this.mTxtTitleTV = (TextView)view.findViewById(PayResource.getInstance(mActivity).mgp_payment_way_card_txt_title);
+	}
+	
+	private void initView(View view){
+		this.mCommitBtn=(Button) view.findViewById(PayResource.getInstance(mActivity).mgp_payment_way_card_prompt_btn);
+		this.mPromptTv1=(TextView) view.findViewById(PayResource.getInstance(mActivity).mgp_payment_way_card_prompt_TextView1);
+		this.mPromptTv2=(TextView) view.findViewById(PayResource.getInstance(mActivity).mgp_payment_way_card_prompt_TextView2);
+	}
+	
+	@Override
+	protected void initData() {
+		this.mBundle=getArguments();
+		int type=mBundle.getInt("type");
+		setTextByState(type);
+	}
+
+	@Override
+	protected void initEvent() {
+		this.mCommitBtn.setOnClickListener(this);
+	}
+
+	@Override
+	public void onClick(View v) {
+		if(v.getId()==PayResource.getInstance(mActivity).mgp_payment_way_card_prompt_btn){
+			((CYMGPaymentActivity)mActivity).back2PaymentFragment();
+		}
+	}
+	
+	/**
+	 * 根据支付结果设置文案
+	 * @param state
+	 */
+	private void setTextByState(int state){
+		try {
+			String[] txts = mActivity.getResources().getStringArray(PayResource.getInstance(mActivity).mgp_pay_result_txt);
+			String[] contents = txts[state].split(";");
+			mTxtTitleTV.setText(contents[0]);
+			switch (state) {
+			case SUCCESS:
+				mPromptTv1.setText(contents[1]);
+				mPromptTv2.setText(formatTxt(contents[2], CTS_PHONE, COLOR));
+				break;
+			case FAILED:
+				mPromptTv1.setText(contents[1]);
+				break;
+			case CARD_SUCCESS:
+				mPromptTv1.setText(formatTxt(contents[1], TIME, COLOR));
+				mPromptTv2.setText(formatTxt(contents[2], CTS_PHONE, COLOR));
+				break;
+			case CARD_FAILED:
+				mPromptTv1.setText(contents[1]);
+				break;
+			case GAME_CARD_FAILED:
+				String mCstInfo = mBundle.getString("cst_info");//游戏卡支付失败，第三方返回的失败信息
+				if(!TextUtils.isEmpty(mCstInfo)){
+					mPromptTv1.setText(mCstInfo + contents[1]);
+				}else{
+					mPromptTv1.setText(contents[1].substring(1, contents[1].length()));
+				}
+				break;
+			default:
+				break;
+			}
+		} catch (Exception e) {
+			log.e(e);
+		}
+	}
+	
+	/**
+	 * 对文案进行格式加工
+	 * @param content 整个文案
+	 * @param flag 需加工的子串
+	 * @return
+	 */
+	private SpannableStringBuilder formatTxt(String content,String flag,String color){
+		if(content.contains(flag)){
+			int start = content.indexOf(flag);
+			int end = start + flag.length();
+			SpannableStringBuilder ssb = new SpannableStringBuilder(content);
+			ssb.setSpan(new ForegroundColorSpan(Color.parseColor(color)), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+			return ssb;
+		}
+		return null;
+	}
+	
+	
+}

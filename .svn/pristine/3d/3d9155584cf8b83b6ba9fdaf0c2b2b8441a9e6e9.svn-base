@@ -1,0 +1,281 @@
+package com.changyou.mgp.sdk.mbi.channel.impl;
+
+import java.math.BigDecimal;
+
+import android.app.Activity;
+import android.content.Context;
+import android.os.Bundle;
+
+import com.changyou.mgp.sdk.mbi.R;
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannel;
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannelEntity;
+import com.changyou.mgp.sdk.mbi.config.CYMGPrompt;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolConfig;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolKeys;
+import com.changyou.mgp.sdk.mbi.config.Params;
+import com.changyou.mgp.sdk.mbi.config.SDKConfig;
+import com.changyou.mgp.sdk.mbi.entity.GoodsItem;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.platform.CYMGInitHelper;
+import com.changyou.mgp.sdk.mbi.platform.CYMGLoginHelper;
+import com.changyou.mgp.sdk.mbi.platform.CYMGLoginOutHelpr;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPayHelper;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPlatformConfiguration;
+import com.changyou.mgp.sdk.mbi.utils.MGP91ToolBar;
+import com.changyou.mgp.sdk.mbi.utils.MetaDataValueUtils;
+import com.changyou.mgp.sdk.mbi.utils.MyToast;
+import com.changyou.mgp.sdk.mbi.utils.NetWorkUtils;
+import com.changyou.mgp.sdk.mbi.utils.ResourceUtil;
+import com.changyou.mgp.sdk.mbi.utils.SettingSPUtil;
+import com.changyou.mgp.sdk.mbi.utils.SystemUtils;
+import com.nd.commplatform.NdCommplatform;
+import com.nd.commplatform.NdErrorCode;
+import com.nd.commplatform.NdMiscCallbackListener;
+import com.nd.commplatform.NdMiscCallbackListener.OnLoginProcessListener;
+import com.nd.commplatform.OnInitCompleteListener;
+import com.nd.commplatform.entry.NdAppInfo;
+import com.nd.commplatform.entry.NdBuyInfo;
+import com.nd.commplatform.entry.NdLoginStatus;
+
+public class CYMG91Impl implements CYMGChannel {
+
+	private static final float MIN_PRICE = 0.01F;
+	private static final int MIX_PRICE = 1000000;
+
+	private final CYLog log = CYLog.getInstance();
+
+	@Override
+	public void init(CYMGPlatformConfiguration config) {
+		log.d("MGP91Impl:init");
+		final Context context = config.getmContext();
+		int app_id=Integer.valueOf(MetaDataValueUtils.get91AppId(context));
+		String app_key=MetaDataValueUtils.get91AppKey(context);
+		if(SDKConfig.DEBUG){
+			log.d("MGP91Impl:DebugMode");
+			NdCommplatform.getInstance().ndSetDebugMode(0);// 设置调试模式
+		}
+		if(SettingSPUtil.getLandScape(context)==CYMGProtocolConfig.PORTRAIT){
+			NdCommplatform.getInstance().ndSetScreenOrientation(NdCommplatform.SCREEN_ORIENTATION_PORTRAIT);
+		}else{
+			NdCommplatform.getInstance().ndSetScreenOrientation(NdCommplatform.SCREEN_ORIENTATION_LANDSCAPE);
+		}
+		NdAppInfo appInfo = new NdAppInfo();
+		appInfo.setCtx(context);
+		appInfo.setAppId(app_id);// 应用ID
+		appInfo.setAppKey(app_key);// 应用Key
+		/*
+		 * NdVersionCheckLevelNormal:版本检查失败可以继续进行游戏 
+		 * NdVersionCheckLevelStrict:版本检查失败则不能进入游戏
+		 */
+		appInfo.setNdVersionCheckStatus(NdAppInfo.ND_VERSION_CHECK_LEVEL_NORMAL);
+
+		// 初始化91SDK
+		NdCommplatform.getInstance().ndInit((Activity) context, appInfo,
+				new OnInitCompleteListener() {
+					
+					@Override
+					protected void onComplete(int ndFlag) {
+						switch (ndFlag) {
+						case OnInitCompleteListener.FLAG_NORMAL:
+							MGP91ToolBar.getInstance().CreatTtoolBar(context);
+							MGP91ToolBar.getInstance().showTtoolBar();
+							CYMGInitHelper.getInstance().onInitResult(CYMGPrompt.CODE_INIT_SUCCESS, null);
+							// 初始化自己的游戏
+							break;
+						case OnInitCompleteListener.FLAG_FORCE_CLOSE:
+							// 强行关闭
+							CYMGInitHelper.getInstance().onInitResult(CYMGPrompt.CODE_INIT_FAILED, null);
+						default:
+							// 如果还有别的Activity或资源要关闭的在这里处理
+							CYMGInitHelper.getInstance().onInitResult(CYMGPrompt.CODE_INIT_FAILED, null);
+							break;
+						}
+					}
+				});
+	}
+
+	@Override
+	public void doLogin(final CYMGChannelEntity entity) {
+		log.d("MGP91Impl:doLogin");
+		final Context context = entity.getmContext();
+		final String userIp = NetWorkUtils.getLocalIpAddress(context);
+		final String deviceid = SystemUtils.getDeviceId(context);
+		final String channelId = context.getString(ResourceUtil.getResourceIDByName(context.getPackageName(), "string","mgp_channel_91"));
+		final int app_id_91 = Integer.valueOf(MetaDataValueUtils.get91AppId(context));
+		final String app_key_91 = MetaDataValueUtils.get91AppKey(context);
+		if(NdCommplatform.getInstance().ndGetLoginStatus()==NdLoginStatus.AccountLogin){
+			String uin = NdCommplatform.getInstance().getLoginUin();
+			String sessionId = NdCommplatform.getInstance().getSessionId();
+			Bundle b = new Bundle();
+			b.putString(CYMGProtocolKeys.ND_UIN, uin);
+			b.putString(CYMGProtocolKeys.ND_SESSIONID, sessionId);
+			b.putString(CYMGProtocolKeys.USERIP, userIp);
+			b.putString(CYMGProtocolKeys.DEVICEID, deviceid);
+			b.putString(CYMGProtocolKeys.ND_APPID, String.valueOf(app_id_91));
+			b.putString(CYMGProtocolKeys.ND_APPKEY, app_key_91);
+			b.putString(CYMGProtocolKeys.CHANNEL_ID, channelId);
+			b.putString(CYMGProtocolKeys.OPCODE, "10001");
+			CYMGLoginHelper.getInstance().loginResult(CYMGPrompt.CODE_LOGIN_SUCCESS,b,context);
+		}else{
+			NdCommplatform.getInstance().ndLogin(context,
+					new NdMiscCallbackListener.OnLoginProcessListener() {
+
+						@Override
+						public void finishLoginProcess(int code) {
+							String uin = "";
+							String sessionId = "";
+							
+							if (code == NdErrorCode.ND_COM_PLATFORM_SUCCESS) {
+								if (NdCommplatform.getInstance().ndGetLoginStatus() == NdLoginStatus.AccountLogin) {// 账号登录
+									// 账号登录成功，此时可用初始化玩家游戏数据
+									log.d("MGP91Impl:doLogin账号登录成功，code："+code);
+									uin = NdCommplatform.getInstance().getLoginUin();
+									sessionId = NdCommplatform.getInstance().getSessionId();
+								} else if (NdCommplatform.getInstance().ndGetLoginStatus() == NdLoginStatus.GuestLogin) {// 游客登录
+									log.d("MGP91Impl:doLogin游客登录成功，code："+code);
+								}
+								Bundle b = new Bundle();
+								b.putString(CYMGProtocolKeys.ND_UIN, uin);
+								b.putString(CYMGProtocolKeys.ND_SESSIONID, sessionId);
+								b.putString(CYMGProtocolKeys.USERIP, userIp);
+								b.putString(CYMGProtocolKeys.DEVICEID, deviceid);
+								b.putString(CYMGProtocolKeys.ND_APPID, String.valueOf(app_id_91));
+								b.putString(CYMGProtocolKeys.ND_APPKEY, app_key_91);
+								b.putString(CYMGProtocolKeys.CHANNEL_ID, channelId);
+								b.putString(CYMGProtocolKeys.OPCODE, "10001");
+								CYMGLoginHelper.getInstance().loginResult(CYMGPrompt.CODE_LOGIN_SUCCESS,b,context);
+							} else if (code == NdErrorCode.ND_COM_PLATFORM_ERROR_CANCEL) {
+								log.d("MGP91Impl:doLogin取消账号登录，code："+code);
+								CYMGLoginHelper.getInstance().loginResult(CYMGPrompt.CODE_LOGIN_FAILED, null,context);
+							} else if (code == NdErrorCode.ND_COM_GUEST_OFFICIAL_SUCCESS) {
+								log.d("MGP91Impl:doLogin游客转正成功，code："+code);
+							} else {
+								log.d("MGP91Impl:doLogin登录失败，code：" + code);
+								CYMGLoginHelper.getInstance().loginResult(CYMGPrompt.CODE_LOGIN_FAILED, null,context);
+							}
+						}
+					});
+		}
+	}
+
+	@Override
+	public void doPay(CYMGChannelEntity entity) {
+		log.d("MGP91Impl:doPay");
+		AsynPay(entity);
+	}
+
+	@Override
+	public void doLogout(CYMGChannelEntity entity) {
+		log.d("MGP91Impl:doLogout");
+		NdCommplatform.getInstance().ndLogout(NdCommplatform.LOGOUT_TO_RESET_AUTO_LOGIN_CONFIG, entity.getmContext());
+		CYMGLoginOutHelpr.getInstance().logoutResult(CYMGPrompt.CODE_LOGOUT_SUCCESS);
+	}
+	
+	@Override
+	public void doDestroy(CYMGChannelEntity entity) {
+		log.d("MGP91Impl:doDestroy");
+		MGP91ToolBar.getInstance().destroyTtoolBar();
+	}
+	
+	/**
+	 * 
+	 * 功能描述：91异步购买
+	 *
+	 * @author 严峥(yanzheng)
+	 * @param @param entity
+	 * @return void
+	 * @date 2014-3-14 下午8:45:02
+	 *
+	 * 修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void AsynPay(CYMGChannelEntity entity){
+		final Context context=entity.getmContext();
+		Bundle bundle=entity.getBundle();
+		final GoodsItem goodsItem = (GoodsItem)bundle.getSerializable(Params.GOODSITEM);
+		final String uid = bundle.getString(Params.UID);
+		final String currentOrderID = bundle.getString(Params.ORDER_ID);
+		if (goodsItem == null) {
+			log.e("mGoodsItem is null");
+			return;
+		}
+		if(uid == null){
+			log.e("uid is null");
+			return;
+		}
+		if(currentOrderID == null){
+			log.e("order_id is null");
+			return;
+		}
+		double price = 0;
+		if (goodsItem.getGoods_price() != null && !goodsItem.getGoods_price().trim().equals("".trim())) {
+			price = Double.parseDouble(goodsItem.getGoods_price());
+			if (price < MIN_PRICE) {
+				log.e("MGP91Impl:doPay商品单价不能小于0.01个91豆");
+				return;
+			}
+		} else {
+			log.e("MGP91Impl:doPay商品单价不能为空");
+			return;
+		}
+		BigDecimal bg = new BigDecimal(price);
+        double single_price = bg.setScale(2, BigDecimal.ROUND_HALF_UP).doubleValue();
+		int amount = 1;
+		if (single_price > MIX_PRICE) {
+			log.e("MGP91Impl:doPay单笔交易额不能大于1000000个91豆");
+			return;
+		}
+		NdBuyInfo buyInfo = new NdBuyInfo();
+		buyInfo.setSerial(currentOrderID);
+		buyInfo.setProductId(goodsItem.getGoods_register_id());
+		buyInfo.setProductName(goodsItem.getGoods_name());
+		buyInfo.setProductPrice(single_price);
+		buyInfo.setCount(amount);
+		buyInfo.setPayDescription(goodsItem.getGoods_describe());
+		int aError = NdCommplatform.getInstance().ndUniPayAsyn(buyInfo, context, new NdMiscCallbackListener.OnPayProcessListener() {
+			
+			@Override
+			public void finishPayProcess(int code) {
+				if (code == NdErrorCode.ND_COM_PLATFORM_SUCCESS) {
+					log.d("MGP91Impl:doPay支付成功,code:"+code);
+					CYMGPayHelper.getInstance().paySuccess(uid,goodsItem, currentOrderID);
+					//购买成功，此时可向玩家发放道具
+				} else if (code == NdErrorCode.ND_COM_PLATFORM_ERROR_PAY_FAILURE) {
+					log.d("MGP91Impl:doPay支付失败,code:"+code);
+					CYMGPayHelper.getInstance().payException(CYMGPrompt.CODE_PAY_FAILED);
+				} else if (code == NdErrorCode.ND_COM_PLATFORM_ERROR_PAY_CANCEL) {
+					log.d("MGP91Impl:doPay支付取消,code:"+code);
+					CYMGPayHelper.getInstance().payException(CYMGPrompt.CODE_PAY_CANCEL);
+				} else if (code == NdErrorCode.ND_COM_PLATFORM_ERROR_PAY_ASYN_SMS_SENT) {
+					log.d("MGP91Impl:doPay订单已提交，充值短信已发送,code:"+code);
+					CYMGPayHelper.getInstance().paySuccess(uid,goodsItem, currentOrderID);
+				} else if (code == NdErrorCode.ND_COM_PLATFORM_ERROR_PAY_REQUEST_SUBMITTED) {
+					log.d("MGP91Impl:doPay订单已提交,code:"+code);
+					CYMGPayHelper.getInstance().paySuccess(uid,goodsItem, currentOrderID);
+					//此时用户账号余额不足，通过充值来购买道具，单此时还无法知道玩家此次购买是否成功，
+					//所以开发者需要记下购买的订单号，以便向服务器查询玩家是否购买成功以便向玩家发放道具
+				} else {
+					log.d("MGP91Impl:doPay支付失败,code:"+code);
+					CYMGPayHelper.getInstance().payException(CYMGPrompt.CODE_PAY_FAILED);
+				}
+			}
+		});
+		if(aError != 0){
+			log.e("MGP91Impl:doPay输入的商品信息格式不正确");
+			MyToast.showDebugToast(context, "账号信息不完整，请从新登录"); 
+			CYMGPayHelper.getInstance().payException(CYMGPrompt.CODE_EMPTY_PARAM);
+		}
+	}
+
+	@Override
+	public void doCustomerService(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void doShowUserCenter(CYMGChannelEntity entity) {
+		Context context = entity.getmContext();
+		NdCommplatform.getInstance().ndEnterPlatform(0,context);
+	}
+
+}

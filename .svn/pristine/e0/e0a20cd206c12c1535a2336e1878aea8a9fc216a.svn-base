@@ -1,0 +1,133 @@
+package com.changyou.mgp.sdk.mbi.channel.impl;
+
+import android.app.Activity;
+import android.content.Context;
+import android.os.Bundle;
+
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannel;
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannelEntity;
+import com.changyou.mgp.sdk.mbi.config.CYMGPrompt;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolKeys;
+import com.changyou.mgp.sdk.mbi.config.Params;
+import com.changyou.mgp.sdk.mbi.config.SDKConfig;
+import com.changyou.mgp.sdk.mbi.entity.GoodsItem;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.platform.CYMGInitHelper;
+import com.changyou.mgp.sdk.mbi.platform.CYMGLoginHelper;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPayHelper;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPlatformConfiguration;
+import com.mappn.sdk.pay.GfanPay;
+import com.mappn.sdk.pay.GfanPayCallback;
+import com.mappn.sdk.pay.model.Order;
+import com.mappn.sdk.uc.GfanUCCallback;
+import com.mappn.sdk.uc.GfanUCenter;
+import com.mappn.sdk.uc.User;
+
+public class CYMGGfanImpl implements CYMGChannel {
+
+	private static String PAY_NOTIFY_URL = SDKConfig.DEBUG ? "t.changyou.com/service/sdkGfanPaylist" : "servicebilling.changyou.com/service/sdkGfanPaylist";
+	
+	private CYLog log = CYLog.getInstance();
+	
+	@Override
+	public void init(CYMGPlatformConfiguration config) {
+		GfanPay.getInstance(config.getmContext()).init();
+		CYMGInitHelper.getInstance().onInitResult(CYMGPrompt.CODE_INIT_SUCCESS, null);
+	}
+
+	@Override
+	public void doLogin(CYMGChannelEntity entity) {
+		final Context context = entity.getmContext();
+		/**
+		 * 一定要在文档中注明，机锋登录接口传进来的一定为Activity的上下文，不能传Application等其他组件的上下文
+		 */
+		GfanUCenter.login((Activity)context, new GfanUCCallback() {
+			
+			@Override
+			public void onSuccess(User arg0, int arg1) {
+				try {
+					Bundle b = new Bundle();
+					b.putString(CYMGProtocolKeys.UID, String.valueOf(arg0.getUid()));
+					b.putString(CYMGProtocolKeys.TOKEN, arg0.getToken());
+					b.putString(CYMGProtocolKeys.USERNAME, arg0.getUserName());
+					CYMGLoginHelper.getInstance().loginResult(CYMGPrompt.CODE_LOGIN_SUCCESS, b,context);
+				} catch (Exception e) {
+					log.e(e);
+				}
+			}
+			
+			@Override
+			public void onError(int arg0) {
+				CYMGLoginHelper.getInstance().exeception(CYMGPrompt.CODE_LOGIN_FAILED);
+			}
+		});
+	}
+
+	@Override
+	public void doPay(CYMGChannelEntity entity) {
+		Bundle b = entity.getBundle();
+		final GoodsItem goodsItem = (GoodsItem)b.getSerializable(Params.GOODSITEM);
+		final String orderID = b.getString(Params.ORDER_ID);
+		//机锋的支付要求价格为Int，所以商品列表中不能为float
+		Order order = new Order(goodsItem.getGoods_name()
+				, goodsItem.getGoods_describe()
+				, Integer.valueOf(goodsItem.getGoods_price())
+				, orderID);
+		GfanPay.getInstance(entity.getmContext()).pay(order, new GfanPayCallback() {
+			
+			@Override
+			public void onSuccess(User arg0, Order arg1) {
+				CYMGPayHelper.getInstance().paySuccess(String.valueOf(arg0.getUid()), goodsItem, orderID);
+			}
+			
+			@Override
+			public void onError(User arg0) {
+				CYMGPayHelper.getInstance().payException(CYMGPrompt.CODE_PAY_FAILED);
+			}
+		});
+	}
+
+	@Override
+	public void doLogout(CYMGChannelEntity entity) {
+		/**
+		 * 一定要在文档中注明，机锋登录接口传进来的一定为Activity的上下文，不能传Application等其他组件的上下文
+		 */
+		GfanUCenter.logout((Activity)entity.getmContext());
+	}
+
+	@Override
+	public void doDestroy(CYMGChannelEntity entity) {
+		GfanPay.getInstance(entity.getmContext()).onDestroy();
+	}
+
+	@Override
+	public void doCustomerService(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void doShowUserCenter(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void doResume(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void doPause(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void doStop(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+		
+	}
+
+}

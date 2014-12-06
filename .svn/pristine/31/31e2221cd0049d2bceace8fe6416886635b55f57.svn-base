@@ -1,0 +1,328 @@
+package com.changyou.mgp.sdk.mbi.pay.alipay;
+
+import java.net.URLEncoder;
+
+import android.app.Activity;
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.text.TextUtils;
+
+import com.alipay.android.app.encrypt.Rsa;
+import com.alipay.android.app.pay.PayTask;
+import com.alipay.android.app.pay.PayTask.OnPayListener;
+import com.changyou.mgp.sdk.mbi.config.CYMGPrompt;
+import com.changyou.mgp.sdk.mbi.config.Contants;
+import com.changyou.mgp.sdk.mbi.config.Params;
+import com.changyou.mgp.sdk.mbi.entity.GoodsItem;
+import com.changyou.mgp.sdk.mbi.entity.OrderItem;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.pay.ui.CYMGPaymentActivity;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPayHelper;
+import com.changyou.mgp.sdk.mbi.utils.MyToast;
+
+/**
+ * 
+ * 功能描述：支付宝极简收银台
+ *
+ * @author 徐萌阳(xumengyang)
+ *
+ * @date 2014-1-15
+ */
+public class MGPAlipay {
+
+	private CYLog log = CYLog.getInstance();
+	
+	private static final String URL_ENCODER = "UTF-8";
+	private static final String APP_KEY = "CY_MGP_APP_KEY";
+	private static final String SN = "sn";
+	private static final String OUT_TRADE_NO = "out_trade_no";//从支付宝解析订单号的key
+	
+	private static MGPAlipay mInstance;
+	private Activity mActivity;
+//	private SimpleDateFormat mFormat;
+	
+	private MGPAlipay(Activity activity){
+		this.mActivity = activity;
+	}
+	
+	public static synchronized MGPAlipay getInstance(Activity activity){
+		if(mInstance == null){
+			mInstance = new MGPAlipay(activity);
+		}else{
+			mInstance.setActivity(activity);
+		}
+		return mInstance;
+	}
+	
+	public void setActivity(Activity activity){
+		this.mActivity = activity;
+	}
+	
+	/**
+	 * 
+	 * 功能描述：根据生成的支付宝私钥进行RSA加密
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param  content
+	 * @param  加密后的内容
+	 * @return String
+	 * @date 2014-1-16 上午10:25:16
+	 *
+	 */
+	private String rsaSign(String content){
+		log.d("unsigned alipay params = "+content);
+		String sign = null;
+		try {
+			String rsa = Rsa.sign(content, AlipayConfig.PRIVATE_KEY);
+			if(rsa == null || TextUtils.isEmpty(rsa)){
+				log.e("rsa is null");
+				return null;
+			}
+			log.d("rsa = "+rsa);
+			sign = URLEncoder.encode(rsa, URL_ENCODER);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		log.d("signed aplipay params = "+sign);
+		return sign;
+	}
+	
+	/**
+	 * 
+	 * 功能描述：调用支付宝极简收银台方式进行支付
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param activity 上下文
+	 * @param orderInfo 订单信息
+	 * @param totalFee 商品总金额
+	 * @param listener 支付结果回调
+	 * @return void
+	 * @date 2014-1-16 上午11:08:48
+	 *
+	 */
+	public void pay(final String uid,final GoodsItem goodsItem,final String orderID){
+		PayTask task = new PayTask(mActivity, new OnPayListener() {
+			
+			@Override
+			public void onPaySuccess(Context arg0, String resultStatus, String memo, String result) {
+				log.d("alipay success and resultStatus = "+resultStatus+" memo = "+memo+" result = "+result);
+				String trade_no = getOutTradeNo(result);
+				if(trade_no == null || TextUtils.isEmpty(trade_no)){
+					log.e("trade_no is null");
+					return;
+				}
+				log.d("trade_no="+trade_no);
+				MyToast.showDebugToast(mActivity, "支付宝回调结果=success");
+				CYMGPayHelper.getInstance().paySuccess(uid, goodsItem, trade_no);
+			}
+			
+			@Override
+			public void onPayFailed(Context arg0, String resultStatus, String memo, String result) {
+				log.e("alipay failed and resultStatus = "+resultStatus+" memo = "+memo+" result = "+result);
+				String trade_no = getOutTradeNo(result);
+				if(trade_no == null || TextUtils.isEmpty(trade_no)){
+					log.e("trade_no is null");
+					return;
+				}
+				log.d("trade_no="+trade_no);
+				MyToast.showDebugToast(mActivity, "支付宝回调结果=failed"+result);
+				if(CYMGPayHelper.getInstance().getCallBack() == null){
+					log.e("PayListener is null");
+				}else{
+					CYMGPayHelper.getInstance().payException(CYMGPrompt.CODE_PAY_FAILED);
+				}
+			}
+		});
+		String orderInfo = getOrderInfo(uid,goodsItem.getGoods_name(), goodsItem.getGoods_name(), goodsItem.getGoods_price(),orderID);
+		if(orderInfo == null){
+			log.e("orderInfo is null");
+			return;
+		}
+		task.pay(orderInfo);
+	}
+	
+	/**
+	 * 
+	 * 功能描述：获取订单信息
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param @param outTradeNo
+	 * @param @param subject
+	 * @param @param body
+	 * @param @param totalFee
+	 * @param @return
+	 * @return String
+	 * @date 2014-1-16 下午2:04:57
+	 *
+	 */
+	private String getOrderInfo(String uid,String subject,String body,String totalFee,String orderID){
+		StringBuilder basicInfo = getBasicOrderInfo(uid,subject, body, totalFee,orderID);
+		if(basicInfo == null || TextUtils.isEmpty(basicInfo.toString())){
+			log.e("basicInfo is null");
+			return null;
+		}
+		String sign = rsaSign(basicInfo.toString());
+		if(sign == null){
+			log.e("sign is null");
+			return null;
+		}
+		basicInfo.append("&")
+		.append(AlipayConfig.SIGN).append("=\"").append(sign).append("\"")
+		.append("&")
+		.append(AlipayConfig.SIGN_TYPE).append("=\"").append(AlipayConfig.SIGN_TYPE_VALUE);
+		return basicInfo.toString();
+	}
+	
+	/**
+	 * 
+	 * 功能描述：获取极简收银台支付基本信息
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param @param outTradeNo 订单号
+	 * @param @param subject 商品名称
+	 * @param @param body
+	 * @param @param totalFee
+	 * @param @return
+	 * @return String
+	 * @date 2014-1-16 下午1:31:11
+	 *
+	 */
+	private StringBuilder getBasicOrderInfo(String uid,String subject,String body,String totalFee,String orderId){
+		if(orderId == null || TextUtils.isEmpty(orderId)){
+			log.e("orderId is null");
+			return null;
+		}
+		StringBuilder sb = new StringBuilder();
+		sb.append(AlipayConfig.PARTNER).append("=\"").append(AlipayConfig.PARTNER_VALUE).append("\"");
+		sb.append("&");
+		sb.append(AlipayConfig.SELLER_ID).append("=\"").append(AlipayConfig.SELLER_ID_VALUE).append("\"");
+		sb.append("&");
+		sb.append(AlipayConfig.OUT_TRADE_NO).append("=\"").append(orderId).append("\"");
+		sb.append("&");
+		sb.append(AlipayConfig.SUBJECT).append("=\"").append(subject).append("\"");
+		sb.append("&");
+		sb.append(AlipayConfig.BODY).append("=\"").append(body).append("\"");
+		sb.append("&");
+		sb.append(AlipayConfig.TOTAL_FEE).append("=\"").append(totalFee).append("\"");
+		sb.append("&");
+		sb.append(AlipayConfig.NOTIFY_URL).append("=\"").append(getParam(Params.GOLOBAL_PARAMS.KEY_QUICK_ALIPAY_NOTIFY_URL)).append("\"");
+		sb.append("&");
+		sb.append(AlipayConfig.SERVICE).append("=\"").append(AlipayConfig.SERVICE_VALUE).append("\"");
+		sb.append("&");
+		sb.append(AlipayConfig.PAYMENT_TYPE).append("=\"").append(AlipayConfig.PAYMENT_TYPE_VALUE).append("\"");
+		sb.append("&");
+		sb.append(AlipayConfig.INPUT_CHARSET).append("=\"").append(AlipayConfig.INPUT_CHARSET_VALUE).append("\"");
+		log.d("快捷支付回调url="+getParam(Params.GOLOBAL_PARAMS.KEY_QUICK_ALIPAY_NOTIFY_URL));
+//		sb.append("&");
+//		sb.append(AlipayConfig.IT_B_PAY).append("=\"").append(AlipayConfig.IT_B_PAY_VALUE).append("\"");
+		return sb;
+	}
+	
+	/**
+	 * 
+	 * 功能描述：获取wrap支付基本业务信息
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param @param subject
+	 * @param @param body
+	 * @param @param totalFee
+	 * @param @return
+	 * @return String
+	 * @date 2014-1-21 下午5:05:33
+	 *
+	 */
+	public String getBasicWrapOrderInfo(String uid,String subject,String totalFee,String orderId){
+		if(orderId == null || TextUtils.isEmpty(orderId)){
+			log.e("orderId is null");
+			return null;
+		}
+		if(subject == null){
+			log.e("subject is null");
+			return null;
+		}
+		if(totalFee == null){
+			log.e("totalFee is null");
+			return null;
+		}
+		StringBuilder sb = new StringBuilder();
+		sb.append("<direct_trade_create_req><notify_url>").append(AlipayConfig.NOTIFY_URL_VALUE).append("</notify_url><call_back_url>")
+		.append(AlipayConfig.NOTIFY_URL_VALUE)
+		.append("</call_back_url><seller_account_name>")
+		.append(AlipayConfig.SELLER_ID_VALUE).append("</seller_account_name><out_trade_no>")
+		.append(orderId).append("</out_trade_no><subject>")
+		.append(subject).append("</subject><total_fee>")
+		.append(totalFee).append("</total_fee><merchant_url>")
+		.append(AlipayConfig.MERCHANT_URL).append("</merchant_url></direct_trade_create_req>");
+		return sb.toString();
+	}
+	
+	/**
+	 * 
+	 * 功能描述：获取订单号
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param activity
+	 * @return String
+	 * @date 2014-1-16 下午4:22:06
+	 *
+	 */
+//	public String getOrderID(String uid){
+//		return UUID.randomUUID().toString().replace("-", "");
+//	}
+	
+	/**
+	 * 
+	 * 功能描述：根据支付宝的支付返回结果解析出订单号
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param result 支付宝的支付返回结果
+	 * @return 订单号
+	 * @return String
+	 * @date 2014-1-20 下午4:31:52
+	 *
+	 */
+	private String getOutTradeNo(String result){
+		try {
+			String[] values = result.split("&");
+			int valueLength = values.length;
+			for(int i=0;i<valueLength;i++){
+				if(values[i].startsWith(OUT_TRADE_NO)){
+					log.d("values[i]="+values[i]);
+					return values[i].substring((OUT_TRADE_NO+"=\"").length(), values[i].length()-1);
+				}
+			}
+		} catch (Exception e) {
+			log.e(e);
+		}
+		return null;
+	}
+	
+	/**
+	 * 
+	 * 功能描述：从SP
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param @param key
+	 * @param @return
+	 * @return String
+	 * @date 2014-3-18 下午1:13:00
+	 *
+	 */
+	public String getParam(String key){
+		SharedPreferences sp = mActivity.getSharedPreferences(Contants.SP_NAME.SETTING, Context.MODE_PRIVATE);
+		if(key.equals(Params.GOLOBAL_PARAMS.KEY_ALIPAY_CREDIT_CARD_URL)){
+			return sp.getString(key, AlipayConfig.CREDIT_CARD_URL);
+		}else if(key.equals(Params.GOLOBAL_PARAMS.KEY_ALIPAY_SAVING_CARD_URL)){
+			return sp.getString(key, AlipayConfig.SAVING_CARD_URL);
+		}else if(key.equals(Params.GOLOBAL_PARAMS.KEY_ALIPAY_OVERLOAD_CONFIRM_LOGIN_URL)){
+			return sp.getString(key, AlipayConfig.OVERLOAD_CONFIRM_LOGIN_URL);
+		}else if(key.equals(Params.GOLOBAL_PARAMS.KEY_ALIPAY_OVERLOAD_LOGIN_URL)){
+			return sp.getString(key, AlipayConfig.OVERLOAD_LOGIN_URL);
+		}else if(key.equals(Params.GOLOBAL_PARAMS.SDK_ALI_WAP_PAY)){
+			return sp.getString(key, AlipayConfig.SDK_ALI_WAP_PAY);
+		}else if(key.equals(Params.GOLOBAL_PARAMS.KEY_QUICK_ALIPAY_NOTIFY_URL)){
+			return sp.getString(key, AlipayConfig.QUICK_ALIPAY_NOTIFY_URL);
+		}
+		return null;
+	}
+}

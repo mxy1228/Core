@@ -1,0 +1,7 @@
+package com.changyou.mgp.sdk.mbi.account.inf;
+
+public interface OnLoginDialogListener {
+
+	public void onDialogDismiss();
+	public void onSwitchAcc();
+}

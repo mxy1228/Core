@@ -1,0 +1,92 @@
+package com.changyou.mgp.sdk.mbi.platform;
+
+import java.io.InputStream;
+import java.util.Properties;
+
+import android.content.Context;
+import android.text.TextUtils;
+
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannel;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+
+public class CYMGChannelHelper {
+
+	private static final String CHANNEL_PRO_NAME = "channel.properties";//第三方渠道执行的配置文件名称
+	private static final String ERROR_CHANNEL_ID_IS_NULL = "channelID is null";//若配置的ChannelID为空则报该异常
+	//若没有从channel.properties中根据channelID查到对应的类则报该异常
+<<<<<<< .working
+	private static final String ERROR_CLASS_NAME_IS_NULL = "No class found is channel.properties by channelID,please check your mgp_login.properties";
+=======
+	private static final String ERROR_CLASS_NAME_IS_NULL = "No class found is channel.properties by channelID,please check your channel.properties";
+>>>>>>> .merge-right.r6514
+	//若根据类名反射失败则报该异常
+	private static final String ERROR_FOR_CLASS = "Class for name error";
+	
+	private static CYLog log = CYLog.getInstance();
+	
+	
+	public static CYMGChannel getChannel(Context mContext,String  channelID){
+
+		if(channelID == null || TextUtils.isEmpty(channelID)){
+			throw new IllegalAccessError(ERROR_CHANNEL_ID_IS_NULL);
+		}
+		String className = getChannelClass(mContext,channelID);
+		if(className == null || TextUtils.isEmpty(className)){
+			throw new IllegalAccessError(ERROR_CLASS_NAME_IS_NULL);
+		}
+		Class<?> mClass = null;
+		try {
+			mClass = Class.forName(className);
+		} catch (Exception e) {
+			log.e(e);
+		}
+		if(mClass == null){
+			throw new IllegalAccessError(ERROR_FOR_CLASS);
+		}
+		try {
+			return (CYMGChannel)mClass.newInstance();
+
+		} catch (Exception e) {
+			log.e(e);
+		}	
+		
+		return null;
+	}
+
+	
+	
+	
+	/**
+	 * 
+	 * 功能描述：根据ChannelID获取对应的执行类名
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param @param channelID
+	 * @param @return
+	 * @return String
+	 * @date 2014-2-20 下午2:08:31
+	 *
+	 */
+	private static String getChannelClass(Context mContext,String channelID){
+		Properties pro = new Properties();
+		try {
+			InputStream is = mContext.getAssets().open(CHANNEL_PRO_NAME);
+			if(is == null){
+				log.e("is null");
+				return null;
+			}
+			pro.load(is);
+			String sClass = pro.getProperty("channel_"+channelID);
+			if(sClass == null){
+				log.e("sClass is null");
+				return null;
+			}
+			log.d("sClass = "+sClass);
+			return sClass;
+		} catch (Exception e) {
+			log.e(e);
+		}
+		return null;
+	}
+	
+}

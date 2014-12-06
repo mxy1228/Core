@@ -1,0 +1,78 @@
+package com.changyou.mgp.sdk.mbi.account.ui;
+
+import android.content.Intent;
+import android.os.Bundle;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.webkit.WebView;
+import android.widget.ImageButton;
+
+import com.changyou.mgp.sdk.mbi.account.id.AccResource;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.ui.base.BaseActivity;
+
+public class CYMGContainerActivity extends BaseActivity implements OnClickListener{
+
+	//打开个人中心
+	public static final int PERSONAL = 1;
+	//打开论坛
+	public static final int FORUM = 2;
+	//打开客服
+	public static final int CTS = 3;
+	//个人中心地址
+	private static final String PERSONAL_URL = "http://i.cy.com/sdk/usercenter/entry";
+	
+	private AccResource mRes;
+	private int mType;
+	private CYLog log = CYLog.getInstance();
+	
+	private ImageButton mBackIBtn;
+	private WebView mWV;
+	
+	@Override
+	protected void onCreate(Bundle arg0) {
+		super.onCreate(arg0);
+		mRes = AccResource.getInstance(this);
+		setContentView(mRes.cymg_flow_win_container_view);
+		initView();
+		initData();
+		initEvent();
+	}
+	
+	@Override
+	protected void initView() {
+		View title = findViewById(mRes.cymg_flow_win_container_title);
+		this.mBackIBtn = (ImageButton)title.findViewById(mRes.mgp_title_left_ibtn);
+		this.mWV = (WebView)findViewById(mRes.cymg_flow_win_container_wv);
+	}
+
+	@Override
+	protected void initData() {
+		Intent intent = getIntent();
+		mType = intent.getIntExtra("type", 0);
+		if(mType == 0){
+			log.e("mType = 0");
+		}
+		switch (mType) {
+		case PERSONAL:
+			mWV.loadUrl(PERSONAL_URL);
+			break;
+
+		default:
+			break;
+		}
+	}
+
+	@Override
+	protected void initEvent() {
+		this.mBackIBtn.setOnClickListener(this);
+	}
+
+	@Override
+	public void onClick(View v) {
+		if(v.getId() == mRes.mgp_title_left_ibtn){
+			CYMGContainerActivity.this.finish();
+		}
+	}
+
+}

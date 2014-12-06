@@ -1,0 +1,254 @@
+package com.changyou.mgp.sdk.mbi.account.ui;
+
+import java.io.File;
+import java.io.FileOutputStream;
+
+import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.Bitmap.CompressFormat;
+import android.graphics.BitmapFactory;
+import android.graphics.BitmapFactory.Options;
+import android.os.Bundle;
+import android.os.Environment;
+import android.os.Handler;
+import android.os.Message;
+import android.util.DisplayMetrics;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.ImageView;
+
+import com.changyou.mgp.sdk.mbi.account.id.AccResource;
+import com.changyou.mgp.sdk.mbi.config.Contants;
+import com.changyou.mgp.sdk.mbi.entity.CaptureIVAttachEvent;
+import com.changyou.mgp.sdk.mbi.entity.UploadImgResultBean;
+import com.changyou.mgp.sdk.mbi.http.CYMGHttpRequest;
+import com.changyou.mgp.sdk.mbi.http.CYMGHttpRequest.OnRequestListener;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.ui.base.BaseActivity;
+import com.changyou.mgp.sdk.mbi.ui.widget.WaitingDialog;
+import com.changyou.mgp.sdk.mbi.utils.MetaDataValueUtils;
+
+import de.greenrobot.event.EventBus;
+
+public class CYMGFlowWinCaptureActivity extends BaseActivity implements OnClickListener{
+
+	private CYLog log = CYLog.getInstance();
+	private static final int FINISH_COMPRESS = 2;
+	private static final int UPLOAD_SUCCESS = 0;//上传图片成功
+	
+	private AccResource mRes;
+	private String mPath;
+	private String mToken;
+	
+	private Button mShareBtn;
+	private ImageView mIV;
+	private ImageButton mCloseIBtn;
+	private WaitingDialog mWaitingDialog;
+	private EditText mET;
+	
+	@Override
+	protected void onCreate(Bundle arg0) {
+		super.onCreate(arg0);
+		mRes = AccResource.getInstance(this);
+		DisplayMetrics metrics = getResources().getDisplayMetrics();
+		int width = (int)(metrics.widthPixels * 0.9);
+		int height = (int)(metrics.heightPixels * 0.9);
+		setContentView(mRes.cymg_flow_win_capture);
+		getWindow().setLayout(width, height);
+		initView();
+		initData();
+		initEvent();
+	}
+	
+	@Override
+	protected void initView() {
+		mShareBtn = (Button)findViewById(mRes.cymg_flow_win_share_btn);
+		mIV = (ImageView)findViewById(mRes.cymg_flow_win_capture_iv);
+		mCloseIBtn = (ImageButton)findViewById(mRes.cymg_flow_win_capture_close_ibtn);
+		mET = (EditText)findViewById(mRes.cymg_flow_win_capture_et);
+		mWaitingDialog = new WaitingDialog(this);
+	}
+	
+	@Override
+	protected void initData() {
+		Bundle b = getIntent().getExtras();
+		mPath = b.getString("capture_path");
+		mToken = b.getString("token");
+		EventBus.getDefault().register(this);
+		compressCapture(mPath);
+	}
+
+	@Override
+	protected void initEvent() {
+		this.mCloseIBtn.setOnClickListener(this);
+		this.mShareBtn.setOnClickListener(this);
+	}
+
+	@Override
+	public void onClick(View v) {
+		if(v.getId() == mRes.cymg_flow_win_capture_close_ibtn){
+			this.finish();
+		}else if(v.getId() == mRes.cymg_flow_win_share_btn){
+			uploadCapture(mIV.getTag().toString());
+		}
+	}
+	
+	@Override
+	protected void onDestroy() {
+		super.onDestroy();
+		mWaitingDialog.dismiss();
+	}
+
+	/**
+	 * 将游戏传进来的截图进行压缩处理，然后打开CYMGFlowWinCaptureFragment
+	 */
+	private void compressCapture(final String path){
+		if(path == null){
+			log.e("capture bitmap path is null");
+			return;
+		}
+		log.d("path = "+path);
+		mWaitingDialog.show();
+		new Thread(new Runnable() {
+			
+			@Override
+			public void run() {
+				Bitmap realBitmap = null;
+				try {
+					//****压缩处理****
+					//Bitmap压缩参考：http://blog.csdn.net/appandroid/article/details/11213973
+					Options opts = new Options();
+					opts.inJustDecodeBounds = true;//设置inJustDecodeBounds=true，这样在使用BitmapFactory获取Bitmap时不会真正将图片加载到内存中而是只获取高/宽
+					Bitmap tempBitmap = BitmapFactory.decodeFile(path, opts);//这里获取的tempBitmap是null，不能直接使用
+					//首先对图片的尺寸进行压缩
+					int width = opts.outWidth;
+					int height = opts.outHeight;
+					//高||宽>1024的话就把最长的压缩到1024，然后计算压缩比率，对另一边按照这个比率进行压缩
+					int max = width > height ? width : height;
+					if(max > 1024){
+						float sizeRate = max / 1024;
+						log.d("sizeRate="+sizeRate);
+						width = (int)(width * sizeRate);
+						log.d("width="+width);
+						height = (int)(height * sizeRate);
+						log.d("height="+height);
+					}
+					opts.inJustDecodeBounds = false;
+					opts.outWidth = width;
+					opts.outHeight = height;
+					realBitmap = BitmapFactory.decodeFile(path, opts);
+					if(realBitmap != null){
+						String savePath = Environment.getExternalStorageDirectory()+File.separator+Contants.SDK_FLODER_NAME+File.separator+System.currentTimeMillis()+".jpg";
+						File file = new File(savePath);
+						FileOutputStream fos = new FileOutputStream(file);
+						//压缩图片，修改后缀为jpg，质量为60%
+						//可参考http://blog.csdn.net/glony/article/details/7596430
+						realBitmap.compress(CompressFormat.JPEG, 60, fos);
+						Message msg = mHandler.obtainMessage();
+						msg.what = FINISH_COMPRESS;
+						msg.obj = savePath;
+						mHandler.sendMessage(msg);
+					}else{
+						log.e("realBitmap is null");
+					}
+					
+				} catch (Exception e) {
+					log.e(e);
+				}finally{
+					
+				}
+				
+			}
+		}).start();
+		
+	}
+	
+	private Handler mHandler = new Handler(){
+		public void handleMessage(android.os.Message msg) {
+			switch (msg.what) {
+			case FINISH_COMPRESS:
+				mWaitingDialog.dismiss();
+				mIV.setImageBitmap(BitmapFactory.decodeFile(msg.obj.toString()));
+				mIV.setTag(msg.obj.toString());
+				break;
+			default:
+				break;
+			}
+		};
+	};
+	
+	/**
+	 * 上传图片
+	 * @param path
+	 */
+	private void uploadCapture(String path){
+		if(path == null){
+			return;
+		}
+		new CYMGHttpRequest(this).uploadCapture(path, mToken, new OnRequestListener<UploadImgResultBean>() {
+			
+			@Override
+			public void onSuccess(int statCode, UploadImgResultBean result) {
+				mWaitingDialog.dismiss();
+				if(Integer.parseInt(result.getCode()) == UPLOAD_SUCCESS){
+					shareToGameCircle(result.getRowsStr());
+				}
+			}
+			
+			@Override
+			public void onStart() {
+				mWaitingDialog.show();
+			}
+			
+			@Override
+			public void onFailed(int statCode, String content) {
+				mWaitingDialog.dismiss();
+			}
+		});
+	}
+	
+	/**
+	 * 将图片及默认文案分享到游戏圈
+	 */
+	private void shareToGameCircle(String rows){
+		String appkey = MetaDataValueUtils.getAppKey(this);
+		new CYMGHttpRequest(this).shareToGameCircle(rows, appkey, mToken, mET.getText().toString(), new OnRequestListener<Boolean>() {
+
+			@Override
+			public void onStart() {
+				mWaitingDialog.show();
+			}
+
+			@Override
+			public void onSuccess(int statCode, Boolean result) {
+				mWaitingDialog.dismiss();
+				if(result){
+					//如果分享到游戏圈成功则打开游戏圈
+					Intent intent = new Intent(CYMGFlowWinCaptureActivity.this, CYMGContainerActivity.class);
+					intent.putExtra("type", CYMGContainerActivity.GAME_CIRCLE);
+					startActivity(intent);
+					CYMGFlowWinCaptureActivity.this.finish();
+				}else{
+					log.e("share to game circle failed");
+				}
+			}
+
+			@Override
+			public void onFailed(int statCode, String content) {
+				mWaitingDialog.dismiss();
+			}
+		});
+	}
+	
+	/**
+	 * 展示截图的ImageView attatchToWindow时
+	 * @param e
+	 */
+	public void onEventMainThread(CaptureIVAttachEvent e){
+		log.d("CaptureImageView:width="+e.getWidth()+":height="+e.getHeight());
+		
+	}
+}

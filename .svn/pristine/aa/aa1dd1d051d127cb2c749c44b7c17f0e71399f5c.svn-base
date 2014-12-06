@@ -1,0 +1,193 @@
+package com.changyou.mgp.sdk.mbi.account.ui;
+
+import java.util.ArrayList;
+
+import android.app.Activity;
+import android.graphics.BitmapFactory;
+import android.graphics.Color;
+import android.graphics.Matrix;
+import android.os.Bundle;
+import android.support.v4.app.DialogFragment;
+import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentActivity;
+import android.support.v4.app.FragmentManager;
+import android.support.v4.app.FragmentStatePagerAdapter;
+import android.support.v4.app.FragmentTransaction;
+import android.support.v4.view.ViewPager;
+import android.support.v4.view.ViewPager.OnPageChangeListener;
+import android.util.DisplayMetrics;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.ViewGroup;
+import android.view.animation.Animation;
+import android.view.animation.TranslateAnimation;
+import android.widget.ImageButton;
+import android.widget.ImageView;
+import android.widget.TextView;
+
+import com.changyou.mgp.sdk.mbi.account.id.AccResource;
+import com.changyou.mgp.sdk.mbi.config.Contants;
+
+public class CYMGRegisterContainerDialogFragment extends BaseDialogFragment
+		implements OnClickListener {
+
+	private static Activity mActivity;
+
+	private ImageButton mBackBtn;
+	private ImageButton mCloseBtn;
+
+	private ViewPager mPager;// 页卡内容
+	private ImageView cursor;// 动画图片
+	private TextView mPhoneTv, mUserTv;// 页卡头标
+	private int offset = 0;// 动画图片偏移量
+	private int currIndex = 0;// 当前页卡编号
+	private int bmpW;// 动画图片宽度
+	private int one;//
+
+	@Override
+	public View onCreateView(LayoutInflater inflater, ViewGroup container,
+			Bundle savedInstanceState) {
+		View view = inflater.inflate(AccResource.getInstance(mActivity).mgp_sdk_2_0_dialog_register_container, container,false);
+		initView(view);
+		initViewPager(view);
+		initImageView(view);
+		initData();
+		initEvent();
+		return view;
+	}
+
+	@Override
+	protected void initView(View view) {
+		mBackBtn = (ImageButton) view.findViewById(AccResource.getInstance(mActivity).mgp_sdk_2_0_register_container_back_ImageButton);
+		mCloseBtn = (ImageButton) view.findViewById(AccResource.getInstance(mActivity).mgp_sdk_2_0_register_container_close_ImageButton);
+		mPhoneTv = (TextView) view.findViewById(AccResource.getInstance(mActivity).mgp_sdk_2_0_register_container_phone_TextView);
+		mUserTv = (TextView) view.findViewById(AccResource.getInstance(mActivity).mgp_sdk_2_0_register_container_user_TextView);
+	}
+
+	@Override
+	protected void initData() {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	protected void initEvent() {
+		mBackBtn.setOnClickListener(this);
+		mCloseBtn.setOnClickListener(this);
+		mPhoneTv.setOnClickListener(this);
+		mUserTv.setOnClickListener(this);
+	}
+
+	public static CYMGRegisterContainerDialogFragment newInewInstance(Activity activity,Bundle bundle) {
+		mActivity = activity;
+		CYMGRegisterContainerDialogFragment cymgRegisterContainerDialogFragment = new CYMGRegisterContainerDialogFragment();
+		cymgRegisterContainerDialogFragment.setArguments(bundle);
+		cymgRegisterContainerDialogFragment.setStyle(DialogFragment.STYLE_NORMAL, AccResource.getInstance(mActivity).mgp_sdk_2_0_mian_dialog);
+		return cymgRegisterContainerDialogFragment;
+	}
+
+	@Override
+	public void onClick(View v) {
+		if (v.getId() == AccResource.getInstance(mActivity).mgp_sdk_2_0_register_container_back_ImageButton) {
+			dismiss();
+		}else  if (v.getId() == AccResource.getInstance(mActivity).mgp_sdk_2_0_register_container_close_ImageButton) {
+			mActivity.finish();
+		} else if (v.getId() == AccResource.getInstance(mActivity).mgp_sdk_2_0_register_container_phone_TextView) {
+			mPager.setCurrentItem(0);
+		} else if (v.getId() == AccResource.getInstance(mActivity).mgp_sdk_2_0_register_container_user_TextView) {
+			mPager.setCurrentItem(1);
+		}
+	}
+
+	private void initViewPager(View view) {
+		mPager = (ViewPager) view.findViewById(AccResource.getInstance(mActivity).mgp_sdk_2_0_register_container_ViewPager);
+		mPager.setAdapter(new MyPagerAdapter(getChildFragmentManager()));
+		mPager.setCurrentItem(0);
+		mPager.setOnPageChangeListener(new MyOnPageChangeListener());
+	}
+
+	private void initImageView(View view) {
+		cursor = (ImageView) view.findViewById(AccResource.getInstance(mActivity).mgp_sdk_2_0_register_container_cursor_ImageView);
+		bmpW = BitmapFactory.decodeResource(getResources(),AccResource.getInstance(mActivity).mgp_sdk_2_0_dialog_moving_cursor).getWidth();// 获取图片宽度
+		DisplayMetrics dm = new DisplayMetrics();
+		mActivity.getWindowManager().getDefaultDisplay().getMetrics(dm);
+		int screenW = dm.widthPixels;// 获取分辨率宽度
+		offset = (screenW / 2 - bmpW) / 2;// 计算偏移量
+		one = offset + bmpW - screenW / 8;
+		Matrix matrix = new Matrix();
+		matrix.postTranslate(offset, 0);
+		cursor.setImageMatrix(matrix);// 设置动画初始位置
+	}
+
+	class MyOnPageChangeListener implements OnPageChangeListener {
+
+		@Override
+		public void onPageScrollStateChanged(int arg0) {
+			// TODO Auto-generated method stub
+
+		}
+
+		@Override
+		public void onPageScrolled(int arg0, float arg1, int arg2) {
+			// TODO Auto-generated method stub
+
+		}
+
+		@Override
+		public void onPageSelected(int arg0) {
+			Animation animation = new TranslateAnimation(one * currIndex, one * arg0, 0, 0);// 显然这个比较简洁，只有一行代码。
+			currIndex = arg0;
+			animation.setFillAfter(true);// True:图片停在动画结束位置
+			animation.setDuration(300);
+			cursor.startAnimation(animation);
+			switch (arg0) {
+			case 0:
+				mPhoneTv.setTextColor(Color.parseColor("#000000"));
+				mUserTv.setTextColor(Color.parseColor("#bcbcbc"));
+				break;
+			case 1:
+				mPhoneTv.setTextColor(Color.parseColor("#bcbcbc"));
+				mUserTv.setTextColor(Color.parseColor("#000000"));
+				break;
+			}
+		}
+	}
+
+	class MyPagerAdapter extends FragmentStatePagerAdapter {
+
+		public ArrayList<Fragment> mFragmentList = new ArrayList<Fragment>();
+
+		public MyPagerAdapter(FragmentManager fragmentManager) {
+			super(fragmentManager);
+			mFragmentList.add(new CYMGResgisrForPhoneFragment());
+			mFragmentList.add(new CYMGResgisrForUserFragment());
+		}
+
+		@Override
+		public void destroyItem(View container, int position, Object object) {
+			super.destroyItem(container, position, object);
+		}
+
+		@Override
+		public Fragment getItem(int arg0) {
+			return mFragmentList.get(arg0);
+		}
+
+		@Override
+		public int getCount() {
+			return mFragmentList.size();
+		}
+
+		@Override
+		public int getItemPosition(Object object) {
+			return POSITION_NONE;
+		}
+	}
+	
+	public void showDialog() {
+		FragmentTransaction transaction=((FragmentActivity)mActivity).getSupportFragmentManager().beginTransaction();
+		show(transaction, Contants.DialogFragmentTag.REGISTER_CONTAINER);
+	}
+
+}

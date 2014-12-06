@@ -1,0 +1,291 @@
+package com.changyou.mgp.sdk.mbi.http;
+
+import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.apache.http.Header;
+import org.codehaus.jackson.type.TypeReference;
+import org.json.JSONObject;
+
+import android.content.Context;
+import android.text.TextUtils;
+
+import com.alipay.android.mini.window.sdk.t;
+import com.alipay.mobilesecuritysdk.model.Upload;
+import com.changyou.mgp.sdk.mbi.account.id.AccResource;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolKeys;
+import com.changyou.mgp.sdk.mbi.config.Contants;
+import com.changyou.mgp.sdk.mbi.config.HttpContants;
+import com.changyou.mgp.sdk.mbi.config.Params;
+import com.changyou.mgp.sdk.mbi.entity.GoodsItem;
+import com.changyou.mgp.sdk.mbi.entity.GoodsList;
+import com.changyou.mgp.sdk.mbi.entity.UPayResultEvent;
+import com.changyou.mgp.sdk.mbi.entity.UploadImgResultBean;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.mbi.manager.CMBILogManager;
+import com.changyou.mgp.sdk.mbi.pay.id.PayResource;
+import com.changyou.mgp.sdk.mbi.utils.JSONUtil;
+import com.changyou.mgp.sdk.mbi.utils.MetaDataValueUtils;
+import com.changyou.mgp.sdk.mbi.utils.MyToast;
+import com.changyou.mgp.sdk.mbi.utils.NetWorkUtils;
+import com.changyou.mgp.sdk.mbi.utils.StringUtils;
+import com.changyou.mgp.sdk.mbi.utils.UserInfoSPUtil;
+import com.loopj.android.http.RequestParams;
+
+import de.greenrobot.event.EventBus;
+
+public class CYMGHttpRequest {
+
+	private MyHttpClient mClient;
+	
+	private static CYMGHttpRequest mInstance;
+	private Context mContext;
+	private CYLog log = CYLog.getInstance();
+	
+	public CYMGHttpRequest(Context context){
+		this.mClient = new MyHttpClient(context);
+		this.mContext = context;
+	}
+	
+	public static CYMGHttpRequest getInstance(Context context){
+		if(mInstance == null){
+			synchronized (CYMGHttpRequest.class) {
+				if(mInstance == null){
+					mInstance = new CYMGHttpRequest(context);
+				}
+			}
+		}
+		return mInstance;
+	}
+	
+	public interface OnRequestListener<T>{
+		
+		public void onStart();
+		
+		public void onSuccess(int statCode,T result);
+		
+		public void onFailed(int statCode,String content);
+	}
+	
+	private void netError(OnRequestListener listener){
+		listener.onFailed(-1, "net error");
+	}
+	
+	/**
+	 * 
+	 * 功能描述：获取商品列表
+	 *
+	 * @author 徐萌阳
+	 * @param @param context
+	 * @return void
+	 * @date 2014-2-25 下午3:22:40
+	 *
+	 */
+	public void getPaymentGoodsRequest(final OnRequestListener<GoodsList> listener){
+		if(NetWorkUtils.isNetworkConnected(mContext)){
+			mClient = new MyHttpClient(mContext);
+			mClient.cancelRequests(mContext, true);
+			RequestParams map = new RequestParams();
+			mClient.get(
+					HttpContants.getURL(HttpContants.PAYMENT_GOODS)
+					, map, new MyAsyncResponseHandler(){
+				@Override
+				public void onStart() {
+					listener.onStart();
+				}
+		
+				@Override
+				public void onSuccess(int statusCode, String content) {
+					CMBILogManager.printEventLog(mContext, "0", "120050", "");
+					log.d("getPaymentGoodsRequest:onSuccess,content:"+content);
+					try {
+						if(!StringUtils.isEmpty(content)){
+							GoodsList mList=JSONUtil.getMapper().readValue(JSONUtil.initJsonArrayStr(content), new TypeReference<GoodsList>() {
+							});
+							listener.onSuccess(statusCode, mList);
+						}else{
+							netError(listener);
+						}
+					} catch (Exception e) {
+						log.e(e);
+					}
+				}
+				
+				@Override
+				public void onFailure(int statusCode, Throwable error,
+						String content) {
+					CMBILogManager.printEventLog(mContext, "0", "120050", "");
+					listener.onFailed(statusCode, content);
+				}
+				
+			});
+		}else{
+			netError(listener);
+		}
+	}
+	
+	/**
+	 * 上传截图给橙柚
+	 */
+	public void uploadCapture(String path,String cysid,final OnRequestListener<UploadImgResultBean> listener){
+		try {
+			mClient = new MyHttpClient(mContext);
+			RequestParams params = new RequestParams();
+			params.put("files", new File(path),"multipart/form-data");
+			params.put("cysid", cysid);
+			params.put("type", "photo");
+			mClient.post(HttpContants.UPLOAD_IMG_URL, params, new MyAsyncResponseHandler(){
+				
+				@Override
+				public void onStart() {
+					listener.onStart();
+				}
+				
+				@Override
+				@Deprecated
+				public void onSuccess(int statusCode, String content) {
+					log.d("uploadCapture:"+content);
+					try {
+						UploadImgResultBean bean = JSONUtil.getMapper().readValue(content, new TypeReference<UploadImgResultBean>() {
+						});
+						listener.onSuccess(statusCode, bean);
+					} catch (Exception e) {
+						log.e(e);
+					}
+				}
+				
+				@Override
+				@Deprecated
+				public void onFailure(int statusCode, Throwable error,
+						String content) {
+					log.e("uploadCapture:"+content+":code="+statusCode);
+					listener.onFailed(statusCode, content);
+				}
+				
+				
+			});
+		} catch (Exception e) {
+			log.e(e);
+		}
+		
+	}
+	
+	/**
+	 * 分享游戏截图到游戏圈
+	 * @param rows
+	 * @param appkey
+	 * @param token
+	 * @param content
+	 * @param listener
+	 */
+	public void shareToGameCircle(String rows,String appkey,String token,String content,final OnRequestListener<Boolean> listener){
+		mClient = new MyHttpClient(mContext);
+		RequestParams params = new RequestParams();
+		params.put("appkey", appkey);
+		params.put("cysid", token);
+		params.put("imgPathStr", rows);
+		params.put("content", content);
+		mClient.post(HttpContants.GAME_CIRCLE_SHARE, params,new MyAsyncResponseHandler(){
+			
+			@Override
+			public void onStart() {
+				listener.onStart();
+			}
+			
+			@Override
+			@Deprecated
+			public void onSuccess(int statusCode, String content) {
+				try {
+					log.d("shareToGameCircle:"+content);
+					JSONObject obj = new JSONObject(content);
+					listener.onSuccess(statusCode,obj.getInt("code") == 0 ? true : false);
+				} catch (Exception e) {
+					log.e(e);
+				}
+			}
+			
+			@Override
+			@Deprecated
+			public void onFailure(int statusCode, Header[] headers,
+					Throwable error, String content) {
+				log.e("shareToGameCircle:"+content);
+				listener.onFailed(statusCode, content);
+			}
+			
+		});
+	}
+	
+	
+	/**
+	 * 创建订单
+	 * @param item
+	 */
+	public void createOrderFromServer(final GoodsItem item,String uid,String roleID,String groupID,final OnRequestListener<String> listener){
+			MyHttpClient mCreateOrderHttp = new MyHttpClient(mContext);
+			Map<String,String> params = new HashMap<String, String>();
+			String type = UserInfoSPUtil.getType(mContext);
+			String account_id = UserInfoSPUtil.getUsername(mContext);
+			if(Contants.LoginParams.TYPE_CYOU.equals(type) 
+					&& MetaDataValueUtils.getChannelID(mContext) == mContext.getString(AccResource.getInstance(mContext).mgp_channel_cy)){
+				if(!TextUtils.isEmpty(account_id)&&account_id!=null){
+					params.put("account_id", account_id);
+				}else{
+					params.put("account_id", uid);
+				}
+			}else{
+				params.put("account_id", uid);
+			}
+			params.put("user_id", uid);
+			params.put("goods_id", item.getGoods_id());
+			params.put("goods_register_id",item.getGoods_register_id());
+			params.put("goods_number", item.getGoods_number());
+			params.put("goods_price", String.valueOf(item.getGoods_price()));
+//			params.put("push_info", mBundle.getString(CYMGProtocolKeys.PUSH_INFO));
+			params.put("game_channel", MetaDataValueUtils.getCMBIChannelID(mContext));
+			if(roleID != null){
+				params.put("role_id", roleID);
+			}
+			if(groupID != null){
+				params.put("group_id", groupID);
+			}
+			mCreateOrderHttp.post(HttpContants.getURL(HttpContants.CREATE_ORDER_FROM_SERVER), params, new MyAsyncResponseHandler(){
+				@Override
+				public void onStart() {
+					listener.onStart();
+				}
+				
+				@Override
+				public void onSuccess(int statusCode, String content) {
+					try {
+						log.d("onSuccess:content = "+content);
+						listener.onSuccess(statusCode, content);
+//						mWaitingDialog.dismiss();
+//						if(TextUtils.isEmpty(content)){
+//							mCreating = false;
+//							return;
+//						}
+//						JSONObject jsonObject = new JSONObject(content);
+//						mCurrentOrderID = jsonObject.getString("order_id");
+//						mBundle.putString(Params.ORDER_ID, mCurrentOrderID);
+//						UPayResultEvent e = new UPayResultEvent();
+//						e.setmItem(item);
+//						e.setmOrderID(mCurrentOrderID);
+//						EventBus.getDefault().post(e);
+////						mHandler.sendEmptyMessage(PAY_WAY_GET_ORDERID_SUCCESS);
+//						mCreating = false;
+					} catch (Exception e) {
+						log.e(e);
+					}
+				}
+				@Override
+				public void onFailure(int statusCode, Throwable error,
+						String content) {
+					log.e("onFailure:content="+content);
+					listener.onFailed(statusCode, content);
+//					mCreating = false;
+//					mHandler.sendEmptyMessage(PAY_WAY_GET_ORDERID_FAIL);
+				}
+			});
+	}
+}

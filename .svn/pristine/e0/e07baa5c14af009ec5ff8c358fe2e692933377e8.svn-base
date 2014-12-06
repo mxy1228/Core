@@ -1,0 +1,296 @@
+package com.changyou.mgp.sdk.mbi.channel.impl;
+
+import android.app.Activity;
+import android.content.Context;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.text.TextUtils;
+
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannel;
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannelEntity;
+import com.changyou.mgp.sdk.mbi.common.CYMGCallback;
+import com.changyou.mgp.sdk.mbi.common.CYMGCallbackHelper;
+import com.changyou.mgp.sdk.mbi.config.CYMGPrompt;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolKeys;
+import com.changyou.mgp.sdk.mbi.config.Params;
+import com.changyou.mgp.sdk.mbi.entity.GoodsItem;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPayHelper;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPlatform;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPlatformConfiguration;
+import com.changyou.mgp.sdk.mbi.utils.MetaDataValueUtils;
+import com.changyou.mgp.sdk.mbi.utils.NetWorkUtils;
+import com.changyou.mgp.sdk.mbi.utils.ResourceUtil;
+import com.changyou.mgp.sdk.mbi.utils.SystemUtils;
+import com.xiaomi.gamecenter.sdk.GameInfoField;
+import com.xiaomi.gamecenter.sdk.MiCommplatform;
+import com.xiaomi.gamecenter.sdk.MiErrorCode;
+import com.xiaomi.gamecenter.sdk.OnLoginProcessListener;
+import com.xiaomi.gamecenter.sdk.OnPayProcessListener;
+import com.xiaomi.gamecenter.sdk.entry.MiAccountInfo;
+import com.xiaomi.gamecenter.sdk.entry.MiAppInfo;
+import com.xiaomi.gamecenter.sdk.entry.MiBuyInfoOnline;
+import com.xiaomi.gamecenter.sdk.entry.MiGameType;
+
+public class CYMGMiImpl implements CYMGChannel {
+
+	private final CYLog log = CYLog.getInstance();
+	
+	private static final int MIN_PRICE = 1;
+
+	@Override
+	public void init(CYMGPlatformConfiguration config) {
+		log.d("MGPMiImpl:init");
+		Context context = config.getmContext();
+		String appId=MetaDataValueUtils.getMiAppId(context);
+		int appid=Integer.valueOf(appId);
+		String appkey=MetaDataValueUtils.getMiAppKey(context);
+		if(TextUtils.isEmpty(appId)||TextUtils.isEmpty(appkey)){
+			CYMGCallbackHelper.callbackResult(CYMGCallbackHelper.getCommonResult(CYMGPrompt.CODE_INIT_FAILED, null));
+			return;
+		}
+		MiAppInfo appInfo = new MiAppInfo();
+		appInfo.setAppId(appid);
+		appInfo.setAppKey(appkey);
+		appInfo.setAppType(MiGameType.online); // 网游
+		MiCommplatform.Init(context, appInfo);
+		CYMGCallbackHelper.callbackResult(CYMGCallbackHelper.getCommonResult(CYMGPrompt.CODE_INIT_SUCCESS, null));
+	}
+
+	@Override
+	public void doLogin(CYMGChannelEntity entity) {
+		log.d("MGPMiImpl:doLogin");
+		final Context context = entity.getmContext();
+		final String userIp = NetWorkUtils.getLocalIpAddress(context);
+		final String deviceid = SystemUtils.getDeviceId(context);
+		final String app_id_mi = MetaDataValueUtils.getMiAppId(context);
+		final String app_key_mi = MetaDataValueUtils.getMiAppKey(context);
+		final String channelId = context.getString(ResourceUtil.getInstance(context).getStringId("mgp_channel_mi"));
+		MiCommplatform.getInstance().miLogin((Activity) context, new OnLoginProcessListener(){
+
+			@Override
+			public void finishLoginProcess(int code,MiAccountInfo arg1) {
+				switch( code ) {
+		        case MiErrorCode.MI_XIAOMI_GAMECENTER_SUCCESS: 
+		        	log.d("MGPMiImpl:doLogin,登录成功，code：" + code);
+		            long uid = arg1.getUid();
+		            String sessionid = arg1.getSessionId();
+		            Bundle b = new Bundle();
+					b.putString(CYMGProtocolKeys.UID, String.valueOf(uid));
+					b.putString(CYMGProtocolKeys.APP_SESSION_MI, sessionid);
+					b.putString(CYMGProtocolKeys.USERIP, userIp);
+					b.putString(CYMGProtocolKeys.DEVICEID, deviceid);
+					b.putString(CYMGProtocolKeys.APP_ID_MI, app_id_mi);
+					b.putString(CYMGProtocolKeys.APP_KEY_MI, app_key_mi);
+					b.putString(CYMGProtocolKeys.CHANNEL_ID, channelId);
+					b.putString(CYMGProtocolKeys.OPCODE, "10001");
+					CYMGCallbackHelper.callbackResult(CYMGCallbackHelper.getLoginResult(CYMGPrompt.CODE_LOGIN_SUCCESS, b,context));
+		            break;
+		        case MiErrorCode.MI_XIAOMI_GAMECENTER_ERROR_LOGIN_FAIL: 
+		        	log.d("MGPMiImpl:doLogin,登录失败，code：" + code);
+		        	CYMGCallbackHelper.callbackResult(CYMGCallbackHelper.getLoginResult(CYMGPrompt.CODE_LOGIN_FAILED, null,context));
+		            break;
+		        case MiErrorCode.MI_XIAOMI_GAMECENTER_ERROR_CANCEL:
+		        	log.d("MGPMiImpl:doLogin,登录取消，code：" + code);
+		        	CYMGCallbackHelper.callbackResult(CYMGCallbackHelper.getLoginResult(CYMGPrompt.CODE_LOGIN_FAILED, null,context));
+		            break;
+		        case MiErrorCode.MI_XIAOMI_GAMECENTER_ERROR_ACTION_EXECUTED:
+		            // 登录操作正在进行中 
+		            break;
+		        default :
+		        	log.d("MGPMiImpl:doLogin,登录失败，code：" + code);
+		        	CYMGCallbackHelper.callbackResult(CYMGCallbackHelper.getLoginResult(CYMGPrompt.CODE_LOGIN_FAILED, null,context));
+		            break;
+				} 
+	        }
+				
+		});
+	}
+
+	@Override
+	public void doPay(CYMGChannelEntity entity) {
+		log.d("MGPMiImpl:doPay");
+		final Context context = entity.getmContext();
+		Bundle bundle=entity.getBundle();
+		final GoodsItem goodsItem = (GoodsItem)bundle.getSerializable(Params.GOODSITEM);
+		double d=Double.valueOf(goodsItem.getGoods_price());
+		int price=(int)d;
+		final String uid = bundle.getString(Params.UID);
+		final String currentOrderID = bundle.getString(Params.ORDER_ID);
+		String balance=bundle.getString(CYMGProtocolKeys.BALANCE);
+		String vip=bundle.getString(CYMGProtocolKeys.VIP);
+		String lv=bundle.getString(CYMGProtocolKeys.LV);
+		String party_name=bundle.getString(CYMGProtocolKeys.PARTY_NAME);
+		String role_name=bundle.getString(CYMGProtocolKeys.ROLE_NAME);
+		String role_id=bundle.getString(CYMGProtocolKeys.ROLE_ID);
+		String server_name=bundle.getString(CYMGProtocolKeys.SERVER_NAME);
+		if(price < MIN_PRICE){
+			log.e("price < "+MIN_PRICE);
+			return;
+		}
+		if(goodsItem == null) {
+			log.e("mGoodsItem is null");
+			return;
+		}
+		if(uid == null){
+			log.e("uid is null");
+			return;
+		}
+		if(currentOrderID == null){
+			log.e("order_id is null");
+			return;
+		}
+		if(balance == null) {
+			log.e("balance is null");
+			return;
+		}
+		if(vip == null){
+			log.e("vip is null");
+			return;
+		}
+		if(lv == null){
+			log.e("lv is null");
+			return;
+		}
+		if(party_name == null) {
+			log.e("party_name is null");
+			return;
+		}
+		if(role_name == null){
+			log.e("role_name is null");
+			return;
+		}
+		if(role_id == null){
+			log.e("role_id is null");
+			return;
+		}
+		if(server_name == null){
+			log.e("server_name is null");
+			return;
+		}
+		MiBuyInfoOnline online = new MiBuyInfoOnline();
+		online.setCpOrderId(currentOrderID); //订单号唯一(不为空)
+		online.setCpUserInfo("changyou"); //此参数在用户支付成功后会透传给CP的服务器 
+		online.setMiBi(price); //必须是大于1的整数, 10代表10米币,即10元人民币(不为空)
+		//用户信息※必填※
+		Bundle mBundle = new Bundle();
+		mBundle.putString( GameInfoField.GAME_USER_BALANCE, balance );  //用户余额
+		mBundle.putString( GameInfoField.GAME_USER_GAMER_VIP, vip );  //vip 等级
+		mBundle.putString( GameInfoField.GAME_USER_LV, lv );          //角色等级
+		mBundle.putString( GameInfoField.GAME_USER_PARTY_NAME, party_name );  //工会，帮派
+		mBundle.putString( GameInfoField.GAME_USER_ROLE_NAME, role_name ); //角色名称
+		mBundle.putString( GameInfoField.GAME_USER_ROLEID, role_id );   //角色id
+		mBundle.putString( GameInfoField.GAME_USER_SERVER_NAME, server_name );  //所在服务器
+		MiCommplatform.getInstance().miUniPayOnline((Activity)context, online, mBundle,
+		    new OnPayProcessListener(){
+		    @Override
+		    public void finishPayProcess( int code ) { 
+		        switch( code ) {
+		        case MiErrorCode.MI_XIAOMI_GAMECENTER_SUCCESS:
+		        	 log.d("MGPMiImpl:doPay,支付成功,code:"+code);
+		        	 new Handler(Looper.getMainLooper()).post(new Runnable() {
+							
+							@Override
+							public void run() {
+								CYMGPayHelper.getInstance().paySuccess(uid,goodsItem, currentOrderID);
+							}
+						});
+		             break;
+		        case MiErrorCode.MI_XIAOMI_GAMECENTER_ERROR_PAY_CANCEL:
+		        	 log.d("MGPMiImpl:doPay,支付取消,code:"+code);
+		        	 new Handler(Looper.getMainLooper()).post(new Runnable() {
+							
+							@Override
+							public void run() {
+								CYMGPayHelper.getInstance().payException(CYMGPrompt.CODE_PAY_CANCEL);
+							}
+						});
+		             break;
+		        case MiErrorCode.MI_XIAOMI_GAMECENTER_ERROR_PAY_FAILURE: 
+		        	 log.d("MGPMiImpl:doPay,支付失败,code:"+code);
+		        	 new Handler(Looper.getMainLooper()).post(new Runnable() {
+							
+							@Override
+							public void run() {
+								CYMGPayHelper.getInstance().payException(CYMGPrompt.CODE_PAY_FAILED);
+							}
+						});
+		             break;
+		        case MiErrorCode.MI_XIAOMI_GAMECENTER_ERROR_ACTION_EXECUTED:
+		        	 log.d("MGPMiImpl:doPay,支付进行中,code:"+code);
+//		        	 new Handler(Looper.getMainLooper()).post(new Runnable() {
+//							
+//							@Override
+//							public void run() {
+//								CYMGPayHelper.getInstance().paySuccess(uid,goodsItem, currentOrderID);
+//							}
+//						});
+		             break;
+		        default :
+		        	 log.d("MGPMiImpl:doPay,支付失败,code:"+code);
+		        	 new Handler(Looper.getMainLooper()).post(new Runnable() {
+							
+							@Override
+							public void run() {
+								CYMGPayHelper.getInstance().payException(CYMGPrompt.CODE_PAY_FAILED);
+							}
+						});
+		             break; 
+		        }
+		    } 
+		});
+	}
+
+	@Override
+	public void doLogout(CYMGChannelEntity entity) {
+		log.d("MGPMiImpl:doLogout");
+		Context context = entity.getmContext();
+		MiCommplatform.getInstance().miLogout(new OnLoginProcessListener() {
+			
+			@Override
+			public void finishLoginProcess(int arg0, MiAccountInfo arg1) {
+				if (MiErrorCode.MI_XIAOMI_GAMECENTER_ERROR_LOGINOUT_SUCCESS == arg0) {
+					//注销成功
+					CYMGCallbackHelper.callbackResult(CYMGCallbackHelper.getCommonResult(CYMGPrompt.CODE_LOGOUT_SUCCESS, null));
+				}
+			}
+		});
+	}
+
+	@Override
+	public void doDestroy(CYMGChannelEntity entity) {
+		log.d("MGPMiImpl:doDestroy");
+	}
+
+	@Override
+	public void doCustomerService(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void doShowUserCenter(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void doResume(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void doPause(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void doStop(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+		
+	}
+
+}

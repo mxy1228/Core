@@ -1,0 +1,89 @@
+package com.changyou.mgp.sdk.mbi.entity;
+
+import com.changyou.mgp.sdk.mbi.entity.base.BaseEntity;
+
+public class OrderItem extends BaseEntity{
+
+	private String order_id;//订单编号
+	private String goods_register_id;//商品注册ID
+	private int goods_number;//商品数量
+	private double goods_price;//商品价格
+	private String create_date;//订单创建时间
+	private int order_status;//订单状态
+	private String goods_name;//商品名称
+	private int localState;//订单本地状态 1-成功/0-失败
+	private int remoteState;//订单服务器状态 1-成功/0-失败
+	private String order_status_msg;//订单状态文案
+	
+	public String getOrder_id() {
+		return order_id;
+	}
+	public void setOrder_id(String order_id) {
+		this.order_id = order_id;
+	}
+	public String getGoods_register_id() {
+		return goods_register_id;
+	}
+	public void setGoods_register_id(String goods_register_id) {
+		this.goods_register_id = goods_register_id;
+	}
+	public int getGoods_number() {
+		return goods_number;
+	}
+	public void setGoods_number(int goods_number) {
+		this.goods_number = goods_number;
+	}
+	public double getGoods_price() {
+		return goods_price;
+	}
+	public void setGoods_price(double goods_price) {
+		this.goods_price = goods_price;
+	}
+	public String getCreate_date() {
+		return create_date;
+	}
+	public void setCreate_date(String create_date) {
+		this.create_date = create_date;
+	}
+	public int getOrder_status() {
+		return order_status;
+	}
+	public void setOrder_status(int order_status) {
+		this.order_status = order_status;
+	}
+	public String getGoods_name() {
+		return goods_name;
+	}
+	public void setGoods_name(String goods_name) {
+		this.goods_name = goods_name;
+	}
+	public int getLocalState() {
+		return localState;
+	}
+	public void setLocalState(int localState) {
+		this.localState = localState;
+	}
+	public int getRemoteState() {
+		return remoteState;
+	}
+	public void setRemoteState(int remoteState) {
+		this.remoteState = remoteState;
+	}
+	@Override
+	public String toString() {
+		return "OrderItem [order_id=" + order_id + ", goods_register_id="
+				+ goods_register_id + ", goods_number=" + goods_number
+				+ ", goods_price=" + goods_price + ", create_date="
+				+ create_date + ", order_status=" + order_status
+				+ ", goods_name=" + goods_name + ", localState=" + localState
+				+ ", remoteState=" + remoteState + "]";
+	}
+	public String getOrder_status_msg() {
+		return order_status_msg;
+	}
+	public void setOrder_status_msg(String order_status_msg) {
+		this.order_status_msg = order_status_msg;
+	}
+	
+
+}

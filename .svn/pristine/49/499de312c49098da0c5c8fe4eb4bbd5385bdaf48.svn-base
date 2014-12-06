@@ -1,0 +1,339 @@
+package com.changyou.mgp.sdk.mbi.account.utils;
+
+import android.content.Context;
+import android.os.Bundle;
+
+import com.changyou.mgp.sdk.mbi.R;
+import com.changyou.mgp.sdk.mbi.config.CYMGPrompt;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolKeys;
+import com.changyou.mgp.sdk.mbi.config.Contants;
+import com.changyou.mgp.sdk.mbi.config.Contants.WeiboLoginParams;
+import com.changyou.mgp.sdk.mbi.http.MyAsyncResponseHandler;
+import com.changyou.mgp.sdk.mbi.http.MyHttpClient;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.platform.CYMGLoginHelper;
+import com.changyou.mgp.sdk.mbi.utils.MetaDataValueUtils;
+import com.changyou.mgp.sdk.mbi.utils.NetWorkUtils;
+import com.changyou.mgp.sdk.mbi.utils.ResourceUtil;
+import com.changyou.mgp.sdk.mbi.utils.SystemUtils;
+import com.changyou.mgp.sdk.mbi.utils.UserInfoSPUtil;
+import com.loopj.android.http.RequestParams;
+import com.sina.weibo.sdk.auth.Oauth2AccessToken;
+import com.sina.weibo.sdk.auth.WeiboAuth;
+import com.sina.weibo.sdk.auth.WeiboAuthListener;
+import com.sina.weibo.sdk.auth.sso.SsoHandler;
+import com.sina.weibo.sdk.constant.WBConstants;
+import com.sina.weibo.sdk.exception.WeiboException;
+
+/**
+ * 
+ * 功能描述: 新浪微博登录工具类
+ * 
+ * @author 欧阳海冰(OuyangHaibing)
+ * @date 2014-1-14 下午2:41:05
+ * 
+ *       修改历史:(修改人，修改时间，修改原因/内容)
+ * 
+ */
+public class WeiboLoginUtil {
+
+	private CYLog log = CYLog.getInstance();
+	/** 登录界面的activity */
+	private Context mContext;
+	/** SsoHandler对象 用于SSO授权登录 */
+	private SsoHandler mSsoHandler;
+	/** 微博认证实例 */
+	private WeiboAuth mWeiboAuth;
+
+	/** 发起注销请求时所需的回调接口 */
+	private WeiboLogoutListener mLogoutListener;
+
+	/** 微博认证Token，在授权成功后初始化 */
+	private static Oauth2AccessToken mAccessToken;
+	
+	/**微博回调的接口*/
+	private WeiboLoginListener mWeiboLoginListener;
+	private Bundle mBundle;
+	
+	public SsoHandler getSsoHandler() {
+		return mSsoHandler;
+	}
+
+	public WeiboLoginUtil(Context context) {
+		this.mContext = context;
+	}
+
+
+	/**
+	 * 功能描述：保存调用端信息，创建微博授权类对象
+	 * 
+	 * @author 欧阳海冰(OuyangHaibing)
+	 * @param activity
+	 * @param isLogined
+	 * @return void
+	 * @date 2014-1-14 下午2:16:57
+	 */
+	public void initWeiboAuth() {
+		String appkey=MetaDataValueUtils.getSinaAppKey(mContext);
+		mWeiboAuth = new WeiboAuth(mContext, appkey,
+				Contants.WeiboLoginParams.REDIRECT_URL, Contants.WeiboLoginParams.SCOPE);
+	}
+
+	/**
+	 * 功能描述: 使用Code+app_secret的方式登录
+	 * @author 欧阳海冰(OuyangHaibing)
+	 * @param  
+	 * @return void
+	 * @throws
+	 */
+	public void authCodeLogin(WeiboLoginListener weiboLoginListener) {
+		this.mWeiboLoginListener=weiboLoginListener;
+		if (mAccessToken == null || !mAccessToken.isSessionValid()) {
+			mWeiboAuth.authorize(new AuthListener(), WeiboAuth.OBTAIN_AUTH_CODE);
+		}else{
+			CYMGLoginHelper.getInstance().loginResult(CYMGPrompt.CODE_LOGIN_SUCCESS,getBundle(mAccessToken),mContext);
+			this.mWeiboLoginListener.onLoginComplete();
+		}
+	}
+
+	/**
+	 * 根据传递进来的Oauth2AccessToken返回一个Bundle对象
+	 * @param accessToken
+	 * @return
+	 */
+	private Bundle getBundle(Oauth2AccessToken accessToken) {
+		if (mBundle == null) {
+			mBundle = new Bundle();
+		}
+		if (accessToken == null) {
+			return null;
+		}
+		String userIp = NetWorkUtils.getLocalIpAddress(mContext);
+		String deviceid = SystemUtils.getDeviceId(mContext);
+		mBundle.putString(CYMGProtocolKeys.UID, accessToken.getUid());
+		mBundle.putString(CYMGProtocolKeys.TOKEN, accessToken.getToken());
+		mBundle.putString(CYMGProtocolKeys.TYPE, Contants.LoginParams.TYPE_SINA);
+		mBundle.putString(CYMGProtocolKeys.USERIP, userIp);
+		mBundle.putString(CYMGProtocolKeys.DEVICEID, deviceid);
+//		mBundle.putString(CYMGProtocolKeys.CY_QQ_APPID, qq_appid);
+		mBundle.putString(CYMGProtocolKeys.CHANNEL_ID, mContext.getString(ResourceUtil.getResourceIDByName(
+				mContext.getPackageName(), "string", "mgp_channel_cy")));
+		mBundle.putString(CYMGProtocolKeys.OPCODE, "10001");
+		
+		UserInfoSPUtil.setUid(mContext, accessToken.getUid());
+		UserInfoSPUtil.setToken(mContext, accessToken.getToken());
+		UserInfoSPUtil.setType(mContext, Contants.LoginParams.TYPE_SINA);
+		return mBundle;
+	}
+
+	/**
+	 * 功能描述: 微博认证授权回调类。 1.SSO 授权时，需要在 {@link #onActivityResult} 中调用
+	 * {@link SsoHandler#authorizeCallBack} 后，该回调才会被执行。 2. 非 SSO
+	 * 授权时，当授权结束后，该回调就会被执行。 当授权成功后，请保存该 access_token、expires_in、uid 等信息到
+	 * SharedPreferences 中。
+	 * 
+	 * @author 欧阳海冰(OuyangHaibing)
+	 * @date 2014-1-14 上午9:21:44
+	 * 
+	 *       修改历史:(修改人，修改时间，修改原因/内容)
+	 * 
+	 */
+	class AuthListener implements WeiboAuthListener {
+
+		@Override
+		public void onComplete(Bundle values) {
+			if (null == values) {
+				return;
+			}
+			String code = values.getString("code");
+			log.d("-----微博获取的code："+code);
+			//异步请求tokens
+			fetchTokenAsync(code);
+		}
+
+		@Override
+		public void onWeiboException(WeiboException e) {
+			if(mWeiboLoginListener!=null){
+				mWeiboLoginListener.onLoginError();
+			}
+		}
+
+		@Override
+		public void onCancel() {
+			if(mWeiboLoginListener!=null){
+				mWeiboLoginListener.onLoginCancel();
+			}
+		}
+	}
+
+	/**
+	 * 异步获取 Token。
+	 * 
+	 * @param authCode
+	 *            授权 Code，该 Code 是一次性的，只能被获取一次 Token
+	 * @param appSecret
+	 *            应用程序的 APP_SECRET
+	 */
+	public void fetchTokenAsync(String authCode) {
+		String appKey=MetaDataValueUtils.getSinaAppKey(mContext);
+		String appSecret=MetaDataValueUtils.getSinaAppSecret(mContext);
+		RequestParams params = new RequestParams();
+		params.put(WBConstants.AUTH_PARAMS_CLIENT_ID, appKey);
+		params.put(WBConstants.AUTH_PARAMS_CLIENT_SECRET, appSecret);
+		params.put(WBConstants.AUTH_PARAMS_GRANT_TYPE, "authorization_code");
+		params.put(WBConstants.AUTH_PARAMS_CODE, authCode);
+		params.put(WBConstants.AUTH_PARAMS_REDIRECT_URL,
+				WeiboLoginParams.REDIRECT_URL);
+
+		/**
+		 * 请求网络
+		 */
+		new MyHttpClient(mContext).post(WeiboLoginParams.OAUTH2_ACCESS_TOKEN_URL, params,
+				new MyAsyncResponseHandler() {
+					@Override
+					public void onStart() {
+						super.onStart();
+					}
+
+					@Override
+					public void onSuccess(int statusCode, String content) {
+						super.onSuccess(statusCode, content);
+						log.d("-----Response: " + content);
+						Oauth2AccessToken accessToken = Oauth2AccessToken.parseAccessToken(content);
+						if (accessToken != null && accessToken.isSessionValid()) {
+							mAccessToken = accessToken;
+							String token = accessToken.getToken();
+							String uid = accessToken.getUid();
+							log.d("-----token:"+token+",uid:"+uid);
+							CYMGLoginHelper.getInstance().loginResult(CYMGPrompt.CODE_LOGIN_SUCCESS,getBundle(mAccessToken),mContext);
+							mWeiboLoginListener.onLoginComplete();
+						} else {
+							log.d("-----Failed to receive access token");
+							CYMGLoginHelper.getInstance().loginResult(CYMGPrompt.CODE_LOGIN_FAILED,null,mContext);
+							mWeiboLoginListener.onLoginError();
+						}
+					}
+
+					@Override
+					public void onFailure(int statusCode, Throwable error,
+							String content) {
+						super.onFailure(statusCode, error, content);
+						CYMGLoginHelper.getInstance().loginResult(CYMGPrompt.CODE_LOGIN_FAILED,null,mContext);
+						mWeiboLoginListener.onLoginError();
+					}
+				});
+
+	}
+
+	/**
+	 * 功能描述：登录注销
+	 * 
+	 * @author 欧阳海冰(OuyangHaibing)
+	 * @param
+	 * @return void
+	 * @date 2014-1-16 上午9:17:53
+	 */
+	public void logout(Context context, String accessToken,final WeiboLogoutListener logoutListener) {
+		mAccessToken = null;
+		this.mLogoutListener = logoutListener;
+		if (accessToken == null && "".equals(accessToken)) {
+			return;
+		}
+		RequestParams params = new RequestParams();
+		params.put("access_token", accessToken);
+		
+		// 请求weibo服务器注销
+		new MyHttpClient(mContext).post(
+				Contants.WeiboLoginParams.REVOKE_OAUTH_URL, params,
+				new MyAsyncResponseHandler() {
+					@Override
+					public void onStart() {
+						super.onStart();
+					}
+
+					@Override
+					public void onSuccess(int statusCode, String content) {
+						super.onSuccess(statusCode, content);
+						if (mLogoutListener != null) {
+							mLogoutListener.onSuccess(content);
+						}
+					}
+
+					@Override
+					public void onFailure(int statusCode, Throwable error,
+							String content) {
+						super.onFailure(statusCode, error, content);
+						if (mLogoutListener != null) {
+							mLogoutListener.onFailure(error);
+						}
+					}
+				});
+
+	}
+
+	/**
+	 * 功能描述: 发起注销请求时所需的回调接口
+	 * 
+	 * @author 欧阳海冰(OuyangHaibing)
+	 * @date 2014-1-20 下午12:02:26
+	 * 
+	 *       修改历史:(修改人，修改时间，修改原因/内容)
+	 * 
+	 */
+	public interface WeiboLogoutListener {
+
+		/**
+		 * 当注销成功时，该函数被调用。
+		 * 
+		 * @param response
+		 *            服务器返回的字符串
+		 */
+		public void onSuccess(String response);
+
+		/**
+		 * 当注销失败时，该函数被调用。
+		 * 
+		 * @param thr
+		 * @param response
+		 */
+		public void onFailure(Throwable thr);
+	}
+	
+	/**
+	 * 功能描述: 微博登录回调接口 
+	 * @author 欧阳海冰(OuyangHaibing) 
+	 * @date 2014-2-14 上午9:41:32 
+	 *
+	 */
+	public interface WeiboLoginListener{
+		/**
+		 * 功能描述: 登录完成时回调
+		 * @author 欧阳海冰(OuyangHaibing)
+		 * @param @param uid
+		 * @param @param token
+		 * @param @param channelId 
+		 * @return void
+		 * @throws
+		 */
+		public void onLoginComplete();
+		
+		/**
+		 * 功能描述: 取消登录时回调
+		 * @author 欧阳海冰(OuyangHaibing)
+		 * @param  
+		 * @return void
+		 * @throws
+		 */
+		public void onLoginCancel();
+		
+		/**
+		 * 功能描述: 登录异常时回调
+		 * @author 欧阳海冰(OuyangHaibing)
+		 * @param  
+		 * @return void
+		 * @throws
+		 */
+		public void onLoginError();
+	}
+
+}

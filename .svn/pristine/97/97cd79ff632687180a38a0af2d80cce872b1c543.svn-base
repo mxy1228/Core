@@ -1,0 +1,203 @@
+package com.changyou.mgp.sdk.mbi.account.utils;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import org.codehaus.jackson.type.TypeReference;
+import org.json.JSONObject;
+
+import android.content.Context;
+import android.os.Bundle;
+import android.text.TextUtils;
+
+import com.changyou.mgp.sdk.mbi.account.id.AccResource;
+import com.changyou.mgp.sdk.mbi.config.CYMGPrompt;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolKeys;
+import com.changyou.mgp.sdk.mbi.config.Contants;
+import com.changyou.mgp.sdk.mbi.config.HttpContants;
+import com.changyou.mgp.sdk.mbi.entity.ErrorInfo;
+import com.changyou.mgp.sdk.mbi.entity.LoginInfo;
+import com.changyou.mgp.sdk.mbi.http.MyAsyncResponseHandler;
+import com.changyou.mgp.sdk.mbi.http.MyHttpClient;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.platform.CYMGLoginHelper;
+import com.changyou.mgp.sdk.mbi.utils.JSONUtil;
+import com.changyou.mgp.sdk.mbi.utils.NetWorkUtils;
+import com.changyou.mgp.sdk.mbi.utils.ResourceUtil;
+import com.changyou.mgp.sdk.mbi.utils.StringUtils;
+import com.changyou.mgp.sdk.mbi.utils.SystemUtils;
+import com.changyou.mgp.sdk.mbi.utils.UserInfoSPUtil;
+import com.huawei.deviceCloud.microKernel.util.Json;
+
+/**
+ * 
+ * 功能描述：HttpPost工具类
+ * 
+ * @author 严峥(yanzheng)
+ * @date 2014-1-20 上午10:19:03 修改历史：(修改人，修改时间，修改原因/内容)
+ */
+public class CyouLoginUtils {
+
+	private CYLog log = CYLog.getInstance();
+
+	private Context mContext;
+
+	public CyouLoginUtils(Context context) {
+		mContext = context;
+	}
+
+	/**
+	 * 
+	 * 功能描述：用户登录请求
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param @param uid
+	 * @param @param pswd
+	 * @param @param mgpLoginListener
+	 * @return void
+	 * @date 2013-12-31 下午3:18:17
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public void userLoginRequest(final String uName, final String pswd,
+			final CyouLoginListener cyouLoginListener) {
+		if (NetWorkUtils.isNetworkConnected(mContext)) {
+			String deviceid = SystemUtils.getDeviceId(mContext);
+			String phone = SystemUtils.getNativePhoneNumber(mContext);
+			if (phone == null) {
+				phone = "";
+			}
+			Map map = new HashMap();
+			map.put("device_id", deviceid);
+			map.put("username", uName);
+			map.put("password", pswd);
+			map.put("phone", phone);
+			MyHttpClient mHttpClient = new MyHttpClient(mContext);
+			mHttpClient.post(HttpContants.getURL(HttpContants.USER_LOGIN), map,
+					new MyAsyncResponseHandler() {
+
+						@Override
+						public void onStart() {
+							// mHandler.sendEmptyMessage(Contants.HandlerMessage.WHAT_2);
+						}
+
+						@Override
+						public void onSuccess(int statusCode, String content) {
+							log.d("userLoginRequest-----onSuccess,content:"
+									+ content);
+							if (!StringUtils.isEmpty(content)) {
+								try {
+									LoginInfo info=JSONUtil.getMapper().readValue(content, new TypeReference<LoginInfo>() {
+									});
+									String uid = info.getUid();
+									String token = info.getToken();
+
+									if (!TextUtils.isEmpty(uid) && !TextUtils.isEmpty(token)) {
+										CYMGLoginHelper
+												.getInstance()
+												.loginResult(
+														CYMGPrompt.CODE_LOGIN_SUCCESS,
+														creatBundle(
+																uid,
+																token,
+																Contants.LoginParams.TYPE_CYOU),
+																mContext);
+										UserInfoSPUtil.setUsername(mContext,
+												uName);
+										cyouLoginListener.onLoginComplete();
+									} else {
+										cyouLoginListener.onLoginError(404);
+									}
+								} catch (Exception e) {
+									log.e(e);
+								}
+							} else {
+								cyouLoginListener.onLoginError(404);
+							}
+
+						}
+
+						@Override
+						public void onFailure(int statusCode, Throwable error,
+								String content) {
+							log.d("userLoginRequest-----onFailure,content:"
+									+ content);
+							if (!StringUtils.isEmpty(content)) {
+								try {
+									ErrorInfo info = JSONUtil
+											.getMapper()
+											.readValue(
+													content,
+													new TypeReference<ErrorInfo>() {
+													});
+									if (info != null) {
+										cyouLoginListener.onLoginError(info
+												.getError_code());
+										return;
+									} else {
+										cyouLoginListener.onLoginError(404);
+										return;
+									}
+								} catch (Exception e) {
+									log.e(e);
+								}
+							} else {
+								cyouLoginListener.onLoginError(404);
+								return;
+							}
+							if (statusCode == 404) {
+								cyouLoginListener.onLoginError(404);
+							} else {
+								cyouLoginListener.onLoginError(404);
+							}
+						}
+					});
+		} else {
+			cyouLoginListener.onLoginError(404);
+		}
+	}
+
+	/**
+	 * 
+	 * 功能描述：创建回调数据
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param @param uid
+	 * @param @param token
+	 * @param @return
+	 * @return Bundle
+	 * @date 2014-3-25 上午10:33:58
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public Bundle creatBundle(String uid, String token, String type) {
+		String userIp = NetWorkUtils.getLocalIpAddress(mContext);
+		String deviceid = SystemUtils.getDeviceId(mContext);
+		Bundle bundle = new Bundle();
+		bundle.putString(CYMGProtocolKeys.UID, uid);
+		bundle.putString(CYMGProtocolKeys.TOKEN, token);
+		bundle.putString(CYMGProtocolKeys.TYPE, type);
+		bundle.putString(CYMGProtocolKeys.USERIP, userIp);
+		bundle.putString(CYMGProtocolKeys.DEVICEID, deviceid);
+		// bundle.putString(CYMGProtocolKeys.CY_QQ_APPID, qq_appid);
+		bundle.putString(
+				CYMGProtocolKeys.CHANNEL_ID,
+				mContext.getString(AccResource.getInstance(mContext).mgp_channel_cy));
+		bundle.putString(CYMGProtocolKeys.OPCODE, "10001");
+		UserInfoSPUtil.setUid(mContext, uid);
+		UserInfoSPUtil.setToken(mContext, token);
+		UserInfoSPUtil.setType(mContext, type);
+		return bundle;
+	}
+
+	public interface CyouLoginListener {
+		// 取消登录
+		public void onLoginCancel(int error_code);
+
+		// 登录异常‘
+		public void onLoginError(int error_code);
+
+		// 登录成功
+		public void onLoginComplete();
+	}
+}

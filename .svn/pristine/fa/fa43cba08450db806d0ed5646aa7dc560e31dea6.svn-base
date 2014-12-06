@@ -1,0 +1,361 @@
+package com.changyou.mgp.sdk.mbi.pay.weixin;
+
+import java.io.UnsupportedEncodingException;
+import java.util.Random;
+
+import org.json.JSONObject;
+
+import android.app.Activity;
+import android.app.ProgressDialog;
+import android.os.AsyncTask;
+import android.os.Bundle;
+
+import com.changyou.mgp.sdk.mbi.config.CYMGPrompt;
+import com.changyou.mgp.sdk.mbi.config.Contants;
+import com.changyou.mgp.sdk.mbi.config.HttpContants;
+import com.changyou.mgp.sdk.mbi.entity.GoodsItem;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.pay.ui.CYMGPaymentActivity;
+import com.changyou.mgp.sdk.mbi.pay.ui.CYMGPaymentSuccessFragment;
+import com.changyou.mgp.sdk.mbi.pay.weixin.Util.IpAddress;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPayHelper;
+import com.tencent.mm.sdk.constants.Build;
+import com.tencent.mm.sdk.openapi.IWXAPI;
+import com.tencent.mm.sdk.openapi.WXAPIFactory;
+
+/***
+ * 
+ * <PRE>
+ * 作用
+ *       微信支付业务逻辑
+ * 限制
+ *       无。
+ * 注意事项
+ *       无。
+ * </PRE>
+ */
+public class WeixinPayModel{
+	private static WeixinPayModel instance=new WeixinPayModel();
+	
+	public  static WeixinPayModel getInstance(){
+		return instance;
+	}
+	
+	private IWXAPI api;
+	
+	private static CYLog log = CYLog.getInstance();
+	
+    /** 商家向财付通申请的商家id */
+    public static final String PARTNER_ID ="1219702201";//1219702201
+    
+    
+	//=====================================以下cp自己传入
+	/**
+     * 微信开放平台和商户约定的支付密钥
+     * 
+     * 注意：不能hardcode在客户端，建议genSign这个过程由服务器端完成
+     */
+	static String APP_KEY=null ;
+
+	// APP_ID 替换为你的应用从官方网站申请到的合法appId
+	public static String APP_ID =null;
+
+	 /**
+     * 微信开放平台和商户约定的密钥
+     * 
+     * 注意：不能hardcode在客户端，建议genSign这个过程由服务器端完成
+     */
+	static String APP_SECRET =null;
+	
+	private Activity mContext=null;
+	private GoodsItem mGoodsItem=null;
+	
+	public void setActivity(Activity cxt) {
+		try{
+			mContext=cxt;
+			
+			
+			//以下三个参数需要让游戏从androidfest.xml里配置
+			APP_ID=MetaDataValueUtils.getWeixinAppId(mContext);
+			APP_KEY=MetaDataValueUtils.getWeixinAppKey(mContext);
+			APP_SECRET=MetaDataValueUtils.getWeixinAppSecret(mContext);
+			
+
+			api = WXAPIFactory.createWXAPI(cxt, APP_ID,true);
+			api.registerApp(APP_ID);
+		}catch(Exception e){
+			log.e(e);
+			this.CallWeixinPayException();
+		}
+	}
+	
+	/***
+	 * 开始支付
+	 * 1、server上获取token
+	 * 2、让server生成商品订单sign
+	 * 3、GetPrepayIdTask 拿着token和prductargs（这里面用到了sign）请求 预支付订单ID
+	 * 4、请求支付
+	 * @param mGoodsItem 
+	 */
+	public void startPay(final String uid,final GoodsItem goodsItem,final String orderID){
+		this.mGoodsItem=goodsItem;
+		//调用我们的token请求
+		try {
+			
+			//缓存起来
+			PayGood.store(uid, goodsItem, orderID);
+			
+			RequestToken.getToken(mContext, new RequestToken.WeixinTokenListener(){
+
+				@Override
+				public void handleToken(final String token) throws WeixinPayException {
+					
+					final RequestSignEntity entity=new RequestSignEntity();
+					entity.app_id=APP_ID;
+					entity.app_key=APP_KEY;
+					entity.app_secret=APP_SECRET;
+					entity.body=mGoodsItem.getGoods_name();
+					entity.out_trade_no=PayGood.orderID;
+					
+					double price=Double.parseDouble(mGoodsItem.getGoods_price())*100;//将元换算成分
+					entity.total_fee=String.valueOf((int)price);
+					entity.notify_url=HttpContants.getWeixinPayReturnUrl();
+					entity.spbill_create_ip=IpAddress.getPhoneIp();
+					
+					entity.nonceStr=genNonceStr();
+					entity.timestamp=genTimeStamp();
+					entity.traceid=getTraceId();
+					
+					
+					//app_id、app_key、app_secret、body、out_trade_no、total_fee、notify_url、spbill_create_ip、nonceStr、timestamp、traceid
+							
+					try {
+						RequestSign.getSign(mContext, new RequestSign.WeixinSignListener() {
+							
+							@Override
+							public void handleSign(String appSignature, String partnerId,
+									String packageValue) {
+								entity.token=token;
+								entity.appSignature=appSignature;
+								entity.partnerId=partnerId;
+								entity.packageValue=packageValue;
+										
+								GetPrepayIdTask getPrepayId = new GetPrepayIdTask(entity);
+								getPrepayId.execute();
+								
+							}
+						}, entity);
+					} catch (UnsupportedEncodingException e) {
+						CallWeixinPayException();
+					}
+					
+			}});
+			
+
+		} catch (WeixinPayException e) {
+			this.CallWeixinPayException();
+		}
+		
+
+	}
+	
+	
+	/***
+	 * 检测微信客户端,是否支持微信支付
+	 * @return
+	 */
+	public boolean isPaySupport(){
+		boolean isPaySupported=false; 
+		try{
+			isPaySupported = api.getWXAppSupportAPI() >= Build.PAY_SUPPORTED_SDK_INT;
+		
+			return isPaySupported;
+		}catch(Exception e){
+			log.e(e);
+			CallWeixinPayException();
+		}
+		return isPaySupported ;
+	}
+
+	
+
+	
+	
+	private void CallWeixinPayException(){
+		CYMGPayHelper.getInstance().payException(CYMGPrompt.CODE_PAY_FAILED);
+		
+		//显示支付错误页面
+		this.showPayFailure();
+	}
+	
+	private class GetPrepayIdTask extends AsyncTask<Void, Void, GetPrepayIdResult> {
+
+		private ProgressDialog dialog;
+		//private String accessToken;
+		private WeixinPayDo paydo;
+		private RequestSignEntity entity;
+		
+/*		private String appSignature;
+		private String partnerId;
+		private String packageValue;
+		private String nonceStr;
+		private long timeStamp;
+		private String traceId;*/
+		
+		public GetPrepayIdTask(RequestSignEntity entity) {
+			this.entity=entity;
+/*			this.accessToken = entity.token;
+			this.appSignature=entity.appSignature;
+			this.partnerId=entity.partnerId;
+			this.packageValue=entity.packageValue;
+			this.nonceStr=entity.nonceStr;
+			this.timeStamp=entity.timestamp;
+			this.traceId=entity.traceid;*/
+			
+			paydo=new WeixinPayDo();
+		}
+		
+
+
+		@Override
+		protected void onPreExecute() {
+
+		}
+
+		@Override
+		protected void onPostExecute(GetPrepayIdResult result) {
+			if (dialog != null) {
+				dialog.dismiss();
+			}
+			
+			if (result.localRetCode == LocalRetCode.ERR_OK) {
+				paydo.sendPayReq(api,result);
+			} else {
+				log.e("get_prepayid_fail:"+result.localRetCode);
+				CallWeixinPayException();
+			}
+		}
+
+		@Override
+		protected void onCancelled() {
+			super.onCancelled();
+		}
+
+		@Override
+		protected GetPrepayIdResult doInBackground(Void... params){
+			try{
+				String url = String.format("https://api.weixin.qq.com/pay/genprepay?access_token=%s", entity.token);
+				String entityStr = paydo.genProductArgs(entity);
+				
+				log.d( "doInBackground, url = " + url);
+				log.d( "doInBackground, entity = " + entityStr);
+				
+				GetPrepayIdResult result = new GetPrepayIdResult();
+				
+				byte[] buf = Util.httpPost(url, entityStr);
+				if (buf == null || buf.length == 0) {
+					result.localRetCode = LocalRetCode.ERR_HTTP;
+					return result;
+				}
+				
+				String content = new String(buf);
+				log.d("doInBackground, content = " + content);
+				result.parseFrom(content);
+				return result;
+			}catch(  WeixinPayException e){
+				CallWeixinPayException();
+			}
+			return null;
+		}
+	}
+
+	private  enum LocalRetCode {
+		ERR_OK, ERR_HTTP, ERR_JSON, ERR_OTHER
+	}
+	
+		
+	public static class GetPrepayIdResult {
+		
+	
+		public LocalRetCode localRetCode = LocalRetCode.ERR_OTHER;
+		public String prepayId;
+		public int errCode;
+		public String errMsg;
+		
+		public void parseFrom(String content)throws WeixinPayException {
+			
+			if (content == null || content.length() <= 0) {
+				log.e("parseFrom fail, content is null");
+				localRetCode = LocalRetCode.ERR_JSON;
+				return;
+			}
+			
+			try {
+				JSONObject json = new JSONObject(content);
+				if (json.has("prepayid")) { // success case
+					prepayId = json.getString("prepayid");
+					localRetCode = LocalRetCode.ERR_OK;
+				} else {
+					localRetCode = LocalRetCode.ERR_JSON;
+				}
+				
+				errCode = json.getInt("errcode");
+				errMsg = json.getString("errmsg");
+				
+			} catch (Exception e) {
+				localRetCode = LocalRetCode.ERR_JSON;
+				throw new WeixinPayException(errMsg);
+			}
+		}
+	}
+	
+
+
+	/**
+	 * 建议 traceid 字段包含用户信息及订单信息，方便后续对订单状态的查询和跟踪
+	 */
+	private String getTraceId() {
+		return "crestxu_" + genTimeStamp(); 
+	}
+	
+	private String genNonceStr() {
+		Random random = new Random();
+		return Util.MD5.getMessageDigest(String.valueOf(random.nextInt(10000)).getBytes());
+	}
+	
+	private long genTimeStamp() {
+		return System.currentTimeMillis() / 1000;
+	}
+
+	/**
+	 * 
+	 */
+	public void showPayFailure() {
+		
+		this.showPayResult(CYMGPaymentSuccessFragment.CARD_FAILED);
+		
+	}
+
+	private void showPayResult(int flag){
+		try{
+			Bundle b = new Bundle();
+			b.putInt("type", flag);
+			((CYMGPaymentActivity)this.mContext).changeFragment(Contants.FragmentTag.PAYMENT_SUCCESS_FRAGMENT_TAG, b);
+		}catch(Exception e){
+			log.e(e);
+		}
+	}
+	
+	/**
+	 * 
+	 */
+	public void showPaySuccess() {
+		showPayResult(CYMGPaymentSuccessFragment.CARD_SUCCESS);
+		
+	}
+	
+	
+
+	
+
+}

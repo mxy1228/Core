@@ -1,0 +1,319 @@
+package com.changyou.mgp.sdk.mbi.channel.impl;
+
+import org.json.JSONObject;
+
+import android.app.Activity;
+import android.content.Context;
+import android.content.Intent;
+import android.os.Bundle;
+
+import com.changyou.mgp.sdk.mbi.R;
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannel;
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannelEntity;
+import com.changyou.mgp.sdk.mbi.config.CYMGPrompt;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolConfig;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolKeys;
+import com.changyou.mgp.sdk.mbi.config.Params;
+import com.changyou.mgp.sdk.mbi.config.SDKConfig;
+import com.changyou.mgp.sdk.mbi.entity.GoodsItem;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.pay.ui.CYMGPaymentActivity;
+import com.changyou.mgp.sdk.mbi.platform.CYMGInitHelper;
+import com.changyou.mgp.sdk.mbi.platform.CYMGLoginHelper;
+import com.changyou.mgp.sdk.mbi.platform.CYMGLoginOutHelpr;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPayHelper;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPlatformConfiguration;
+import com.changyou.mgp.sdk.mbi.utils.MetaDataValueUtils;
+import com.changyou.mgp.sdk.mbi.utils.NetWorkUtils;
+import com.changyou.mgp.sdk.mbi.utils.SettingSPUtil;
+import com.changyou.mgp.sdk.mbi.utils.SystemUtils;
+import com.qihoopay.insdk.activity.ContainerActivity;
+import com.qihoopay.insdk.matrix.Matrix;
+import com.qihoopay.sdk.protocols.IDispatcherCallback;
+import com.qihoopay.sdk.protocols.ProtocolConfigs;
+import com.qihoopay.sdk.protocols.ProtocolKeys;
+
+public class CYMG360Impl implements CYMGChannel {
+
+	private CYLog log = CYLog.getInstance();
+	private static final String ERROR_CODE = "error_code";
+	private static final String ERROR_MSG = "error_msg";
+	private static final int CODE_SUCCESS = 0;//支付成功
+	private static final int CODE_FAILED = 1;//支付失败
+	private static final int CODE_CANCEL = -1;//支付取消
+	private static final int CODE_ING = -2;//支付正在进行
+	private static final int QIHOO_QUIT = 2;//360sdk 退出游戏test
+	
+	
+	private String getPayNotifyUrl(){
+		return SDKConfig.DEBUG ? "http://tservicebilling.changyou.com/service/sdkQihooPaylist" : "http://servicebilling.changyou.com/service/sdkQihooPaylist";
+	}
+
+	@Override
+	public void init(CYMGPlatformConfiguration config) {
+		Matrix.init((Activity)config.getmContext(), config.getmScreenOrientation() == CYMGProtocolConfig.LANDSCAPE, new IDispatcherCallback() {
+			
+			@Override
+			public void onFinished(String arg0) {
+				CYMGInitHelper.getInstance().onInitResult(CYMGPrompt.CODE_INIT_SUCCESS, null);
+			}
+		});
+	}
+
+	@Override
+	public void doPay(final CYMGChannelEntity entity) {
+		final Bundle b = entity.getBundle();
+		final GoodsItem goodsItem = (GoodsItem)b.getSerializable(Params.GOODSITEM);
+		log.d("360 screen ="+SettingSPUtil.getLandScape(entity.getmContext()));
+		boolean isLandScape = SettingSPUtil.getLandScape(entity.getmContext()) == CYMGProtocolConfig.LANDSCAPE;
+		Intent intent = getPayIntent(b,isLandScape);
+		intent.putExtra(ProtocolKeys.FUNCTION_CODE, ProtocolConfigs.FUNC_CODE_PAY);
+		intent.putExtra(ProtocolKeys.IS_LOGIN_BG_TRANSPARENT, true);
+		Matrix.invokeActivity(entity.getmContext(), intent, new IDispatcherCallback() {
+			
+			@Override
+			public void onFinished(String arg0) {
+				try {
+					JSONObject result = new JSONObject(arg0);
+					if(result.has(ERROR_CODE)){
+						int errorcode = result.getInt(ERROR_CODE);
+						switch (errorcode) {
+						case CODE_SUCCESS:
+							if(entity.getmContext() != null){
+								try {
+									((CYMGPaymentActivity)entity.getmContext()).back2PaymentFragment();
+								} catch (Exception e) {
+									log.e(e);
+								}
+							}
+							CYMGPayHelper.getInstance().paySuccess(b.getString(CYMGProtocolKeys.UID)
+									, goodsItem
+									, b.getString(Params.ORDER_ID));
+							break;
+						case CODE_CANCEL:
+							CYMGPayHelper.getInstance().payException(CYMGPrompt.CODE_PAY_CANCEL);
+							break;
+						case CODE_FAILED:
+							if(entity.getmContext() != null){
+								try {
+									((CYMGPaymentActivity)entity.getmContext()).back2PaymentFragment();
+								} catch (Exception e) {
+									log.e(e);
+								}
+							}
+							CYMGPayHelper.getInstance().payException(CYMGPrompt.CODE_PAY_FAILED);
+							//支付失败，引导用户重新登录尝试
+							doLogout(null);
+							doLogin(null);
+							break;
+						default:
+							if(entity.getmContext() != null){
+								try {
+									((CYMGPaymentActivity)entity.getmContext()).back2PaymentFragment();
+								} catch (Exception e) {
+									log.e(e);
+								}
+							}
+							//若返回正在支付状态也回到商品列表页面做订单验证
+							CYMGPayHelper.getInstance().paySuccess(b.getString(CYMGProtocolKeys.UID)
+									, goodsItem
+									, b.getString(Params.ORDER_ID));
+							break;
+						}
+					}
+				} catch (Exception e) {
+					CYMGPayHelper.getInstance().payException(CYMGPrompt.CODE_PAY_FAILED);
+					log.e(e);
+				}
+			}
+		});
+	}
+
+	@Override
+	public void doLogin(CYMGChannelEntity entity) {
+		final Context context = entity.getmContext();
+		final String userIp = NetWorkUtils.getLocalIpAddress(context);
+		final String deviceid = SystemUtils.getDeviceId(context);
+		final String channelId = context.getString(R.string.mgp_channel_360);
+		final String client_id = MetaDataValueUtils.getQihooClientId(context);
+		final String client_sceret = MetaDataValueUtils.getQihooClientSceret(context);
+		
+		Intent intent = getLoginIntent(entity);
+		Matrix.invokeActivity(entity.getmContext(), intent, new IDispatcherCallback() {
+			
+			@Override
+			public void onFinished(String arg0) {
+				log.d("360 login result = "+arg0);
+				try {
+					if(arg0 != null){
+						JSONObject obj = new JSONObject(arg0);
+						Bundle b = new Bundle();
+						b.putString(CYMGProtocolKeys.QIHOO_CODE, obj.getJSONObject("data").getString("code"));
+						b.putString(CYMGProtocolKeys.USERIP, userIp);
+						b.putString(CYMGProtocolKeys.DEVICEID, deviceid);
+						b.putString(CYMGProtocolKeys.QIHOO_CLIENT_ID, client_id);
+						b.putString(CYMGProtocolKeys.QIHOO_CLIENT_SECRET, client_sceret);
+						b.putString(CYMGProtocolKeys.QIHOO_FLAG, "0");
+						b.putString(CYMGProtocolKeys.CHANNEL_ID, channelId);
+						b.putString(CYMGProtocolKeys.OPCODE, "10001");
+						CYMGLoginHelper.getInstance().loginResult(CYMGPrompt.CODE_LOGIN_SUCCESS, b,context);
+					}else{
+						CYMGLoginHelper.getInstance().loginResult(CYMGPrompt.CODE_LOGIN_FAILED, null,context);
+					}
+				} catch (Exception e) {
+					log.e(e);
+				}
+			}
+		});
+	}
+	
+	
+	/**
+	 * 
+	 * 功能描述：生成调用360SDK登录接口的Intent
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param @param isLandScape 是否横屏
+	 * @param @return
+	 * @return Intent
+	 * @date 2014-2-21 下午2:44:58
+	 *
+	 */
+	private Intent getLoginIntent(CYMGChannelEntity entity){
+		Bundle b = new Bundle();
+		b.putBoolean(ProtocolKeys.IS_SCREEN_ORIENTATION_LANDSCAPE, SettingSPUtil.getLandScape(entity.getmContext()) == CYMGProtocolConfig.LANDSCAPE);
+		//登录背景是否透明，默认设置为不透明
+		b.putBoolean(ProtocolKeys.IS_LOGIN_BG_TRANSPARENT, true);
+		// 必需参数，登录回应模式：CODE模式，即返回Authorization Code的模式。
+		b.putString(ProtocolKeys.RESPONSE_TYPE, "code");
+		// 必需参数，使用360SDK的登录模块。 
+		b.putInt(ProtocolKeys.FUNCTION_CODE, ProtocolConfigs.FUNC_CODE_LOGIN);
+		Intent intent = new Intent(entity.getmContext(), ContainerActivity.class);
+		intent.putExtras(b);
+		return intent;
+	}
+	
+	/**
+	 * 
+	 * 功能描述：生成调用360SDK支付接口基础参数的Intent
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param @param b
+	 * @param @return
+	 * @return Intent
+	 * @date 2014-2-24 下午8:47:15
+	 *
+	 */
+	private Intent getPayIntent(Bundle b,boolean isLandScape){
+		Bundle bundle = new Bundle();
+		GoodsItem goodsItem = (GoodsItem)b.getSerializable(Params.GOODSITEM);
+		double dPrice = Double.valueOf(goodsItem.getGoods_price());
+		int price = Double.valueOf(dPrice * 100).intValue();
+		Intent intent = new Intent();
+		log.d("360支付uid = "+b.getString(CYMGProtocolKeys.PID));
+		//是否横屏显示
+		bundle.putBoolean(ProtocolKeys.IS_SCREEN_ORIENTATION_LANDSCAPE, isLandScape);
+		//设置access_token，要使用注意过期和刷新问题
+		bundle.putString(ProtocolKeys.ACCESS_TOKEN, b.getString(CYMGProtocolKeys.TOKEN));
+		//设置360账号ID
+		bundle.putString(ProtocolKeys.QIHOO_USER_ID, b.getString(CYMGProtocolKeys.OID));
+		// 必需参数，所购买商品金额, 以分为单位。金额大于等于100分，360SDK运行定额支付流程； 金额数为0，360SDK运行不定额支付流程。
+		bundle.putString(ProtocolKeys.AMOUNT, String.valueOf(price));
+		// 必需参数，人民币与游戏充值币的默认比例，例如2，代表1元人民币可以兑换2个游戏币，整数。
+		bundle.putString(ProtocolKeys.RATE, goodsItem.getGoods_number());
+		// 必需参数，所购买商品名称，应用指定，建议中文，最大10个中文字。
+		bundle.putString(ProtocolKeys.PRODUCT_NAME, goodsItem.getGoods_name());
+		// 必需参数，购买商品的商品id，应用指定，最大16字符。
+		bundle.putString(ProtocolKeys.PRODUCT_ID, goodsItem.getGoods_id());
+		// 必需参数，应用方提供的支付结果通知uri，最大255字符。360服务器将把支付接口回调给该uri，具体协议请查看文档中，支付结果通知接口–应用服务器提供接口。 
+		bundle.putString(ProtocolKeys.NOTIFY_URI, getPayNotifyUrl());
+		// 必需参数，游戏或应用名称，最大16中文字。 
+		bundle.putString(ProtocolKeys.APP_NAME, b.getString(CYMGProtocolKeys.GAME_NAME));
+		// 必需参数，应用内的用户名，如游戏角色名。 若应用内绑定360账号和应用账号，则可用360用户名，最大16中文字。（充值不分区服， // 充到统一的用户账户，各区服角色均可使用）。
+		bundle.putString(ProtocolKeys.APP_USER_NAME, b.getString(CYMGProtocolKeys.OID));
+		// 必需参数，应用内的用户id。 
+		// 若应用内绑定360账号和应用账号，充值不分区服，充到统一的用户账户，各区服角色均可使用，则可用360用户ID最大32字符。 
+		bundle.putString(ProtocolKeys.APP_USER_ID, b.getString(CYMGProtocolKeys.OID));
+		// 必需参数，订单号
+		bundle.putString(ProtocolKeys.APP_ORDER_ID, b.getString(Params.ORDER_ID));
+		log.d("360 pay order_id = "+b.getString(Params.ORDER_ID));
+		intent.putExtras(bundle);
+		return intent;
+	}
+
+	@Override
+	public void doLogout(CYMGChannelEntity entity) {
+		Intent intent = getQuitIntent(entity);
+		Matrix.invokeActivity(entity.getmContext(), intent, new IDispatcherCallback() {
+			
+			@Override
+			public void onFinished(String arg0) {
+				log.d("doLogout = "+arg0);
+				try {
+					JSONObject obj = new JSONObject(arg0);
+					if(obj.getInt("which") == QIHOO_QUIT){
+						CYMGLoginOutHelpr.getInstance().logoutResult(CYMGPrompt.CODE_LOGOUT_SUCCESS);
+					}
+				} catch (Exception e) {
+					log.e(e);
+				}
+			}
+		});
+	}
+	
+	/**
+	 * 
+	 * 功能描述：生成360SDK退出接口的Intent
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param @return
+	 * @return Intent
+	 * @date 2014-2-26 下午6:00:07
+	 *
+	 */
+	private Intent getQuitIntent(CYMGChannelEntity entity){
+		Bundle b = new Bundle();
+		b.putBoolean(ProtocolKeys.IS_SCREEN_ORIENTATION_LANDSCAPE, SettingSPUtil.getLandScape(entity.getmContext()) == CYMGProtocolConfig.LANDSCAPE);
+		b.putInt(ProtocolKeys.FUNCTION_CODE, ProtocolConfigs.FUNC_CODE_QUIT);
+		Intent intent = new Intent(entity.getmContext(), ContainerActivity.class);
+		intent.putExtras(b);
+		return intent;
+	}
+
+	@Override
+	public void doDestroy(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void doCustomerService(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void doShowUserCenter(CYMGChannelEntity entity) {
+		Context context = entity.getmContext();
+		log.d("360没有UserCenter");
+	}
+
+	@Override
+	public void doResume(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void doPause(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void doStop(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+		
+	}
+
+}

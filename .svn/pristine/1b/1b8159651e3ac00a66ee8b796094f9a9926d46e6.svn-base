@@ -1,0 +1,243 @@
+package com.changyou.mgp.sdk.mbi.channel.impl;
+
+import android.app.Activity;
+import android.content.Context;
+import android.os.Bundle;
+import android.text.TextUtils;
+
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannel;
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannelEntity;
+import com.changyou.mgp.sdk.mbi.common.CYMGCallback;
+import com.changyou.mgp.sdk.mbi.common.CYMGCallbackHelper;
+import com.changyou.mgp.sdk.mbi.config.CYMGPrompt;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolConfig;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolKeys;
+import com.changyou.mgp.sdk.mbi.config.HttpContants;
+import com.changyou.mgp.sdk.mbi.config.Params;
+import com.changyou.mgp.sdk.mbi.config.SDKConfig;
+import com.changyou.mgp.sdk.mbi.entity.GoodsItem;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPayHelper;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPlatform;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPlatformConfiguration;
+import com.changyou.mgp.sdk.mbi.utils.MetaDataValueUtils;
+import com.changyou.mgp.sdk.mbi.utils.NetWorkUtils;
+import com.changyou.mgp.sdk.mbi.utils.ResourceUtil;
+import com.changyou.mgp.sdk.mbi.utils.SettingSPUtil;
+import com.changyou.mgp.sdk.mbi.utils.SystemUtils;
+import com.nearme.gamecenter.open.api.ApiCallback;
+import com.nearme.gamecenter.open.api.FixedPayInfo;
+import com.nearme.gamecenter.open.api.GameCenterSDK;
+import com.nearme.gamecenter.open.api.GameCenterSettings;
+import com.nearme.oauth.model.UserInfo;
+
+public class CYMGOppoImpl implements CYMGChannel {
+	
+	private final CYLog log = CYLog.getInstance();
+	
+	private static final int MIN_PRICE = 1;
+
+	@Override
+	public void init(CYMGPlatformConfiguration config) {
+		log.d("MGPOppoImpl:init");
+		final CYMGCallback callback = CYMGPlatform.getInstance().getCYMGCallback();
+		if(callback==null){
+			log.d("CYMGCallback is null");
+			return;
+		}
+		Context context = config.getmContext();
+		String app_key=MetaDataValueUtils.getOppoAppKey(context);
+		String app_secret=MetaDataValueUtils.getOppoAppSecret(context);
+		GameCenterSettings gameCenterSettings = new GameCenterSettings(
+				app_key, app_secret) {
+
+			@Override
+			public void onForceReLogin() {
+				// sdk由于某些原因登出,此方法通知cp,cp需要在此处清理当前的登录状态并重新请求登录.
+				// 可以发广播通知页面重新登录
+			}
+			
+			@Override 
+			public void onForceUpgradeCancel() {
+				// 游戏自升级，后台有设置为强制升级，用户点击取消时的回调函数。
+				// 若开启强制升级模式 ，  一般要求不更新则强制退出游戏并杀掉进程。
+				// System.exit(0) or kill this process
+			}
+		};
+//		AccountAgent.useNewApi = true;
+		if(SDKConfig.DEBUG){
+			log.d("MGPOppoImpl:DebugMode");
+			GameCenterSettings.isDebugModel = true;// 测试log开关
+		}
+		if(SettingSPUtil.getLandScape(context)==CYMGProtocolConfig.PORTRAIT){
+			GameCenterSettings.isOritationPort = true;// 控制SDK activity的横竖屏 true为竖屏
+		}else{
+			GameCenterSettings.isOritationPort = false;// 控制SDK activity的横竖屏 false为横屏
+		}
+		GameCenterSDK.init(gameCenterSettings, context);
+		callback.onFinished(CYMGCallbackHelper.getCommonResult(CYMGPrompt.CODE_INIT_SUCCESS, null));
+	}
+
+	@Override
+	public void doLogin(CYMGChannelEntity entity) {
+		log.d("MGPOppoImpl:doLogin");
+		final CYMGCallback callback = CYMGPlatform.getInstance().getCYMGCallback();
+		if(callback==null){
+			log.d("CYMGCallback is null");
+			return;
+		}
+		final Context context = entity.getmContext();
+		final String userIp = NetWorkUtils.getLocalIpAddress(context);
+		final String deviceid = SystemUtils.getDeviceId(context);
+		final String app_key_oppo = MetaDataValueUtils.getOppoAppKey(context);
+		final String app_secret_oppo = MetaDataValueUtils.getOppoAppSecret(context);
+		final String channelId = context.getString(ResourceUtil.getInstance(context).getStringId("mgp_channel_oppo"));
+		GameCenterSDK.getInstance().doLogin(new ApiCallback() {
+
+			@Override
+			public void onSuccess(String content, int code) {
+				GameCenterSDK.getInstance().doGetUserInfo(new ApiCallback() {
+
+					@Override
+					public void onSuccess(String content, int code) {
+						try {
+							final UserInfo userInfo = new UserInfo(content);
+							String uid=userInfo.id;
+							String token=GameCenterSDK.getInstance().doGetAccessToken();
+							String oauth_token = "";
+							String oauth_token_secret = "";
+							if(!TextUtils.isEmpty(token)&&token.contains("&")){
+								String[] token_ss=token.split("&");
+								if(token_ss.length>1){
+									oauth_token=token_ss[0].split("=")[1];
+									oauth_token_secret=token_ss[1].split("=")[1];
+								}
+							}
+							Bundle b = new Bundle();
+							b.putString(CYMGProtocolKeys.APP_ID_OPPO, uid);
+							b.putString(CYMGProtocolKeys.APP_TOKEN_OPPO,oauth_token);
+							b.putString(CYMGProtocolKeys.TOKEN_SECRET, oauth_token_secret);
+							b.putString(CYMGProtocolKeys.USERIP, userIp);
+							b.putString(CYMGProtocolKeys.DEVICEID, deviceid);
+							b.putString(CYMGProtocolKeys.APP_KEY_OPPO, app_key_oppo);
+							b.putString(CYMGProtocolKeys.APP_SCERET_OPPO, app_secret_oppo);
+							b.putString(CYMGProtocolKeys.CHANNEL_ID, channelId);
+							b.putString(CYMGProtocolKeys.OPCODE, "10001");
+							callback.onFinished(CYMGCallbackHelper.getLoginResult(CYMGPrompt.CODE_LOGIN_SUCCESS, b,context));
+						} catch (Exception e) {
+							log.e(e);
+						}
+					}
+
+					@Override
+					public void onFailure(String content, int code) {
+						callback.onFinished(CYMGCallbackHelper.getLoginResult(CYMGPrompt.CODE_LOGIN_FAILED, null,context));
+					}
+				}, (Activity)context);
+			}
+
+			@Override
+			public void onFailure(String content, int code) {
+				callback.onFinished(CYMGCallbackHelper.getLoginResult(CYMGPrompt.CODE_LOGIN_FAILED, null,context));
+			}
+			
+		}, (Activity)context);
+	}
+
+	@Override
+	public void doPay(CYMGChannelEntity entity) {
+		log.d("MGPOppoImpl:doPay");
+		Context context = entity.getmContext();
+		Bundle bundle=entity.getBundle();
+		final GoodsItem goodsItem = (GoodsItem)bundle.getSerializable(Params.GOODSITEM);
+		final String uid = bundle.getString(Params.UID);
+		final String currentOrderID = bundle.getString(Params.ORDER_ID);
+		if (goodsItem == null) {
+			log.e("mGoodsItem is null");
+			return;
+		}
+		if(uid == null){
+			log.e("uid is null");
+			return;
+		}
+		if(currentOrderID == null){
+			log.e("order_id is null");
+			return;
+		}
+		double d=Double.valueOf(goodsItem.getGoods_price());
+		int price=(int)(d*100);
+		if(price < MIN_PRICE){
+			log.e("price < "+MIN_PRICE);
+			return;
+		}
+		FixedPayInfo payInfo = new FixedPayInfo(currentOrderID, "changyou", price);
+		payInfo.setProductDesc(goodsItem.getGoods_describe());
+		payInfo.setProductName(goodsItem.getGoods_name());
+		payInfo.setCallbackUrl(HttpContants.getOppoPayNotifyUrl());
+		payInfo.setGoodsCount(Integer.valueOf(goodsItem.getGoods_number()));
+		GameCenterSDK.getInstance().doFixedKebiPayment(new ApiCallback(){
+
+			@Override
+			public void onSuccess(String content, int code) {
+				CYMGPayHelper.getInstance().paySuccess(uid,goodsItem, currentOrderID);
+			}
+
+			@Override
+			public void onFailure(String content, int code) {
+				CYMGPayHelper.getInstance().payException(CYMGPrompt.CODE_PAY_FAILED);
+			}
+			
+		}, payInfo,(Activity)context);
+	}
+
+	@Override
+	public void doLogout(CYMGChannelEntity entity) {
+		log.d("MGPOppoImpl:doLogout");
+		final CYMGCallback callback = CYMGPlatform.getInstance().getCYMGCallback();
+		if(callback==null){
+			log.d("CYMGCallback is null");
+			return;
+		}
+		callback.onFinished(CYMGCallbackHelper.getCommonResult(CYMGPrompt.CODE_LOGOUT_SUCCESS, null));
+	}
+
+	@Override
+	public void doDestroy(CYMGChannelEntity entity) {
+		log.d("MGPOppoImpl:doDestroy");
+	}
+
+	@Override
+	public void doCustomerService(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void doShowUserCenter(CYMGChannelEntity entity) {
+		log.d("MGPOppoImpl:doShowUserCenter");
+		Context context = entity.getmContext();
+		GameCenterSDK.setmCurrentContext(context);
+		GameCenterSDK.getInstance().doShowGameCenter((Activity)context);
+	}
+
+	@Override
+	public void doResume(CYMGChannelEntity entity) {
+		log.d("MGPOppoImpl:doResume");
+		Context context = entity.getmContext();
+		GameCenterSDK.getInstance().doShowSprite((Activity)context);
+	}
+
+	@Override
+	public void doPause(CYMGChannelEntity entity) {
+		log.d("MGPOppoImpl:doPause");
+		Context context = entity.getmContext();
+		GameCenterSDK.getInstance().doDismissSprite((Activity)context);
+	}
+
+	@Override
+	public void doStop(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+		
+	}
+
+}

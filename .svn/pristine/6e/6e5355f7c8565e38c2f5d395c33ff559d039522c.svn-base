@@ -1,0 +1,71 @@
+package com.changyou.mgp.sdk.mbi.ui.widget;
+
+import android.content.Context;
+import android.util.AttributeSet;
+import android.view.MotionEvent;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
+
+public class ScrollEditLayout extends ScrollView {
+
+	private ScrollView parent_scrollview;
+	private LinearLayout linearLayout;
+
+	public LinearLayout getLinearLayout() {
+		return linearLayout;
+	}
+
+	public void setLinearLayout(LinearLayout linearLayout) {
+		this.linearLayout = linearLayout;
+	}
+
+	public ScrollView getParent_scrollview() {
+		return parent_scrollview;
+	}
+
+	public void setParent_scrollview(ScrollView parent_scrollview) {
+		this.parent_scrollview = parent_scrollview;
+	}
+
+	public ScrollEditLayout(Context context) {
+		super(context);
+	}
+
+	public ScrollEditLayout(Context context, AttributeSet attrs) {
+		super(context, attrs);
+	}
+
+	public ScrollEditLayout(Context context, AttributeSet attrs, int defStyle) {
+		super(context, attrs, defStyle);
+	}
+	
+	@Override
+	public boolean dispatchTouchEvent(MotionEvent ev) {
+		getParent().requestDisallowInterceptTouchEvent(true);
+		return super.dispatchTouchEvent(ev);
+	}
+	
+	@Override
+	public boolean onTouchEvent(MotionEvent ev) {
+		int action=ev.getAction();
+		switch (action) {
+		case MotionEvent.ACTION_DOWN:
+			getParent().requestDisallowInterceptTouchEvent(true);
+			break;
+		case MotionEvent.ACTION_UP:
+		case MotionEvent.ACTION_CANCEL:
+			getParent().requestDisallowInterceptTouchEvent(false);
+			break;
+		case MotionEvent.ACTION_MOVE:
+			int mLastY = ScrollEditLayout.this.getScrollY();
+			float height=linearLayout.getHeight() - ScrollEditLayout.this.getHeight();
+			if (mLastY <= 0) {
+				getParent().requestDisallowInterceptTouchEvent(false);
+			} else if (mLastY == height) {
+				getParent().requestDisallowInterceptTouchEvent(false);
+			}
+			break;
+		}
+		return super.onTouchEvent(ev);
+	}
+}

@@ -1,0 +1,265 @@
+package com.changyou.mgp.sdk.mbi.platform;
+
+import org.json.JSONObject;
+
+import android.app.Activity;
+import android.content.Intent;
+import android.os.Bundle;
+
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannelEntity;
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannelHelper;
+import com.changyou.mgp.sdk.mbi.common.CYMGCallBackManager;
+import com.changyou.mgp.sdk.mbi.common.CYMGCallback;
+import com.changyou.mgp.sdk.mbi.config.CYMGFunID;
+import com.changyou.mgp.sdk.mbi.config.CYMGPrompt;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolKeys;
+import com.changyou.mgp.sdk.mbi.config.Params;
+import com.changyou.mgp.sdk.mbi.image.MGPImageLoader;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.utils.SwitchInfoSPUtil;
+
+/**
+ * 
+ * 功能描述：sdk开放接口
+ * 
+ * @author 严峥(yanzheng)
+ * @date 2013-12-30 上午10:04:46 修改历史：(修改人，修改时间，修改原因/内容)
+ */
+public class CYMGPlatform {
+
+	// 初始化时config为null时报错
+	private static final String ERROR_INIT_CONFIG_NULL = "MGPSDK configuration can not be initialized with null";
+
+	private static CYMGPlatform instance;
+
+	private CYLog log = CYLog.getInstance();
+
+	private CYMGChannelHelper mMGPChannelHelper;
+	
+
+	/**
+	 * 单例模式
+	 */
+	private CYMGPlatform() {
+	}
+
+	public static CYMGPlatform getInstance() {
+		if (instance == null) {
+			instance = new CYMGPlatform();
+		}
+		return instance;
+	}
+
+	/**
+	 * 
+	 * 功能描述：初始化方法，接入时最先调用
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param @param config
+	 * @return void
+	 * @date 2014-2-21 下午12:25:51
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public void init(CYMGPlatformConfiguration config,CYMGCallback callback) {
+		if (config == null) {
+			throw new IllegalAccessError(ERROR_INIT_CONFIG_NULL);
+		}
+		if(callback == null){
+			throw new IllegalAccessError("init call back is null");
+		}
+		try {
+			CYMGCallBackManager.addCallback(CYMGFunID.INIT, callback);
+			SwitchInfoSPUtil.setIsLandScape(config.getmContext(),
+					config.getmScreenOrientation());
+			MGPImageLoader.getInstance(config.getmContext());
+			this.mMGPChannelHelper=new CYMGChannelHelper(config.getmContext());
+			this.mMGPChannelHelper.init(config);
+		} catch (Exception e) {
+			log.e(e);
+			try {
+				JSONObject obj = new JSONObject();
+				obj.put(CYMGProtocolKeys.STATE_CODE, CYMGPrompt.CODE_EXCEPTION);
+				obj.put(CYMGProtocolKeys.MSG, CYMGPrompt.getContentByCode(CYMGPrompt.CODE_EXCEPTION));
+				callback.onFinished(obj.toString());
+			} catch (Exception e2) {
+				log.e(e2);
+			}
+		}
+
+	}
+
+	/**
+	 * 
+	 * 功能描述：MGPSDK登陆
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param @param context
+	 * @param @param mgpLoginListener
+	 * @return void
+	 * @date 2014-1-3 下午6:54:29
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public void login(Activity activity, boolean isAutoLogin, CYMGCallback callback) {
+		if(callback == null){
+			throw new IllegalAccessError("init call back is null");
+		}
+		try {
+			//首先反射出LoginActivity，若LoginActivity不存在则在catch中警告接入者检车功能jar包是否包含账号功能
+//			Class<?> loginActivity = Class.forName("com.changyou.mgp.sdk.mbi.account.ui.CYMGLoginActivity");
+			CYMGCallBackManager.addCallback(CYMGFunID.ACCOUNT,callback);
+			CYMGChannelEntity entity=new CYMGChannelEntity();
+			entity.setmContext(activity);
+			Bundle b=new Bundle();
+			b.putBoolean(Params.ISAUTOLOGIN, isAutoLogin);
+			entity.setBundle(b);
+			this.mMGPChannelHelper.login(entity);
+		} catch (Exception e) {
+			log.e(e);
+			try {
+				JSONObject obj = new JSONObject();
+				obj.put(CYMGProtocolKeys.STATE_CODE, CYMGPrompt.CODE_EXCEPTION);
+				obj.put(CYMGProtocolKeys.MSG, CYMGPrompt.getContentByCode(CYMGPrompt.CODE_EXCEPTION)+",请确认cymg.jar包是包含账号功能");
+				callback.onFinished(obj.toString());
+			} catch (Exception e2) {
+				log.e(e2);
+			}
+		}
+	}
+
+	/**
+	 * 
+	 * 功能描述：MGPSDK支付
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param @param context
+	 * @return void
+	 * @date 2013-12-30 上午10:10:03
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public void payment(Activity activity,Bundle bundle, CYMGCallback callback) {
+		if(callback == null){
+			throw new IllegalAccessError("init call back is null");
+		}
+		try {
+			//首先反射出PaymentActivity，若PaymentActivity不存在则在catch中警告接入者检车功能jar包是否包含支付功能
+//			Class<?> paymentActivity = Class.forName("com.changyou.mgp.sdk.mbi.pay.ui.CYMGPaymentActivity");
+			CYMGCallBackManager.addCallback(CYMGFunID.PAY, callback);
+			if(CYMGPayHelper.getInstance().checkNesessaryParam(bundle,activity)){
+				Intent intent = new Intent("com.changyou.mgp.sdk.mbi.pay.ui.CYMGPaymentActivity");
+				intent.putExtras(bundle);
+				activity.startActivity(intent);
+			}else{
+				log.e("checkNessaryParam Error");
+			}
+		} catch (Exception e) {
+			log.e(e);
+			try {
+				JSONObject obj = new JSONObject();
+				obj.put(CYMGProtocolKeys.STATE_CODE, CYMGPrompt.CODE_EXCEPTION);
+				obj.put(CYMGProtocolKeys.MSG, CYMGPrompt.getContentByCode(CYMGPrompt.CODE_EXCEPTION)+",请确认cymg.jar包是包含支付功能");
+				callback.onFinished(obj.toString());
+			} catch (Exception e2) {
+				log.e(e2);
+			}
+		}
+		
+	}
+	
+	/**
+	 * 
+	 * 功能描述：启动客服功能
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param @param activity
+	 * @param @param b
+	 * @param @param callBack
+	 * @return void
+	 * @date 2014-3-25 下午3:23:01
+	 *
+	 */
+	public void customerService(Activity activity,Bundle b,CYMGCallback callback){
+		if(callback == null){
+			throw new IllegalAccessError("init call back is null");
+		}
+		try {
+			//首先反射出PaymentActivity，若PaymentActivity不存在则在catch中警告接入者检车功能jar包是否包含支付功能
+//			Class<?> ctsActivity = Class.forName("com.changyou.mgp.sdk.mbi.cts.ui.CYMGCustomerServiceActivity");
+			CYMGCallBackManager.addCallback(CYMGFunID.CUSTOMER_SERVICE, callback);
+			if(CYMGCustomerServiseHelper.getInstance().checkNesessaryParam(b)){
+				Intent intent=new Intent("com.changyou.mgp.sdk.mbi.cts.ui.CYMGCustomerServiceActivity");
+				intent.putExtras(b);
+				activity.startActivity(intent);
+			}
+		} catch (Exception e) {
+			log.e(e);
+			try {
+				JSONObject obj = new JSONObject();
+				obj.put(CYMGProtocolKeys.STATE_CODE, CYMGPrompt.CODE_EXCEPTION);
+				obj.put(CYMGProtocolKeys.MSG, CYMGPrompt.getContentByCode(CYMGPrompt.CODE_EXCEPTION)+",请确认cymg.jar包是包含客服功能");
+				callback.onFinished(obj.toString());
+			} catch (Exception e2) {
+				log.e(e2);
+			}
+		}
+		
+	}
+
+	/**
+	 * 
+	 * 功能描述：MGPSDK注销
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param @param context
+	 * @param @param token
+	 * @return void
+	 * @date 2013-12-30 上午10:09:50
+	 * 
+	 *       修改历史 ：(修改人：欧阳海冰，修改时间，修改原因/内容) 增加一个string参数，微博注销的时候才需要传递，其他情况只需传空串
+	 */
+	public void logout(Activity activity,Bundle bundle,CYMGCallback callback) {
+		CYMGCallBackManager.addCallback(CYMGFunID.ACCOUNT,callback);
+		CYMGChannelEntity entity=new CYMGChannelEntity();
+		entity.setBundle(bundle);
+		entity.setmContext(activity);
+		this.mMGPChannelHelper.logout(entity);
+	}
+	
+
+	/**
+	 * 
+	 * 功能描述：MGPSDK销毁
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param
+	 * @return void
+	 * @date 2014-2-13 上午10:32:43
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public void onDestroy(Activity activity) {
+		CYMGChannelEntity entity=new CYMGChannelEntity();
+		entity.setmContext(activity);
+		this.mMGPChannelHelper.onDestroy(entity);
+	}
+	
+	/**
+	 * 
+	 * 功能描述: 
+	 * @param @param activity
+	 * @param @param callback  
+	 * @return void    返回类型 
+	 * @author 欧阳海冰(OuyangHaibing)
+	 * @date 2014-4-28 下午8:29:04
+	 */
+	public void userCenter(Activity activity) {
+		CYMGChannelEntity entity=new CYMGChannelEntity();
+		entity.setmContext(activity);
+		this.mMGPChannelHelper.showUserCenter(entity);
+	}
+	
+	
+
+}

@@ -1,0 +1,160 @@
+package com.changyou.mgp.sdk.mbi.http;
+
+import java.io.UnsupportedEncodingException;
+import java.util.Iterator;
+import java.util.Map;
+
+import org.apache.http.entity.StringEntity;
+import org.apache.http.protocol.HTTP;
+import org.json.JSONObject;
+
+import android.content.Context;
+
+import com.changyou.mgp.sdk.mbi.config.Params;
+import com.changyou.mgp.sdk.mbi.config.SDKConfig;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.utils.MetaDataValueUtils;
+import com.changyou.mgp.sdk.mbi.utils.SignUtils;
+import com.changyou.mgp.sdk.mbi.utils.StringUtils;
+import com.loopj.android.http.AsyncHttpClient;
+import com.loopj.android.http.RequestParams;
+
+/**
+ * 
+ * 功能描述：网络请求统一出口 URL：http://loopj.com/android-async-http/
+ * 
+ * @author 徐萌阳(xumengyang)
+ * @date 2013-12-20下午6:04:46
+ */
+public class MyHttpClient extends AsyncHttpClient {
+	
+	private Context mContext;
+
+	private CYLog log = CYLog.getInstance();
+
+	/**
+	 * 
+	 * 构造函数：
+	 * 
+	 * @autor xumengyang
+	 */
+	public MyHttpClient(Context context) {
+		this.mContext = context;
+		this.setTimeout(SDKConfig.TIME_OUT);
+//		setMaxRetriesAndTimeout(0, TIME_OUT);
+		String appKey=MetaDataValueUtils.getAppKey(mContext);
+		String channelId = MetaDataValueUtils.getChannelID(mContext);
+		Integer tag = 123456;
+		String mediaChannelID = MetaDataValueUtils.getCMBIChannelID(mContext);
+		this.addHeader(Params.MYHTTPCLIENT_HEADER_PARAMS.DEBUG, String.valueOf(SDKConfig.DEBUG));
+		this.addHeader(Params.MYHTTPCLIENT_HEADER_PARAMS.APP_KEY, appKey);
+		this.addHeader(Params.MYHTTPCLIENT_HEADER_PARAMS.CHANNEL_ID, channelId);
+		this.addHeader(Params.MYHTTPCLIENT_HEADER_PARAMS.TAG, String.valueOf(tag));
+		this.addHeader(Params.MYHTTPCLIENT_HEADER_PARAMS.VERSION, "1.0");
+		this.addHeader(Params.MYHTTPCLIENT_HEADER_PARAMS.MEDIA_CHANNEL_ID, mediaChannelID);
+		log.d("params in header : appkey="+appKey+",channelID = "+channelId+",tag = "+tag+",debug="+String.valueOf(SDKConfig.DEBUG));
+	}
+
+	/**
+	 * 
+	 * 功能描述：增加默认参数
+	 * 
+	 * @author 徐萌阳(xumengyang)
+	 * @param @param params
+	 * @return void
+	 * @date 2013-12-22 下午2:36:38
+	 * 
+	 */
+	private void addDefaultParams(RequestParams params) {
+		// TODO
+	}
+
+	/**
+	 * 
+	 * 功能描述：发送Post请求
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param @param url
+	 * @param @param map
+	 * @param @param handler
+	 * @return void
+	 * @date 2014-1-22 上午11:57:48
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public void post(String url, Map map, MyAsyncResponseHandler handler) {
+		StringEntity se = null;
+		if (!StringUtils.isEmpty(url)) {
+			log.d("url = " + url);
+			JSONObject jsonObject = new JSONObject();
+			if (!StringUtils.isEmpty(map.toString())) {
+				try {
+					Iterator it = map.entrySet().iterator();
+					while (it.hasNext()) {
+						Map.Entry pairs = (Map.Entry) it.next();
+						jsonObject.put(pairs.getKey().toString(),
+								pairs.getValue());
+					}
+				} catch (Exception e) {
+					log.e(e);
+				}
+			}
+			log.d("params:"+jsonObject.toString());
+			String sign = null;
+			try {
+				sign = SignUtils.createGatewaySign(mContext,jsonObject.toString());
+			} catch (Exception e) {
+				log.e(e);
+			}
+			try {
+				se = new StringEntity(jsonObject.toString(),HTTP.UTF_8);
+			} catch (UnsupportedEncodingException e) {
+				log.e(e);
+			}
+			this.addHeader(Params.MYHTTPCLIENT_HEADER_PARAMS.SIGN, sign);
+		}
+		super.post(mContext, url, se, "application/json;charset=UTF-8", handler);
+	}
+
+	/**
+	 * 
+	 * 功能描述：发送Get请求
+	 * 
+	 * @author 徐萌阳(xumengyang)
+	 * @param @param url
+	 * @param @param params
+	 * @param @param handler
+	 * @return void
+	 * @date 2013-12-22 下午2:41:11
+	 * 
+	 */
+	public void get(String url, RequestParams params, MyAsyncResponseHandler handler) {
+		String sign = null;
+		if (!StringUtils.isEmpty(url)) {
+			log.d("ur:" + url);
+			log.d("params:"+params.toString());
+			try {
+				sign = SignUtils.createGatewaySign(mContext,params.toString());
+			} catch (Exception e) {
+				log.e(e);
+			}
+			this.addHeader(Params.MYHTTPCLIENT_HEADER_PARAMS.SIGN, sign);
+		}
+		super.get(url, params, handler);
+	}
+	
+	public void post(String url, RequestParams params, MyAsyncResponseHandler handler){
+		String sign = null;
+		if (!StringUtils.isEmpty(url)) {
+			log.d("ur:" + url);
+			log.d("params:"+params.toString());
+			try {
+				sign = SignUtils.createGatewaySign(mContext,params.toString());
+			} catch (Exception e) {
+				log.e(e);
+			}
+			this.addHeader(Params.MYHTTPCLIENT_HEADER_PARAMS.SIGN, sign);
+		}
+		super.post(url, params, handler);
+	}
+}

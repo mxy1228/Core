@@ -1,0 +1,282 @@
+package com.changyou.mgp.sdk.mbi.account.ui;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import org.apache.http.Header;
+import org.codehaus.jackson.type.TypeReference;
+import org.json.JSONObject;
+
+import android.app.Activity;
+import android.content.Intent;
+import android.net.Uri;
+import android.os.Bundle;
+import android.text.TextUtils;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import com.changyou.mgp.sdk.mbi.account.id.AccResource;
+import com.changyou.mgp.sdk.mbi.account.utils.CYMGLoginResultUtil;
+import com.changyou.mgp.sdk.mbi.config.Contants;
+import com.changyou.mgp.sdk.mbi.config.HttpContants;
+import com.changyou.mgp.sdk.mbi.config.Params;
+import com.changyou.mgp.sdk.mbi.entity.ErrorInfo;
+import com.changyou.mgp.sdk.mbi.http.MyAsyncResponseHandler;
+import com.changyou.mgp.sdk.mbi.http.MyHttpClient;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.mbi.manager.CMBILogManager;
+import com.changyou.mgp.sdk.mbi.ui.base.BaseFragment;
+import com.changyou.mgp.sdk.mbi.utils.DesUtil;
+import com.changyou.mgp.sdk.mbi.utils.JSONUtil;
+import com.changyou.mgp.sdk.mbi.utils.NetWorkUtils;
+import com.changyou.mgp.sdk.mbi.utils.SystemUtils;
+
+public class CYMGResgisrForUserFragment extends BaseFragment implements OnClickListener{
+	
+	private CYLog log = CYLog.getInstance();
+	
+	private static final int ACC_MIN = 6;
+	private static final int PSWD_MIN = 8;
+	
+	private Activity mActivity;
+	
+	private EditText mAccountET;
+	private EditText mPasswordET;
+	private TextView mTreatyTV;
+	private Button mCommitBtn;
+	
+	private String mAccountStr;
+	private String mPasswordStr;
+	
+	private CYMGLoadingDialogFragment mLoadingDialog;
+	
+	private boolean isRequest = false;
+	
+	@Override
+	public void onAttach(Activity activity) {
+		super.onAttach(activity);
+		this.mActivity=activity;
+	}
+	
+	@Override
+	public View onCreateView(LayoutInflater inflater, ViewGroup container,
+			Bundle savedInstanceState) {
+		View view = inflater.inflate(AccResource.getInstance(mActivity).mgp_sdk_2_0_dialog_register_for_user, container, false);
+		initView(view);
+		initData();
+		initEvent();
+		return view;
+	}
+	
+	private void initView(View view){
+		mAccountET=(EditText) view.findViewById(AccResource.getInstance(mActivity).mgp_sdk_2_0_register_for_user_account_EditText);
+		mPasswordET=(EditText) view.findViewById(AccResource.getInstance(mActivity).mgp_sdk_2_0_register_for_user_password_EditText);
+		mTreatyTV=(TextView) view.findViewById(AccResource.getInstance(mActivity).mgp_sdk_2_0_register_for_user_treaty_TextView);
+		mCommitBtn=(Button) view.findViewById(AccResource.getInstance(mActivity).mgp_sdk_2_0_register_for_user_commit_Button);
+		mLoadingDialog=CYMGLoadingDialogFragment.newInewInstance(mActivity);
+	}
+
+	@Override
+	protected void initData() {
+		getCNFromServer();
+	}
+
+	@Override
+	protected void initEvent() {
+		mTreatyTV.setOnClickListener(this);
+		mCommitBtn.setOnClickListener(this);
+		mAccountET.setOnClickListener(this);
+		mPasswordET.setOnClickListener(this);
+	}
+
+	@Override
+	public void onClick(View v) {
+		if(v.getId()==AccResource.getInstance(mActivity).mgp_sdk_2_0_register_for_user_treaty_TextView){
+			try {
+				Intent intent = new Intent();        
+				intent.setAction("android.intent.action.VIEW");    
+				Uri content_url = Uri.parse(HttpContants.CNENGYOU_PROTOCOL);
+				intent.setData(content_url);  
+				startActivity(intent);
+			} catch (Exception e) {
+				log.e(e);
+			}
+		}else if(v.getId()==AccResource.getInstance(mActivity).mgp_sdk_2_0_register_for_user_commit_Button){
+			CMBILogManager.printEventLog(mActivity, "0", "135007", "");
+			if(checkET()){
+				if(isRequest==false){
+					isRequest=true;
+					chengYouUserRegister();
+				}
+			}
+		}else if(v.getId()==AccResource.getInstance(mActivity).mgp_sdk_2_0_register_for_user_account_EditText){
+			CMBILogManager.printEventLog(mActivity, "0", "135005", "");
+		}else if(v.getId()==AccResource.getInstance(mActivity).mgp_sdk_2_0_register_for_user_password_EditText){
+			CMBILogManager.printEventLog(mActivity, "0", "135006", "");
+		}
+	}
+	
+	private boolean checkET(){
+		mAccountStr=mAccountET.getText().toString().toLowerCase().trim();
+		mPasswordStr=mPasswordET.getText().toString();
+		if(TextUtils.isEmpty(mAccountStr)){
+			Toast.makeText(mActivity, AccResource.getInstance(mActivity).mgp_sdk_2_0_error_register_account_1, Toast.LENGTH_SHORT).show();
+			return false;
+		}else if(mAccountStr.length()<ACC_MIN){
+			Toast.makeText(mActivity, AccResource.getInstance(mActivity).mgp_sdk_2_0_error_register_account_2, Toast.LENGTH_SHORT).show();
+			return false;
+		}else if(TextUtils.isEmpty(mPasswordStr)){
+			Toast.makeText(mActivity, AccResource.getInstance(mActivity).mgp_sdk_2_0_error_register_Password_1, Toast.LENGTH_SHORT).show();
+			return false;
+		}else if(mPasswordStr.length()<PSWD_MIN){
+			Toast.makeText(mActivity, AccResource.getInstance(mActivity).mgp_sdk_2_0_error_register_Password_2, Toast.LENGTH_SHORT).show();
+			return false;
+		}else if(mPasswordStr.contains(" ")){
+			Toast.makeText(mActivity, AccResource.getInstance(mActivity).mgp_sdk_2_0_error_register_space, Toast.LENGTH_SHORT).show();
+			return false;
+		}else if(!NetWorkUtils.isNetworkConnected(mActivity)){
+			Toast.makeText(mActivity, AccResource.getInstance(mActivity).mgp_sdk_2_0_error_common_net, Toast.LENGTH_SHORT).show();
+			return false;
+		}
+		return true;
+	}
+	
+	private void getCNFromServer(){
+		String deviceid = SystemUtils.getDeviceId(mActivity);
+		MyHttpClient myHttpClient=new MyHttpClient(mActivity);
+		Map map=new HashMap();
+		map.put("device_id", deviceid);
+		myHttpClient.post(HttpContants.getURL(HttpContants.CHENGYOU_AUTO_GET_CN), map, new MyAsyncResponseHandler(){
+			@Override
+			public void onStart() {
+				mLoadingDialog.setMessage(mActivity.getString(AccResource.getInstance(mActivity).mgp_sdk_2_0_loading_loading));
+				mLoadingDialog.showDialog();
+			}
+			
+			@Override
+			public void onSuccess(int statusCode, String content) {
+				try {
+					log.d("statusCode:"+statusCode+",content:"+content);
+					mLoadingDialog.dismissDialog();
+					JSONObject jsonObject=new JSONObject(content);
+					String cn=jsonObject.getString("cn");
+					String password=jsonObject.getString("password");
+					mAccountET.setText(cn);
+					mPasswordET.setText(decodePassword(password));
+				} catch (Exception e) {
+					log.e(e);
+				}
+			}
+			
+			@Override
+			public void onFailure(int statusCode, Header[] headers,
+					Throwable error, String content) {
+				try {
+					log.d("statusCode:"+statusCode+",Header:"+headers+",content:"+content);
+					mLoadingDialog.dismissDialog();
+				} catch (Exception e) {
+					log.e(e);
+				}
+			}
+		});
+	}
+	
+	private void chengYouUserRegister(){
+		String deviceid = SystemUtils.getDeviceId(mActivity);
+		MyHttpClient myHttpClient=new MyHttpClient(mActivity);
+		Map map=new HashMap();
+		map.put("account", mAccountStr);
+		map.put("password", encryptPassword(mPasswordStr));
+		map.put("device_id", deviceid);
+		myHttpClient.post(HttpContants.getURL(HttpContants.CHENGYOU_USER_REGISTER), map, new MyAsyncResponseHandler(){
+			@Override
+			public void onStart() {
+				CMBILogManager.printEventLog(mActivity, "0", "110031", "");
+				mLoadingDialog.setMessage(mActivity.getString(AccResource.getInstance(mActivity).mgp_sdk_2_0_loading_register));
+				mLoadingDialog.showDialog();
+			}
+			
+			@Override
+			public void onSuccess(int statusCode, String content) {
+				try {
+					CMBILogManager.printEventLog(mActivity, "0", "120031", "");
+					log.d("statusCode:"+statusCode+",content:"+content);
+					mLoadingDialog.dismissDialog();
+					isRequest=false;
+					if(!TextUtils.isEmpty(content)){
+						JSONObject jsonObject=new JSONObject(content);
+						String uid=jsonObject.getString("uid");
+						String token=jsonObject.getString("token");
+						String cn = jsonObject.getString("cn");
+						String activate = jsonObject.getString("activate");
+						if("true".equals(activate)){
+							CYMGLoginResultUtil.loginCallback(mActivity, Contants.ACC_TYPE_CHENGYOU+cn, uid, token, Contants.LOGIN_CHENGYOU_TYPE);
+						}else if("false".equals(activate)){
+							Bundle bundle=new Bundle();
+							bundle.putString(Params.ACCOUNT, cn);
+							bundle.putString(Params.PASSWORD, mPasswordStr);
+							bundle.putString(Params.UID, uid);
+							bundle.putString(Params.TOKEN, token);
+							bundle.putString(Params.TYPE, Contants.LOGIN_CHENGYOU_TYPE);
+							((CYMGMainDialogFragmentActivity)mActivity).changeDialogFragment(Contants.DialogFragmentTag.ACTIVATE_CODE, bundle);
+						}
+					}else{
+						Toast.makeText(mActivity, AccResource.getInstance(mActivity).mgp_sdk_2_0_error_common_server, Toast.LENGTH_SHORT).show();
+					}
+				} catch (Exception e) {
+					log.e(e);
+				}
+			}
+			
+			@Override
+			public void onFailure(int statusCode, Header[] headers,
+					Throwable error, String content) {
+				try {
+					CMBILogManager.printEventLog(mActivity, "0", "120031", "");
+					log.d("statusCode:"+statusCode+",Header:"+headers+",content:"+content);
+					mLoadingDialog.dismissDialog();
+					isRequest=false;
+					if (!TextUtils.isEmpty(content)) {
+						ErrorInfo info = JSONUtil.getMapper().readValue(content,new TypeReference<ErrorInfo>() {});
+						if (info != null) {
+							Toast.makeText(mActivity, info.getClient_message(), Toast.LENGTH_SHORT).show();
+						} else {
+							Toast.makeText(mActivity, AccResource.getInstance(mActivity).mgp_sdk_2_0_error_common_server, Toast.LENGTH_SHORT).show();
+						}
+					} else {
+						Toast.makeText(mActivity, AccResource.getInstance(mActivity).mgp_sdk_2_0_error_common_server, Toast.LENGTH_SHORT).show();
+					}
+				} catch (Exception e) {
+					log.e(e);
+				}
+			}
+		});
+	}
+	
+	private String decodePassword(String password) {
+		String result = null;
+		try {
+			result = new DesUtil().decrypt(password);
+		} catch (Exception e) {
+			log.e(e);
+		}
+		return result;
+	}
+	
+	private String encryptPassword(String password) {
+		String result = null;
+		try {
+			result = new DesUtil().encrypt(password);
+		} catch (Exception e) {
+			log.e(e);
+		}
+		return result;
+	}
+
+}

@@ -1,0 +1,639 @@
+package com.changyou.mgp.sdk.mbi.account.ui;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import org.codehaus.jackson.type.TypeReference;
+
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.graphics.Color;
+import android.os.Bundle;
+import android.os.CountDownTimer;
+import android.text.InputFilter;
+import android.text.TextPaint;
+import android.text.method.LinkMovementMethod;
+import android.text.style.ClickableSpan;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import com.changyou.mgp.sdk.mbi.account.id.AccResource;
+import com.changyou.mgp.sdk.mbi.account.utils.CyouLoginUtils;
+import com.changyou.mgp.sdk.mbi.account.utils.CyouLoginUtils.CyouLoginListener;
+import com.changyou.mgp.sdk.mbi.config.HttpContants;
+import com.changyou.mgp.sdk.mbi.config.Params;
+import com.changyou.mgp.sdk.mbi.entity.RegistInfo;
+import com.changyou.mgp.sdk.mbi.http.MyAsyncResponseHandler;
+import com.changyou.mgp.sdk.mbi.http.MyHttpClient;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.mbi.manager.CMBILogManager;
+import com.changyou.mgp.sdk.mbi.ui.base.BaseFragment;
+import com.changyou.mgp.sdk.mbi.ui.widget.WaitingDialog;
+import com.changyou.mgp.sdk.mbi.utils.DesUtil;
+import com.changyou.mgp.sdk.mbi.utils.JSONUtil;
+import com.changyou.mgp.sdk.mbi.utils.MyToast;
+import com.changyou.mgp.sdk.mbi.utils.ResourceUtil;
+import com.changyou.mgp.sdk.mbi.utils.StringUtils;
+
+/**
+ * 
+ * 功能描述：手机号注册
+ * 
+ * @author 徐萌阳(xumengyang)
+ * 
+ * @date 2013-12-31
+ */
+public class CYMGRegistForTelFragment extends BaseFragment implements
+		OnClickListener {
+
+	private CYLog log = CYLog.getInstance();
+	private static final int PHONE_MAX_LENGTH = 11;
+	private static final int PASSWORD_MIN = 4;
+	private static final int PASSWORD_MAX = 16;
+	private static final int VALIDATE_MAX = 6;
+	private static final String SUCCESS = "success";
+	private static final int COUNT_DOWN_TIME = 60 * 1000;
+
+	private WaitingDialog mWaitingDialog;
+	private EditText mPhoneET;
+	private EditText mValidateET;
+	private EditText mPassWordET;
+	private Button mRegistBtn;
+	private Button mGetValidateBtn;
+	private TextView mProtocalTV;
+	private AlertDialog mRegistmNetErrorDialog;
+	private AlertDialog mGetNetErrorDialog;
+	private AlertDialog.Builder mAlertDialog;
+	private CountDownTimer mTimer;
+	// private ImageButton mAccClearIBtn;
+	// private ImageButton mValidateClearIBtn;
+	// private ImageButton mPassClearIBtn;
+
+	private boolean mLoadError = false;// 若回调onReceivedError则置为true
+	private View mView;
+	private Activity mActivity;
+
+	@Override
+	public void onCreate(Bundle savedInstanceState) {
+		log.d("onCreate");
+		super.onCreate(savedInstanceState);
+	}
+
+	@Override
+	public View onCreateView(LayoutInflater inflater, ViewGroup container,
+			Bundle savedInstanceState) {
+		log.d("onCreateView");
+		mView = inflater.inflate(AccResource.getInstance(mActivity).mgp_regist_for_tel,
+				container, false);
+		mWaitingDialog = new WaitingDialog(getActivity());
+		this.mPhoneET = (EditText) mView.findViewById(AccResource.getInstance(mActivity).mgp_regist_for_tel_acc_et);
+		this.mValidateET = (EditText) mView.findViewById(AccResource.getInstance(mActivity).mgp_regist_for_tel_validate_et);
+		this.mValidateET
+				.setFilters(new InputFilter[] { new InputFilter.LengthFilter(
+						VALIDATE_MAX) });
+		this.mPassWordET = (EditText) mView.findViewById(AccResource.getInstance(mActivity).mgp_regist_for_tel_pass_et);
+		this.mGetValidateBtn = (Button) mView.findViewById(AccResource.getInstance(mActivity).mgp_regist_for_tel_validate_btn);
+		this.mRegistBtn = (Button) mView.findViewById(AccResource.getInstance(mActivity).mgp_regist_for_tel_regist_btn);
+		this.mProtocalTV = (TextView) mView.findViewById(AccResource.getInstance(mActivity).mgp_regist_for_tel_protocal_tv);
+		// this.mAccClearIBtn =
+		// (ImageButton)mView.findViewById(mgp_regist_for_tel_acc_cancel_ibtn);
+		// this.mValidateClearIBtn =
+		// (ImageButton)mView.findViewById(mgp_regist_for_tel_validate_cancel_ibtn);
+		// this.mPassClearIBtn =
+		// (ImageButton)mView.findViewById(mgp_regist_for_tel_pass_cancel_ibtn);
+		this.mPhoneET
+				.setFilters(new InputFilter[] { new InputFilter.LengthFilter(
+						PHONE_MAX_LENGTH) });
+		this.mPhoneET.clearFocus();
+		this.mRegistmNetErrorDialog = new AlertDialog.Builder(mActivity)
+				.setMessage(
+						AccResource.getInstance(mActivity).mgp_net_error_hint)
+				.setNegativeButton(
+						AccResource.getInstance(mActivity).mgp_login_dialog_retry,
+						new DialogInterface.OnClickListener() {
+
+							@Override
+							public void onClick(DialogInterface dialog,
+									int which) {
+								regist();
+							}
+						})
+				.setPositiveButton(
+						AccResource.getInstance(mActivity).mgp_login_dialog_cancel,
+						new DialogInterface.OnClickListener() {
+
+							@Override
+							public void onClick(DialogInterface dialog,
+									int which) {
+								dialog.dismiss();
+							}
+						}).create();
+		this.mGetNetErrorDialog = new AlertDialog.Builder(mActivity)
+				.setMessage(
+						AccResource.getInstance(mActivity).mgp_net_error_hint)
+				.setNegativeButton(
+						AccResource.getInstance(mActivity).mgp_login_dialog_retry,
+						new DialogInterface.OnClickListener() {
+
+							@Override
+							public void onClick(DialogInterface dialog,
+									int which) {
+								getValidateNum();
+							}
+						})
+				.setPositiveButton(
+						AccResource.getInstance(mActivity).mgp_login_dialog_cancel,
+						new DialogInterface.OnClickListener() {
+
+							@Override
+							public void onClick(DialogInterface dialog,
+									int which) {
+								dialog.dismiss();
+							}
+						}).create();
+		initData();
+		initEvent();
+		initLoginAlertDialog();
+		return mView;
+	}
+
+	public View initView() {
+		return mView;
+	}
+
+	@Override
+	public void onAttach(Activity activity) {
+		log.d("onAttach");
+		super.onAttach(activity);
+		this.mActivity = activity;
+	}
+
+	@Override
+	protected void initData() {
+		String str = this.mActivity.getString(AccResource.getInstance(mActivity).mgp_regist_protocal);
+		this.mProtocalTV.setMovementMethod(LinkMovementMethod.getInstance());
+		this.mProtocalTV.setText(StringUtils
+				.getCYProtocol(str, new ClickSpan()));
+	}
+
+	@Override
+	protected void initEvent() {
+		this.mGetValidateBtn.setOnClickListener(this);
+		this.mRegistBtn.setOnClickListener(this);
+		// this.mAccClearIBtn.setOnClickListener(this);
+		// this.mValidateClearIBtn.setOnClickListener(this);
+		// this.mPassClearIBtn.setOnClickListener(this);
+	}
+	
+	private void initLoginAlertDialog(){
+		this.mAlertDialog = new AlertDialog.Builder(mActivity);
+		this.mAlertDialog.setTitle(mActivity.getString(AccResource.getInstance(mActivity).mgp_login_dialog_title));
+		this.mAlertDialog.setPositiveButton(mActivity.getString(AccResource.getInstance(mActivity).mgp_login_dialog_retry),
+				new DialogInterface.OnClickListener() {
+
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						cyLogin();
+					}
+				});
+		this.mAlertDialog.setNegativeButton(mActivity.getString(AccResource.getInstance(mActivity).mgp_login_dialog_cancel),
+				new DialogInterface.OnClickListener() {
+
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+
+					}
+				});
+	}
+
+	@Override
+	public void onDestroy() {
+		super.onDestroy();
+		if (mTimer != null) {
+			mTimer.cancel();
+		}
+		if (mWaitingDialog.isShowing()) {
+			mWaitingDialog.dismiss();
+		}
+		if (this.mAlertDialog != null) {
+			this.mAlertDialog = null;
+		}
+	}
+
+	@Override
+	public void onClick(View v) {
+		if (v.getId() == AccResource.getInstance(mActivity).mgp_regist_for_tel_regist_btn) {
+
+			regist();
+		} else if (v.getId() == AccResource.getInstance(mActivity).mgp_regist_for_tel_validate_btn) {
+			CMBILogManager.action_A_Register_AuthCode(mActivity);
+			if (verifyPhone()) {
+				getValidateNum();
+			}
+		}
+		// else if(v.getId() == mgp_regist_for_tel_acc_cancel_ibtn){
+		// mPhoneET.setText("");
+		// }else if(v.getId() == mgp_regist_for_tel_validate_cancel_ibtn){
+		// mValidateET.setText("");
+		// }else if(v.getId() == mgp_regist_for_tel_pass_cancel_ibtn){
+		// mPassWordET.setText("");
+		// }
+	}
+
+	private class ClickSpan extends ClickableSpan {
+
+		@Override
+		public void onClick(View widget) {
+			// 通知Activity跳转到畅游协议Fragment
+			if (mActivity != null) {
+				((CYMGRegistActivity) mActivity).changeFragment(
+						CYMGRegistActivity.REGIST, CYMGRegistActivity.PROTOCOL,
+						null);
+			}
+		}
+
+		@Override
+		public void updateDrawState(TextPaint ds) {
+		}
+
+	}
+
+	/**
+	 * 
+	 * 功能描述：验证手机号码，手机号码不能为空
+	 * 
+	 * @author 徐萌阳(xumengyang)
+	 * @param @return
+	 * @return boolean
+	 * @date 2014-3-10 下午2:54:05
+	 * 
+	 */
+	private boolean verifyPhone() {
+		String phone = mPhoneET.getText().toString();
+		if (phone.length() != PHONE_MAX_LENGTH) {
+			Toast.makeText(
+					mActivity,
+					AccResource.getInstance(mActivity).mgp_regist_tel_acc_error, Toast.LENGTH_LONG)
+					.show();
+			return false;
+		}
+		return true;
+	}
+
+	/**
+	 * 
+	 * 功能描述：验证 验证码，验证码不能为空
+	 * 
+	 * @author 徐萌阳(xumengyang)
+	 * @param @return
+	 * @return boolean
+	 * @date 2014-3-10 下午2:55:19
+	 * 
+	 */
+	private boolean verifyValidateNum() {
+		String validateNum = mValidateET.getText().toString();
+		if (validateNum.length() != VALIDATE_MAX) {
+			Toast.makeText(
+					mActivity,
+					AccResource.getInstance(mActivity).mgp_validate_num_not_valide, Toast.LENGTH_LONG)
+					.show();
+			return false;
+		}
+		return true;
+	}
+
+	/**
+	 * 
+	 * 功能描述：检测密码合法性
+	 * 
+	 * @author 徐萌阳(xumengyang)
+	 * @param @return
+	 * @return boolean
+	 * @date 2014-3-12 下午1:48:07
+	 * 
+	 */
+	private boolean checkPass() {
+		String password = mPassWordET.getText().toString();
+		Pattern p = Pattern.compile("^[^\'“'\'”'\'‘'\'’'\"\\ ,，]+$");
+		Matcher m = p.matcher(password);
+		if (password.length() == 0) {
+			Toast.makeText(
+					mActivity,
+					AccResource.getInstance(mActivity).mgp_regist_password_error2, Toast.LENGTH_LONG)
+					.show();
+		} else if (password.length() >= PASSWORD_MIN
+				&& password.length() <= PASSWORD_MAX) {
+			if (m.matches()) {
+				return true;
+			} else {
+				Toast.makeText(
+						mActivity,
+						AccResource.getInstance(mActivity).mgp_regist_password_not_valide,
+						Toast.LENGTH_LONG).show();
+				mPassWordET.setText("");
+			}
+		} else {
+			Toast.makeText(
+					mActivity,
+					AccResource.getInstance(mActivity).mgp_regist_password_error, Toast.LENGTH_LONG)
+					.show();
+		}
+		return false;
+	}
+
+	/**
+	 * 
+	 * 功能描述：
+	 * 
+	 * @author 徐萌阳(xumengyang)
+	 * @param
+	 * @return void
+	 * @date 2014-3-10 下午1:47:37
+	 * 
+	 */
+	public void regist() {
+		if (!(verifyPhone() && verifyValidateNum() && checkPass())) {
+			return;
+		}
+		String password = null;
+		try {
+			password = new DesUtil().encrypt(mPassWordET.getText().toString());
+		} catch (Exception e) {
+			log.e(e);
+		}
+		Map<String, String> params = new HashMap<String, String>();
+		params.put("account", mPhoneET.getText().toString());
+		params.put("captcha", mValidateET.getText().toString());
+		params.put("password", password);
+		new MyHttpClient(mActivity).post(
+				HttpContants.getURL(HttpContants.TEL_REGIST), params,
+				new MyAsyncResponseHandler() {
+
+					@Override
+					public void onStart() {
+						if (mTimer != null) {
+							mGetValidateBtn.setEnabled(true);
+							mGetValidateBtn.setBackgroundResource(AccResource.getInstance(mActivity).mgp_regist_for_tel_validate_btn_xbg);
+							mGetValidateBtn.setTextColor(getResources()
+									.getColor(
+											AccResource.getInstance(mActivity).mgp_sdk_color));
+							mGetValidateBtn.setText(AccResource.getInstance(mActivity).mgp_regist_get_validate);
+							mTimer.cancel();
+						}
+						mWaitingDialog.setMessage(mActivity
+								.getString(AccResource.getInstance(mActivity).mgp_regist_registing));
+						mWaitingDialog.show();
+					}
+
+					@Override
+					public void onSuccess(int statusCode, String content) {
+						if (mTimer != null) {
+							mTimer.cancel();
+						}
+						mWaitingDialog.dismiss();
+						try {
+							RegistInfo info = JSONUtil.getMapper().readValue(
+									content, new TypeReference<RegistInfo>() {
+									});
+							if (info != null) {
+								if (info.getMessage().equals(SUCCESS)) {
+									Toast.makeText(mActivity,AccResource.getInstance(mActivity).mgp_regist_success,Toast.LENGTH_LONG).show();
+									cyLogin();
+								}
+							} else {
+								log.e("info is null");
+							}
+						} catch (Exception e) {
+							log.e(e);
+						}
+					}
+
+					@Override
+					public void onFailure(Throwable error, String content) {
+						if (mTimer != null) {
+							mTimer.cancel();
+						}
+						mWaitingDialog.dismiss();
+						try {
+							RegistInfo info = JSONUtil.getMapper().readValue(
+									content, new TypeReference<RegistInfo>() {
+									});
+							if (info != null) {
+								Toast.makeText(mActivity,
+										info.getClient_message(),
+										Toast.LENGTH_LONG).show();
+							} else {
+								log.e("info is null");
+							}
+						} catch (Exception e) {
+							mRegistmNetErrorDialog.show();
+							// Toast.makeText(mActivity,mgp_login_dialog_net_error
+							// , Toast.LENGTH_LONG).show();
+							log.e(e);
+						}
+					}
+
+				});
+	}
+	
+	private void cyLogin(){
+		mWaitingDialog.setMessage(mActivity.getString(AccResource.getInstance(mActivity).mgp_login_dialog_logining));
+		mWaitingDialog.show();
+		String password = null;
+		try {
+			password = new DesUtil().encrypt(mPassWordET.getText().toString());
+		} catch (Exception e) {
+			log.e(e);
+		}
+		CyouLoginUtils cyouLoginUtils = new CyouLoginUtils(mActivity);
+		cyouLoginUtils.userLoginRequest(mPhoneET.getText().toString(),
+				password, new CyouLoginListener() {
+
+					@Override
+					public void onLoginError(int error_code) {
+						log.d("cyouLoginError");
+						showLoginDialog(error_code);
+					}
+
+					@Override
+					public void onLoginComplete() {
+						log.d("cyouLoginComplete");
+						if(mWaitingDialog.isShowing()){
+							mWaitingDialog.dismiss();
+						}
+						if (mActivity != null) {
+							Intent intent = new Intent();
+							mActivity.setResult(CYMGLoginFragment.RESULT_CODE_REGIST,intent);
+							mActivity.finish();
+						}
+					}
+
+					@Override
+					public void onLoginCancel(int error_code) {
+						log.d("cyouLoginCancel");
+						showLoginDialog(error_code);
+					}
+				});
+	}
+	
+	/**
+	 * 
+	 * 功能描述：显示登录按钮弹出的dialog
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param @param error_code
+	 * @return void
+	 * @date 2014-3-7 下午7:34:42
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void showLoginDialog(int error_code) {
+		if(mWaitingDialog.isShowing()){
+			mWaitingDialog.dismiss();
+		}
+		if (error_code == 404) {
+			mAlertDialog.setMessage(mActivity.getString(AccResource.getInstance(mActivity).mgp_net_error_hint));
+			mAlertDialog.show();
+		} else if (error_code == 21011) {
+			MyToast.showToast(mActivity, mActivity.getString(AccResource.getInstance(mActivity).mgp_login_toast_account_error));
+		} else if (error_code == 21002) {
+			MyToast.showToast(mActivity, mActivity.getString(AccResource.getInstance(mActivity).mgp_login_dialog_login_failure_21002));
+		} else if (error_code == 21003) {
+			MyToast.showToast(mActivity, mActivity.getString(AccResource.getInstance(mActivity).mgp_login_dialog_login_failure_21003));
+		} else {
+			mAlertDialog.setMessage(mActivity.getString(AccResource.getInstance(mActivity).mgp_login_dialog_login_failure));
+			mAlertDialog.show();
+		}
+	}
+
+	/**
+	 * 
+	 * 功能描述：获取手机验证码
+	 * 
+	 * @author 徐萌阳(xumengyang)
+	 * @param
+	 * @return void
+	 * @date 2014-3-10 下午1:48:10
+	 * 
+	 */
+	public void getValidateNum() {
+		Map<String, String> params = new HashMap<String, String>();
+		params.put("account", mPhoneET.getText().toString());
+		new MyHttpClient(mActivity).post(
+				HttpContants.getURL(HttpContants.GET_VALIDATE_NUM), params,
+				new MyAsyncResponseHandler() {
+
+					@Override
+					public void onStart() {
+						mWaitingDialog.setMessage(mActivity
+								.getString(AccResource.getInstance(mActivity).mgp_please_wait));
+						mWaitingDialog.show();
+					}
+
+					@Override
+					public void onSuccess(int statusCode, String content) {
+						log.d("tel regist result = " + content);
+						mWaitingDialog.dismiss();
+						try {
+							RegistInfo info = JSONUtil.getMapper().readValue(
+									content, new TypeReference<RegistInfo>() {
+									});
+							if (info != null) {
+								if (info.getMessage().equals(SUCCESS)) {
+									// 开始倒计时
+									mTimer = new CountDownTimer(
+											COUNT_DOWN_TIME, 1000) {
+
+										@Override
+										public void onTick(
+												long millisUntilFinished) {
+											if (isAdded()) {
+												mGetValidateBtn.setText(getString(
+														AccResource.getInstance(mActivity).mgp_count_down,
+														millisUntilFinished / 1000));
+											}
+										}
+
+										@Override
+										public void onFinish() {
+											if (isAdded()) {
+												mGetValidateBtn
+														.setEnabled(true);
+												mGetValidateBtn
+														.setBackgroundResource(AccResource.getInstance(mActivity).mgp_regist_for_tel_validate_btn_xbg);
+												mGetValidateBtn
+														.setTextColor(getResources()
+																.getColor(
+																		AccResource.getInstance(mActivity).mgp_sdk_color));
+												mGetValidateBtn.setText(AccResource.getInstance(mActivity).mgp_regist_get_validate);
+											}
+										}
+									}.start();
+									mGetValidateBtn.setBackgroundColor(Color
+											.parseColor("#dcdbdb"));
+									mGetValidateBtn.setTextColor(Color
+											.parseColor("#767576"));
+									mGetValidateBtn.setEnabled(false);
+									Toast.makeText(
+											mActivity,
+											AccResource.getInstance(mActivity).mgp_regist_validate_had_send,
+											Toast.LENGTH_LONG).show();
+								}
+							} else {
+								log.e("info is null");
+							}
+						} catch (Exception e) {
+							log.e(e);
+						}
+					}
+
+					@Override
+					public void onFailure(Throwable error, String content) {
+						log.e("tel regist result = " + content);
+						mWaitingDialog.dismiss();
+						try {
+							RegistInfo info = JSONUtil.getMapper().readValue(
+									content, new TypeReference<RegistInfo>() {
+									});
+							if (info != null) {
+								Toast.makeText(mActivity,
+										info.getClient_message(),
+										Toast.LENGTH_LONG).show();
+							} else {
+								log.e("info is null");
+							}
+						} catch (Exception e) {
+							log.e(e);
+						}
+					}
+
+				});
+	}
+
+	/**
+	 * 清除所有焦点
+	 */
+	public void clearFocus() {
+		if (mPassWordET != null) {
+			mPassWordET.clearFocus();
+		}
+	}
+
+	@Override
+	public void onDetach() {
+		super.onDetach();
+		if (mTimer != null) {
+			mTimer.cancel();
+		}
+	}
+}

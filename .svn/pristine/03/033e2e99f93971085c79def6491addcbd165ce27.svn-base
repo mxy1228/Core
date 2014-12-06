@@ -1,0 +1,217 @@
+package com.changyou.mgp.sdk.mbi.channel.impl;
+
+import org.codehaus.jackson.type.TypeReference;
+
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.content.SharedPreferences.Editor;
+
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannel;
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannelEntity;
+import com.changyou.mgp.sdk.mbi.config.CYMGPrompt;
+import com.changyou.mgp.sdk.mbi.config.Contants;
+import com.changyou.mgp.sdk.mbi.config.HttpContants;
+import com.changyou.mgp.sdk.mbi.entity.GlobalParamItem;
+import com.changyou.mgp.sdk.mbi.entity.GlobalParamList;
+import com.changyou.mgp.sdk.mbi.http.MyAsyncResponseHandler;
+import com.changyou.mgp.sdk.mbi.http.MyHttpClient;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.platform.CYMGInitHelper;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPlatformConfiguration;
+import com.changyou.mgp.sdk.mbi.utils.JSONUtil;
+import com.changyou.mgp.sdk.mbi.utils.UserInfoSPUtil;
+import com.loopj.android.http.RequestParams;
+
+public class CYMGCyouImpl implements CYMGChannel {
+
+	private CYLog log = CYLog.getInstance();
+//
+//	public static CyouLoginUtils mCyouLoginUtils;
+//	public static QQLoginUtil mQQLoginUtil;
+//	public static WeiboLoginUtil mWeiboLoginUtil;
+
+	private String loginMode = null;
+	private boolean mInited;
+
+	@Override
+	public void init(CYMGPlatformConfiguration config) {
+		log.d("------MGPCyouImpl:init");
+		Context context=config.getmContext();
+		requestGlobalParams(context);
+	}
+
+	@Override
+	public void doLogin(CYMGChannelEntity entity) {
+//		log.d("------MGPCyouImpl:doLogin");
+//		Context context=entity.getmContext();
+//		getUserContent(context);
+//		Intent intent = new Intent(context, CYMGLoginActivity.class);
+//		if (!StringUtils.isEmpty(loginMode)) {
+//			intent.putExtra(Params.LOGINMODE, loginMode);
+//			context.startActivity(intent);
+//		} else {
+//			context.startActivity(intent);
+//		}
+	}
+
+	@Override
+	public void doPay(CYMGChannelEntity entity) {
+//		log.d("------MGPCyouImpl:doPay");
+//		Context context = entity.getmContext();
+//		if(context == null){
+//			log.e("context is null");
+//			return;
+//		}
+//		Bundle bundle=entity.getBundle();
+//		if (TextUtils.isEmpty(bundle.getString(CYMGProtocolKeys.UID)) || bundle.getString(CYMGProtocolKeys.UID) == null) {
+//			throw new IllegalAccessError("uid is null");
+//		}
+//		if (!StringUtils.isEmpty(bundle.getString(CYMGProtocolKeys.UID)) && !StringUtils.isEmpty(UserInfoSPUtil.getLoginmode(entity.getmContext()))) {
+//			((CYMGPaymentActivity)context).changeFragment(Contants.FragmentTag.PAYMENT_WAY_FRAGMENT_TAG, Contants.FragmentTag.PAYMENT_WAY_FRAGMENT_TAG, bundle);
+//		} else {
+//			MyToast.showToast(context,context.getResources().getString(R.string.mgp_not_login));
+//			Intent intent = new Intent(context, CYMGLoginActivity.class);
+//			context.startActivity(intent);
+//		}
+	}
+
+	@Override
+	public void doLogout(CYMGChannelEntity entity) {
+//		log.d("------MGPCyouImpl:doLogout");
+//		final Context context=entity.getmContext();
+//		getUserContent(context);
+//		if (Contants.LoginParams.LOGINMODE_QQ.equals(loginMode)) {
+//			if (mQQLoginUtil == null) {
+//				mQQLoginUtil = new QQLoginUtil(context);
+//			}
+//			mQQLoginUtil.initTencent();
+//			mQQLoginUtil.qqLogout();
+//			clearUserContent(context);
+//			CYMGLoginOutHelpr.getInstance().logoutResult(CYMGPrompt.CODE_LOGOUT_SUCCESS);
+//		} else if (Contants.LoginParams.LOGINMODE_SINA.equals(loginMode)) {
+//			if (mWeiboLoginUtil == null) {
+//				mWeiboLoginUtil = new WeiboLoginUtil(context);
+//			}
+//			mWeiboLoginUtil.logout(context, entity.getBundle().getString(CYMGProtocolKeys.TOKEN), new WeiboLogoutListener() {
+//
+//				@Override
+//				public void onSuccess(String response) {
+//					log.d("sina loginout response = " + response);
+//					if (!TextUtils.isEmpty(response)) {
+//						try {
+//							JSONObject obj = new JSONObject(response);
+//							String value = obj.getString("result");
+//							if ("true".equalsIgnoreCase(value)) {
+//								clearUserContent(context);
+//								CYMGLoginOutHelpr.getInstance().logoutResult(CYMGPrompt.CODE_LOGOUT_SUCCESS);
+//							} else {
+//								CYMGLoginOutHelpr.getInstance().logoutResult(CYMGPrompt.CODE_LOGOUT_FAILED);
+//							}
+//						} catch (JSONException e) {
+//							log.e(e);
+//						}
+//					} else {
+//						CYMGLoginOutHelpr.getInstance().logoutResult(CYMGPrompt.CODE_LOGOUT_FAILED);
+//					}
+//				}
+//
+//				@Override
+//				public void onFailure(Throwable thr) {
+//					CYMGLoginOutHelpr.getInstance().logoutResult(CYMGPrompt.CODE_LOGOUT_FAILED);
+//				}
+//			});
+//			clearUserContent(context);
+//		} else if (Contants.LoginParams.LOGINMODE_CYOU.equals(loginMode)) {
+//			clearUserContent(context);
+//			CYMGLoginOutHelpr.getInstance().logoutResult(CYMGPrompt.CODE_LOGOUT_SUCCESS);
+//		}
+	}
+	
+	@Override
+	public void doDestroy(CYMGChannelEntity entity) {
+		log.d("------MGPCyouImpl:doDestroy");
+	}
+	
+//	/**
+//	 * 
+//	 * 功能描述：从SP中取出USER数据
+//	 * 
+//	 * @author 严峥(yanzheng)
+//	 * @param
+//	 * @return void
+//	 * @date 2014-1-16 下午4:52:19
+//	 * 
+//	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+//	 */
+//	private void getUserContent(Context context) {
+//		loginMode = UserInfoSPUtil.getLoginmode(context);
+//	}
+
+	/**
+	 * 
+	 * 功能描述：从SP中清除USER数据
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param
+	 * @return void
+	 * @date 2014-1-20 下午1:17:35
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+//	private void clearUserContent(Context context) {
+//		UserInfoSPUtil.setLoginmode(context, "");
+//		mQQLoginUtil = null;
+//		mWeiboLoginUtil = null;
+//	}
+
+	/**
+	 * 
+	 * 功能描述：向服务器请求全局参数
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param 
+	 * @return void
+	 * @date 2014-3-18 上午11:22:13
+	 *
+	 */
+	private void requestGlobalParams(final Context context){
+		RequestParams params = new RequestParams();
+		new MyHttpClient(context).get(HttpContants.getURL(HttpContants.GLOBAL_PARAMS), params, new MyAsyncResponseHandler(){
+			@Override
+			public void onSuccess(int statusCode, String content) {
+				log.d("requestGlobalParams result = "+content);
+				try {
+					GlobalParamList list = JSONUtil.getMapper().readValue(JSONUtil.initJsonArrayStr(content), new TypeReference<GlobalParamList>() {
+					});
+					if(list != null){
+						SharedPreferences sp = context.getSharedPreferences(Contants.SP_NAME.SETTING, Context.MODE_PRIVATE);
+						for(GlobalParamItem item : list.getData()){
+							Editor e = sp.edit();
+							e.putString(item.getMap_key(), item.getMap_value());
+							e.commit();
+						}
+						mInited = true;
+						CYMGInitHelper.getInstance().onInitResult(CYMGPrompt.CODE_INIT_SUCCESS, null);
+					}else{
+						log.e("list is null");
+					}
+				} catch (Exception e) {
+					log.e(e);
+				}
+			}
+			
+			@Override
+			public void onFailure(Throwable error, String content) {
+				log.e("requestGlobalParams :"+content);
+				CYMGInitHelper.getInstance().onInitResult(CYMGPrompt.CODE_INIT_FAILED, null);
+			}
+		});
+	}
+
+	@Override
+	public void doCustomerService(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+		
+	}
+	
+}

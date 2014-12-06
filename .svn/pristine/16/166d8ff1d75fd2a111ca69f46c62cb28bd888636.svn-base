@@ -1,0 +1,30 @@
+package com.changyou.mgp.sdk.mbi.platform;
+
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+
+public class CYMGChannelHelper implements InvocationHandler {
+
+	private CYLog log = CYLog.getInstance();
+
+	private Object sub;
+
+	public CYMGChannelHelper(Object obj) {
+		this.sub = obj;
+	}
+
+
+
+	/* (non-Javadoc)
+	 * @see java.lang.reflect.InvocationHandler#invoke(java.lang.Object, java.lang.reflect.Method, java.lang.Object[])
+	 */
+	@Override
+	public Object invoke(Object proxy, Method method, Object[] args)
+			throws Throwable {
+		log.d("Method:" + method + ",Args:" + args);
+		method.invoke(sub, args);
+		return null;
+	}
+	
+}

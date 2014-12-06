@@ -1,0 +1,112 @@
+package com.changyou.mgp.sdk.mbi.account.ui;
+
+import java.util.List;
+
+import android.content.Context;
+import android.os.Bundle;
+import android.support.v4.app.FragmentActivity;
+import android.support.v4.app.FragmentTransaction;
+import android.text.TextUtils;
+
+import com.alipay.mobilesecuritysdk.deviceID.LOG;
+import com.changyou.mgp.sdk.mbi.config.Contants;
+import com.changyou.mgp.sdk.mbi.db.CYMGAccBean;
+import com.changyou.mgp.sdk.mbi.db.CYMGDBMaster;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.utils.UserInfoSPUtil;
+
+public class CYMGMainDialogFragmentActivity extends FragmentActivity {
+	
+	private static CYLog log = CYLog.getInstance();
+	
+	private CYMGQuickIntoDialogFragment cYMGQuickIntoDialogFragment;
+	private CYMGFindPasswordSetPasswordDialogFragment cYMGFindPasswordSetPasswordDialogFragment;
+	private CYMGFindPasswordSetAuthCodeDialogFragment cYMGFindPasswordSetAuthCodeDialogFragment;
+	private CYMGLoginChengYouDialogFragment cYMGLoginChengYouDialogFragment;
+	private CYMGLoginChangYouDialogFragment cYMGLoginChangYouDialogFragment;
+	private CYMGRegisterContainerDialogFragment cYMGRegisterContainerDialogFragment;
+	private CYMGRegisterPhoneSetAuthCodeDialogFragment cYMGRegisterPhoneSetAuthCodeDialogFragment;
+	private CYMGSwitchAccountDialogFragment cYMGSwitchAccountDialogFragment;
+	private CYMGFindPasswordDialogFragment cYMGFindPasswordDialogFragment;
+	private CYMGAutoLoginDialogFragment cYMGAutoLoginDialogFragment;
+	
+	private FragmentTransaction ft;
+	
+	private String mUid,mToken,mType;
+	
+	private CYMGDBMaster mCYMGDBMaster;
+	
+	public CYMGDBMaster getmCYMGDBMaster(){
+		return mCYMGDBMaster;
+	}
+	
+	@Override
+	protected void onCreate(Bundle arg0) {
+		super.onCreate(arg0);
+		mCYMGDBMaster=new CYMGDBMaster(this);
+		List<CYMGAccBean> list=mCYMGDBMaster.getAccList();
+		if(list.isEmpty()){
+			changeDialogFragment(Contants.DialogFragmentTag.QUICK_INTO,null);
+		}else{
+			getUserSP(this);
+			if(!TextUtils.isEmpty(mToken)&&mToken.equals(list.get(0).getmToken())){
+				Bundle bundle=new Bundle();
+				String uid=list.get(0).getmUID();
+				String token=list.get(0).getmToken();
+				String acc=list.get(0).getmAcc();
+				bundle.putString("uid", uid);
+				bundle.putString("token", token);
+				bundle.putString("acc", acc);
+				changeDialogFragment(Contants.DialogFragmentTag.AUTO_LOGIN,bundle);
+			}else{
+				Bundle bundle=new Bundle();
+				changeDialogFragment(Contants.DialogFragmentTag.SWITCH_ACCOUNT,bundle);
+			}
+		}
+	}
+	
+	@Override
+	protected void onDestroy() {
+		super.onDestroy();
+	}
+	
+	public void changeDialogFragment(String tag,Bundle bundle){
+		if(tag.equals(Contants.DialogFragmentTag.QUICK_INTO)){
+			cYMGQuickIntoDialogFragment=CYMGQuickIntoDialogFragment.newInewInstance(this,bundle);
+			cYMGQuickIntoDialogFragment.showDialog();
+		}else if(tag.equals(Contants.DialogFragmentTag.FIND_PASSWORD_SET_PASSWORD)){
+			cYMGFindPasswordSetPasswordDialogFragment=CYMGFindPasswordSetPasswordDialogFragment.newInewInstance(this,bundle);
+			cYMGFindPasswordSetPasswordDialogFragment.showDialog();
+		}else if(tag.equals(Contants.DialogFragmentTag.CHENGYOU_LOGIN)){
+			cYMGLoginChengYouDialogFragment=CYMGLoginChengYouDialogFragment.newInewInstance(this,bundle);
+			cYMGLoginChengYouDialogFragment.showDialog();
+		}else if(tag.equals(Contants.DialogFragmentTag.CHANGYOU_LOGIN)){
+			cYMGLoginChangYouDialogFragment=CYMGLoginChangYouDialogFragment.newInewInstance(this,bundle);
+			cYMGLoginChangYouDialogFragment.showDialog();
+		}else if(tag.equals(Contants.DialogFragmentTag.REGISTER_CONTAINER)){
+			cYMGRegisterContainerDialogFragment=CYMGRegisterContainerDialogFragment.newInewInstance(this,bundle);
+			cYMGRegisterContainerDialogFragment.showDialog();
+		}else if(tag.equals(Contants.DialogFragmentTag.REGISTER_SET_AUTH_CODE)){
+			cYMGRegisterPhoneSetAuthCodeDialogFragment=CYMGRegisterPhoneSetAuthCodeDialogFragment.newInewInstance(this,bundle);
+			cYMGRegisterPhoneSetAuthCodeDialogFragment.showDialog();
+		}else if(tag.equals(Contants.DialogFragmentTag.SWITCH_ACCOUNT)){
+			cYMGSwitchAccountDialogFragment=CYMGSwitchAccountDialogFragment.newInewInstance(this,bundle);
+			cYMGSwitchAccountDialogFragment.showDialog();
+		}else if(tag.equals(Contants.DialogFragmentTag.FIND_PASSWORD)){
+			cYMGFindPasswordDialogFragment=CYMGFindPasswordDialogFragment.newInewInstance(this,bundle);
+			cYMGFindPasswordDialogFragment.showDialog();
+		}else if(tag.equals(Contants.DialogFragmentTag.AUTO_LOGIN)){
+			cYMGAutoLoginDialogFragment=CYMGAutoLoginDialogFragment.newInewInstance(this,bundle);
+			cYMGAutoLoginDialogFragment.showDialog();
+		}else if(tag.equals(Contants.DialogFragmentTag.FIND_PASSWORD_SET_AUTH_CODE)){
+			cYMGFindPasswordSetAuthCodeDialogFragment=CYMGFindPasswordSetAuthCodeDialogFragment.newInewInstance(this,bundle);
+			cYMGFindPasswordSetAuthCodeDialogFragment.showDialog();
+		}
+	}
+	
+	private void getUserSP(Context context) {
+		mUid = UserInfoSPUtil.getUid(context);
+		mToken = UserInfoSPUtil.getToken(context);
+		mType = UserInfoSPUtil.getType(context);
+	}
+}

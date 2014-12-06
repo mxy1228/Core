@@ -1,0 +1,140 @@
+package com.changyou.mgp.sdk.mbi.account.ui;
+
+import android.content.Intent;
+import android.os.Bundle;
+import android.support.v4.app.FragmentManager;
+import android.support.v4.app.FragmentTransaction;
+import android.view.KeyEvent;
+
+import com.changyou.mgp.sdk.mbi.account.id.AccResource;
+import com.changyou.mgp.sdk.mbi.account.utils.WeiboLoginUtil;
+import com.changyou.mgp.sdk.mbi.config.Contants;
+import com.changyou.mgp.sdk.mbi.ui.base.BaseActivity;
+import com.changyou.mgp.sdk.mbi.utils.SystemUtils;
+import com.sina.weibo.sdk.auth.sso.SsoHandler;
+
+/**
+ * 
+ * 功能描述：登录Activity，承载两个Fragment：MGPLoginFragment、MGPQuickIntoFragment
+ * 
+ * @author 严峥(yanzheng)
+ * @date 2013-12-31 下午3:17:45 修改历史：(修改人，修改时间，修改原因/内容)
+ */
+public class CYMGLoginActivity extends BaseActivity {
+	
+	private FragmentManager mFragmentManager;// fragment管理器
+	private int screenHeight = 0;
+	private int screenWidth = 0;
+	
+	private String username;
+	
+	public int getScreenHeight() {
+		return screenHeight;
+	}
+
+	public int getScreenWidth() {
+		return screenWidth;
+	}
+	
+	public String getUsername(){
+		return username;
+	}
+
+	@Override
+	protected void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		log.d("onCreate");
+		setContentView(AccResource.getInstance(this).mgp_login_root);
+		intoLoginFragment();
+	}
+
+	/**
+	 * 
+	 * 功能描述：进入login页面
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param
+	 * @return void
+	 * @date 2014-3-24 下午6:26:25
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void intoLoginFragment() {
+		initView();
+		initData();
+		initEvent();
+	}
+
+	@Override
+	protected void initView() {
+		this.screenHeight = SystemUtils.getScreenHeightSize(this);
+		this.screenWidth = SystemUtils.getScreenWidthSize(this);
+		this.mFragmentManager = getSupportFragmentManager();// 直接get得到
+		FragmentTransaction fragmentTransaction = mFragmentManager.beginTransaction();
+		CYMGLoginChengyouFragment cymgLoginChengyouFragment= new CYMGLoginChengyouFragment();
+		fragmentTransaction.replace(AccResource.getInstance(this).login_root_layout,
+				cymgLoginChengyouFragment, Contants.FragmentTag.LOGIN_CHENGYOU_FRAGMENT_TAG);
+//		this.mLoginFragment = new CYMGLoginFragment();
+//		fragmentTransaction.replace(AccResource.getInstance(this).login_root_layout,
+//				mLoginFragment, Contants.FragmentTag.LOGIN_FRAGMENT_TAG);
+		fragmentTransaction.commit();
+	}
+
+	@Override
+	protected void initData() {
+
+	}
+
+	@Override
+	protected void initEvent() {
+
+	}
+	
+	public void changeToChangyouFragment(){
+		CYMGLoginChangyouFragment cymgLoginChangyouFragment= new CYMGLoginChangyouFragment();
+		mFragmentManager.beginTransaction().replace(AccResource.getInstance(this).login_root_layout,
+				cymgLoginChangyouFragment, Contants.FragmentTag.LOGIN_CHANGYOU_FRAGMENT_TAG).addToBackStack(Contants.FragmentTag.LOGIN_CHANGYOU_FRAGMENT_TAG).commit();
+	}
+	
+	public void goBack(){
+		if (this.mFragmentManager.getBackStackEntryCount() == 0) {
+			this.finish();
+		} else {
+			this.mFragmentManager.popBackStack();
+		}
+	}
+
+	@Override
+	public boolean onKeyDown(int keyCode, KeyEvent event) {
+		if (keyCode == KeyEvent.KEYCODE_BACK) {// 判断是否是后退键
+			goBack();
+			return true;
+		}
+		return super.onKeyDown(keyCode, event);
+	}
+
+	/**
+	 * 授权页退出后回调该方法，通过调用mSinaBtn.onActivityResult方法，实际调用mSsoHandler.
+	 * authorizeCallBack 该方法将触发WeiboAuthListener接口的回调
+	 */
+	@Override
+	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+		log.d("LoginActivity--onActivityResult--resultCode:resultCode"+resultCode);
+		// 处理微博登录回调
+		SsoHandler ssoHandler = new WeiboLoginUtil(CYMGLoginActivity.this).getSsoHandler();
+		if (ssoHandler != null) {
+			ssoHandler.authorizeCallBack(requestCode, resultCode, data);
+		}
+		if(resultCode==CYMGLoginFragment.RESULT_CODE_REGIST){
+			if(data!=null){
+				boolean result=data.getBooleanExtra("result", false);
+				if(result){
+					this.finish();
+				}else{
+					username=data.getStringExtra("cn");
+				}
+			}
+		}
+	}
+
+}

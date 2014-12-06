@@ -1,0 +1,382 @@
+package com.changyou.mgp.sdk.mbi.utils;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+
+import android.app.Activity;
+import android.app.ActivityManager;
+import android.app.ActivityManager.RunningAppProcessInfo;
+import android.content.Context;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.PackageManager.NameNotFoundException;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
+import android.os.Build;
+import android.os.IBinder;
+import android.telephony.TelephonyManager;
+import android.util.DisplayMetrics;
+import android.view.View;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.EditText;
+
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+
+/**
+ * 
+ * 功能描述：获取系统信息工具
+ * 
+ * @author 严峥(yanzheng)
+ * @date 2013-12-24 下午4:36:35 修改历史：(修改人，修改时间，修改原因/内容)
+ */
+public class SystemUtils {
+	
+	private static CYLog log = CYLog.getInstance();
+
+	/**
+	 * 返回当前应用版本名
+	 */
+	public static String getAppVersionName(Context context) {
+		String versionName = "";
+		try {
+			PackageManager pm = context.getPackageManager();
+			PackageInfo pi = pm.getPackageInfo(context.getPackageName(), 0);
+			versionName = pi.versionName;
+			if (versionName == null || versionName.length() <= 0) {
+				return "";
+			}
+		} catch (Exception e) {
+			log.e(e);
+		}
+		return versionName;
+	}
+
+	/**
+	 * 获取手机型号
+	 */
+	public static String getModel() {
+		return Build.MODEL == null ? "NAN" : Build.MODEL;
+	}
+
+	/**
+	 * 手机制造商
+	 */
+	public static String getProduct() {
+		return Build.MANUFACTURER;
+	}
+
+	/**
+	 * 获取当前设备操作系统版本
+	 */
+	public static String getSystemVersion() {
+		return android.os.Build.VERSION.RELEASE;
+	}
+
+	/**
+	 * 获取屏幕宽度分辨率
+	 */
+	public static int getScreenWidthSize(Context context) {
+		int screenWidth = ((Activity) context).getWindowManager()
+				.getDefaultDisplay().getWidth();
+		if (screenWidth != 0) {
+			return screenWidth;
+		}
+		DisplayMetrics dm = new DisplayMetrics();
+		((Activity) context).getWindowManager().getDefaultDisplay()
+				.getMetrics(dm);
+		if (null != dm) {
+			return dm.widthPixels;
+		}
+		return 0;
+	}
+
+	/**
+	 * 获取屏幕宽度分辨率
+	 */
+	public static int getScreenHeightSize(Context context) {
+		int screenHeight = ((Activity) context).getWindowManager()
+				.getDefaultDisplay().getHeight();
+		if (screenHeight != 0) {
+			return screenHeight;
+		}
+		DisplayMetrics dm = new DisplayMetrics();
+		((Activity) context).getWindowManager().getDefaultDisplay()
+				.getMetrics(dm);
+		if (null != dm) {
+			return dm.heightPixels;
+		}
+		return 0;
+	}
+
+	/**
+	 * 设备是否root
+	 */
+	public static boolean getRootAhth() {
+		boolean bool = false;
+		try {
+			if ((!new File("/system/bin/su").exists())
+					&& (!new File("/system/xbin/su").exists())) {
+				bool = false;
+			} else {
+				bool = true;
+			}
+		} catch (Exception e) {
+		}
+		return bool;
+	}
+
+	/**
+	 * 
+	 * 功能描述：deviceID的组成为：渠道标志+识别符来源标志+hash后的终端识别符 识别符来源标志： 1， wifi mac地址（wifi）； 2，IMEI（imei）； 3， 序列号（sn）； 4，id：随机码。若前面的都取不到时，则随机生成一个随机码，需要缓存。
+	 *
+	 * @author 严峥(yanzheng)
+	 * @param @return
+	 * @return String
+	 * @date 2014-3-10 下午3:17:26
+	 *
+	 * 修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public static String getDeviceId(Context context) {
+		StringBuilder deviceId = new StringBuilder();
+		try {
+			// wifi mac地址
+			WifiManager wifi = (WifiManager) context
+					.getSystemService(Context.WIFI_SERVICE);
+			WifiInfo info = wifi.getConnectionInfo();
+			String wifiMac = info.getMacAddress();
+			if (!StringUtils.isEmpty(wifiMac)) {
+				deviceId.append(wifiMac);
+				return deviceId.toString();
+			}
+			// IMEI（imei）
+			TelephonyManager tm = (TelephonyManager) context
+					.getSystemService(Context.TELEPHONY_SERVICE);
+			String imei = tm.getDeviceId();
+			if (!StringUtils.isEmpty(imei)) {
+				deviceId.append(imei);
+				return deviceId.toString();
+			}
+			// 序列号（sn）
+			String sn = tm.getSimSerialNumber();
+			if (!StringUtils.isEmpty(sn)) {
+				deviceId.append(sn);
+				return deviceId.toString();
+			}
+		} catch (Exception e) {
+			log.e(e);
+		}
+		return deviceId.toString();
+	}
+
+//	/**
+//	 * 功能描述: 获取用户ip
+//	 * @author 欧阳海冰(OuyangHaibing)
+//	 * @param @return 
+//	 * @return String
+//	 * @throws
+//	 */
+//	public String getUserIp() {
+//		// 获取wifi服务
+//		WifiManager wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
+//		// 判断wifi是否开启
+//		if (!wifiManager.isWifiEnabled()) {
+//			wifiManager.setWifiEnabled(true);
+//		}
+//		WifiInfo wifiInfo = wifiManager.getConnectionInfo();
+//		int i = wifiInfo.getIpAddress();
+//		return ((i >> 24) & 0xFF) + "." + ((i >> 16) & 0xFF) + "."
+//				+ ((i >> 8) & 0xFF) + "." + (i & 0xFF);
+//
+//	}
+
+	/**
+	 * 获得内存中files文件夹绝对路径
+	 */
+	public static String getMemoryFilesPath(Context context) {
+		return context.getFilesDir().getAbsolutePath();
+	}
+
+	/**
+	 * 查询手机内非系统应用
+	 * 
+	 * @param context
+	 * @return
+	 */
+	public static List<PackageInfo> getAllApps(Context context) {
+		List<PackageInfo> apps = new ArrayList<PackageInfo>();
+		PackageManager pManager = context.getPackageManager();
+		// 获取手机内所有应用
+		List<PackageInfo> paklist = pManager.getInstalledPackages(0);
+		for (int i = 0; i < paklist.size(); i++) {
+			PackageInfo pak = (PackageInfo) paklist.get(i);
+			// 判断是否为非系统预装的应用程序
+			if ((pak.applicationInfo.flags & pak.applicationInfo.FLAG_SYSTEM) <= 0) {
+				// customs applications
+				apps.add(pak);
+			}
+		}
+		return apps;
+	}
+
+	/**
+	 * 获得当前应用的包信息
+	 * 
+	 * @return
+	 */
+	public static PackageInfo getPackageInfo(Context context) {
+		PackageManager pManager = context.getPackageManager();
+		PackageInfo info;
+		try {
+			info = pManager.getPackageInfo(context.getPackageName(), 0);
+			return info;
+		} catch (NameNotFoundException e) {
+			log.e(e);
+		}
+		return null;
+	}
+
+	/**
+	 * 
+	 * 功能描述：获取本机手机号
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param @return
+	 * @return String
+	 * @date 2014-1-3 下午6:03:27
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public static String getNativePhoneNumber(Context context) {
+		TelephonyManager telephonyManager = (TelephonyManager) context
+				.getSystemService(Context.TELEPHONY_SERVICE);
+		String num = telephonyManager.getLine1Number();
+		if (null == num && "".equals(num)) {
+			num = "";
+		}
+		return num;
+	}
+
+	/**
+	 * 
+	 * 功能描述：app是否在前台运行
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param @return
+	 * @return boolean
+	 * @date 2014-1-2 下午12:04:27
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public static boolean isAppOnForeground(Context context) {
+		ActivityManager activityManager = (ActivityManager) context
+				.getSystemService(Context.ACTIVITY_SERVICE);
+		List<RunningAppProcessInfo> appProcesses = activityManager
+				.getRunningAppProcesses();
+		if (appProcesses == null)
+			return false;
+		for (RunningAppProcessInfo appProcess : appProcesses) {
+			if (appProcess.processName.equals(context.getPackageName())
+					&& appProcess.importance == RunningAppProcessInfo.IMPORTANCE_FOREGROUND) {
+				return true;
+			}
+		}
+		return false;
+	}
+		
+	/**
+	 * 
+	 * 功能描述：隐藏输入法
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param 
+	 * @return void
+	 * @date 2014-3-10 下午4:43:42
+	 *
+	 */
+	public static void dissmisSoftInput(Activity activity){
+		InputMethodManager mImm = (InputMethodManager)activity.getSystemService(Context.INPUT_METHOD_SERVICE);
+		View v = activity.getCurrentFocus();
+		if (v != null) {
+			IBinder binder = v.getWindowToken();
+			if (binder != null) {
+				mImm.hideSoftInputFromWindow(binder,InputMethodManager.HIDE_NOT_ALWAYS);
+			}else{
+				log.d("hideSoftInputFromWindow,view.getWindowToken is null");
+			}
+		}
+	}
+	
+	/**
+	 * 
+	 * 功能描述：显示输入法
+	 *
+	 * @author 严峥(yanzheng)
+	 * @param @param activity
+	 * @return void
+	 * @date 2014-5-28 上午11:46:47
+	 *
+	 * 修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public static void showSoftInput(Activity activity,EditText view){
+		InputMethodManager mImm = (InputMethodManager)activity.getSystemService(Context.INPUT_METHOD_SERVICE);
+		if (view != null) {
+			mImm.showSoftInput(view, InputMethodManager.SHOW_IMPLICIT);
+		}
+	}
+	
+	/**
+	 * 
+	 * @Title: getApplicationName 
+	 * @Description: 获取manifest中app的名称
+	 * @param @return 
+	 * @return String
+	 * @throws
+	 */
+	public static String getApplicationName(Context mActivity) {
+		PackageManager packageManager = null;
+		ApplicationInfo applicationInfo = null;
+		try {
+			packageManager = mActivity.getApplicationContext()
+					.getPackageManager();
+			applicationInfo = packageManager.getApplicationInfo(
+					mActivity.getPackageName(), 0);
+		} catch (PackageManager.NameNotFoundException e) {
+			applicationInfo = null;
+		}
+		String applicationName = (String) packageManager
+				.getApplicationLabel(applicationInfo);
+		return applicationName;
+	}
+	
+	/**
+	 * 
+	 * @Title: dip2px 
+	 * @Description: dip转 px
+	 * @param @param context
+	 * @param @param dipValue
+	 * @param @return 
+	 * @return int
+	 * @throws
+	 */
+	public static int dip2px(Context context, float dipValue){ 
+        final float scale = context.getResources().getDisplayMetrics().density; 
+        return (int)(dipValue * scale + 0.5f); 
+	} 
+
+	/**
+	 * 
+	 * @Title: px2dip 
+	 * @Description: px转 dip
+	 * @param @param context
+	 * @param @param pxValue
+	 * @param @return 
+	 * @return int
+	 * @throws
+	 */
+	public static int px2dip(Context context, float pxValue){ 
+        final float scale = context.getResources().getDisplayMetrics().density; 
+        return (int)(pxValue / scale + 0.5f); 
+	} 
+}

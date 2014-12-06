@@ -1,0 +1,18 @@
+package com.changyou.mgp.sdk.mbi.config;
+
+import android.content.pm.ActivityInfo;
+
+/**
+ * 
+ * 功能描述：对外开放接口参数值
+ *
+ * @author 徐萌阳(xumengyang)
+ *
+ * @date 2014-2-24
+ */
+public class CYMGProtocolConfig {
+
+	public static final int PORTRAIT = ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT;//竖屏显示
+	public static final int LANDSCAPE = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE;//横屏显示
+	
+}

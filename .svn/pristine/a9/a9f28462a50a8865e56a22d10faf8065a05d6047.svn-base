@@ -1,0 +1,143 @@
+package com.changyou.mgp.sdk.mbi.update.id;
+
+import android.content.Context;
+
+import com.changyou.mgp.sdk.mbi.utils.ResourceUtil;
+
+public class UpdateResource {
+
+	private static UpdateResource mInstance;
+	private ResourceUtil mResourceUtil;
+	private boolean mHadInit;
+	
+	private UpdateResource(Context context){
+		this.mResourceUtil = ResourceUtil.getInstance(context);
+		if(mHadInit){
+			return;
+		}else{
+			init(context);
+		}
+	}
+	
+	public static UpdateResource getInstance(Context context){
+		if(mInstance == null){
+			synchronized (UpdateResource.class) {
+				if(mInstance == null){
+					mInstance = new UpdateResource(context);
+				}
+			}
+		}
+		return mInstance;
+	}
+	//2.0
+	//layout
+	public int mgp_sdk_2_0_dialog_update_download;
+	public int mgp_sdk_2_0_dialog_update_force_notice;
+	public int mgp_sdk_2_0_dialog_update_neterror;
+	public int mgp_sdk_2_0_dialog_update_not_force_notice;
+	public int mgp_sdk_2_0_dialog_update_wifi_notice;
+	//id
+	public int mgp_update_download_txt_tv;
+	public int mgp_update_download_percent_txt_tv;
+	public int mgp_update_download_progress_bar;
+	public int mgp_update_download_operatios_btn;
+	public int mgp_update_force_notice_txt_tv;
+	public int mgp_update_force_immediately_btn_ll;
+	public int mgp_update_neterror_retry_btn_ll;
+	public int mgp_update_no_force_nexttime_btn_ll;
+	public int mgp_update_no_force_immediately_btn_ll;
+	public int mgp_update_download_cancel_btn_ll;
+	public int mgp_update_download_confirm_btn_ll;
+	//string
+	public int mgp_sdk_2_0_error_common_server;
+	public int mgp_sdk_2_0_register_phone_set_authcode_str_2;
+	public int mgp_sdk_2_0_find_password_set_password_str_2;
+	public int mgp_sdk_2_0_loading_login;
+	public int mgp_sdk_2_0_error_login_account;
+	public int mgp_sdk_2_0_error_login_Password;
+	public int mgp_sdk_2_0_error_login_sign;
+	public int mgp_sdk_2_0_error_common_net;
+	public int mgp_sdk_2_0_loading_verify;
+	public int mgp_sdk_2_0_error_login_space;
+	public int mgp_sdk_2_0_loading_quick_into;
+	public int mgp_sdk_2_0_loading_register;
+	public int mgp_sdk_2_0_error_register_auth_code;
+	public int mgp_sdk_2_0_loading_commit;
+	public int mgp_sdk_2_0_error_register_phone_num;
+	public int mgp_sdk_2_0_error_register_account_1;
+	public int mgp_sdk_2_0_error_register_account_2;
+	public int mgp_sdk_2_0_error_register_Password_1;
+	public int mgp_sdk_2_0_error_register_Password_2;
+	public int mgp_sdk_2_0_error_register_space;
+	public int mgp_sdk_2_0_loading_loading;
+	//style
+	public int mgp_sdk_2_0_update_mian_dialog;
+	//drawable
+	public int mgp_sdk_2_0_dialog_moving_cursor;
+	public int mgp_sdk_2_0_dialog_fall_sanjiao;
+	public int mgp_sdk_2_0_dialog_chengyou_small_logo;
+	public int mgp_sdk_2_0_dialog_changyou_small_logo;
+	public int mgp_sdk_2_0_dialog_get_authcode_before;
+	public int mgp_sdk_2_0_dialog_get_authcode_after;
+	//2.0end
+	
+	
+	
+	private void init(Context context){
+		//2.0
+		//layout
+		mgp_sdk_2_0_dialog_update_download=mResourceUtil.getLayoutId("mgp_sdk_2_0_dialog_update_download");
+		mgp_sdk_2_0_dialog_update_force_notice = mResourceUtil.getLayoutId("mgp_sdk_2_0_dialog_update_force_notice");
+		mgp_sdk_2_0_dialog_update_neterror=mResourceUtil.getLayoutId("mgp_sdk_2_0_dialog_update_neterror");
+		mgp_sdk_2_0_dialog_update_not_force_notice=mResourceUtil.getLayoutId("mgp_sdk_2_0_dialog_update_not_force_notice");
+		mgp_sdk_2_0_dialog_update_wifi_notice=mResourceUtil.getLayoutId("mgp_sdk_2_0_dialog_update_wifi_notice");
+		//id
+		mgp_update_download_txt_tv=mResourceUtil.getId("mgp_update_download_txt_tv");
+		mgp_update_download_percent_txt_tv=mResourceUtil.getId("mgp_update_download_percent_txt_tv");
+		mgp_update_download_progress_bar=mResourceUtil.getId("mgp_update_download_progress_bar");
+		mgp_update_download_operatios_btn=mResourceUtil.getId("mgp_update_download_operatios_btn");
+		mgp_update_force_notice_txt_tv=mResourceUtil.getId("mgp_update_force_notice_txt_tv");
+		mgp_update_force_immediately_btn_ll=mResourceUtil.getId("mgp_update_force_immediately_btn_ll");
+		mgp_update_neterror_retry_btn_ll=mResourceUtil.getId("mgp_update_neterror_retry_btn_ll");
+		mgp_update_no_force_nexttime_btn_ll=mResourceUtil.getId("mgp_update_no_force_nexttime_btn_ll");
+		mgp_update_no_force_immediately_btn_ll=mResourceUtil.getId("mgp_update_no_force_immediately_btn_ll");
+		mgp_update_download_cancel_btn_ll=mResourceUtil.getId("mgp_update_download_cancel_btn_ll");
+		mgp_update_download_confirm_btn_ll=mResourceUtil.getId("mgp_update_download_confirm_btn_ll");
+		//string
+		mgp_sdk_2_0_error_common_server=mResourceUtil.getStringId("mgp_sdk_2_0_error_common_server");
+		mgp_sdk_2_0_register_phone_set_authcode_str_2=mResourceUtil.getStringId("mgp_sdk_2_0_register_phone_set_authcode_str_2");
+		mgp_sdk_2_0_find_password_set_password_str_2=mResourceUtil.getStringId("mgp_sdk_2_0_find_password_set_password_str_2");
+		mgp_sdk_2_0_loading_login=mResourceUtil.getStringId("mgp_sdk_2_0_loading_login");
+		mgp_sdk_2_0_error_login_account=mResourceUtil.getStringId("mgp_sdk_2_0_error_login_account");
+		mgp_sdk_2_0_error_login_Password=mResourceUtil.getStringId("mgp_sdk_2_0_error_login_Password");
+		mgp_sdk_2_0_error_login_sign=mResourceUtil.getStringId("mgp_sdk_2_0_error_login_sign");
+		mgp_sdk_2_0_error_common_net=mResourceUtil.getStringId("mgp_sdk_2_0_error_common_net");
+		mgp_sdk_2_0_loading_verify=mResourceUtil.getStringId("mgp_sdk_2_0_loading_verify");
+		mgp_sdk_2_0_error_login_space=mResourceUtil.getStringId("mgp_sdk_2_0_error_login_space");
+		mgp_sdk_2_0_loading_quick_into=mResourceUtil.getStringId("mgp_sdk_2_0_loading_quick_into");
+		mgp_sdk_2_0_loading_register=mResourceUtil.getStringId("mgp_sdk_2_0_loading_register");
+		mgp_sdk_2_0_error_register_auth_code=mResourceUtil.getStringId("mgp_sdk_2_0_error_register_auth_code");
+		mgp_sdk_2_0_loading_commit=mResourceUtil.getStringId("mgp_sdk_2_0_loading_commit");
+		mgp_sdk_2_0_error_register_phone_num=mResourceUtil.getStringId("mgp_sdk_2_0_error_register_phone_num");
+		mgp_sdk_2_0_error_register_account_1=mResourceUtil.getStringId("mgp_sdk_2_0_error_register_account_1");
+		mgp_sdk_2_0_error_register_account_2=mResourceUtil.getStringId("mgp_sdk_2_0_error_register_account_2");
+		mgp_sdk_2_0_error_register_Password_1=mResourceUtil.getStringId("mgp_sdk_2_0_error_register_Password_1");
+		mgp_sdk_2_0_error_register_Password_2=mResourceUtil.getStringId("mgp_sdk_2_0_error_register_Password_2");
+		mgp_sdk_2_0_error_register_space=mResourceUtil.getStringId("mgp_sdk_2_0_error_register_space");
+		mgp_sdk_2_0_loading_loading=mResourceUtil.getStringId("mgp_sdk_2_0_loading_loading");
+		//style
+		mgp_sdk_2_0_update_mian_dialog=mResourceUtil.getStyleId("mgp_sdk_2_0_update_mian_dialog");
+		//drawable
+		mgp_sdk_2_0_dialog_moving_cursor=mResourceUtil.getDrawableId("mgp_sdk_2_0_dialog_moving_cursor");
+		mgp_sdk_2_0_dialog_fall_sanjiao=mResourceUtil.getDrawableId("mgp_sdk_2_0_dialog_fall_sanjiao");
+		mgp_sdk_2_0_dialog_chengyou_small_logo=mResourceUtil.getDrawableId("mgp_sdk_2_0_dialog_chengyou_small_logo");
+		mgp_sdk_2_0_dialog_changyou_small_logo=mResourceUtil.getDrawableId("mgp_sdk_2_0_dialog_changyou_small_logo");
+		mgp_sdk_2_0_dialog_get_authcode_before=mResourceUtil.getDrawableId("mgp_sdk_2_0_dialog_get_authcode_before");
+		mgp_sdk_2_0_dialog_get_authcode_after=mResourceUtil.getDrawableId("mgp_sdk_2_0_dialog_get_authcode_after");
+		
+		
+		
+		mHadInit = true;
+	}
+	
+}

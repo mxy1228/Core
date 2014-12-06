@@ -1,0 +1,144 @@
+package com.changyou.mgp.sdk.mbi.account.utils;
+
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.apache.http.Header;
+import org.codehaus.jackson.type.TypeReference;
+import org.json.JSONObject;
+
+import android.app.Activity;
+import android.os.Bundle;
+import android.text.TextUtils;
+import android.widget.Toast;
+
+import com.changyou.mgp.sdk.mbi.account.id.AccResource;
+import com.changyou.mgp.sdk.mbi.account.ui.CYMGLoadingDialogFragment;
+import com.changyou.mgp.sdk.mbi.account.ui.CYMGMainDialogFragmentActivity;
+import com.changyou.mgp.sdk.mbi.common.CYMGCallbackHelper;
+import com.changyou.mgp.sdk.mbi.config.CYMGPrompt;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolKeys;
+import com.changyou.mgp.sdk.mbi.config.Contants;
+import com.changyou.mgp.sdk.mbi.config.HttpContants;
+import com.changyou.mgp.sdk.mbi.config.Params;
+import com.changyou.mgp.sdk.mbi.config.SDKConfig;
+import com.changyou.mgp.sdk.mbi.db.CYMGAccBean;
+import com.changyou.mgp.sdk.mbi.entity.ErrorInfo;
+import com.changyou.mgp.sdk.mbi.http.MyAsyncResponseHandler;
+import com.changyou.mgp.sdk.mbi.http.MyHttpClient;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.mbi.manager.CMBILogManager;
+import com.changyou.mgp.sdk.mbi.utils.JSONUtil;
+import com.changyou.mgp.sdk.mbi.utils.NetWorkUtils;
+import com.changyou.mgp.sdk.mbi.utils.SystemUtils;
+import com.changyou.mgp.sdk.mbi.utils.UserInfoSPUtil;
+
+public class CYMGLoginResultUtil {
+	
+	private static CYLog log = CYLog.getInstance();
+	
+	private static CYMGLoadingDialogFragment mLoadingDialog;
+	
+	public static void loginCallback(Activity activity,String acc,String uid,String token,String type){
+		try {
+			UserInfoSPUtil.setUsername(activity, acc);
+			UserInfoSPUtil.setUid(activity, uid);
+			UserInfoSPUtil.setToken(activity, token);
+			UserInfoSPUtil.setType(activity, type);
+			CYMGAccBean bean=new CYMGAccBean();
+			bean.setmAcc(acc);
+			bean.setmUID(uid);
+			bean.setmToken(token);
+			bean.setmState(1);
+			bean.setmTimeStamp(new Date(System.currentTimeMillis()).getTime()/1000);
+			((CYMGMainDialogFragmentActivity)activity).getmCYMGDBMaster().login(bean);
+		} catch (Exception e) {
+			log.e(e);
+		} finally{
+			activateCodeVerify(activity,uid,token,type);
+		}
+	}
+	
+	public static void loginCallbackResult(Activity activity,String uid,String token,String type){
+		String userIp = NetWorkUtils.getLocalIpAddress(activity);
+		String deviceid = SystemUtils.getDeviceId(activity);
+		Bundle bundle = new Bundle();
+		bundle.putString(CYMGProtocolKeys.UID, uid);
+		bundle.putString(CYMGProtocolKeys.TOKEN, token);
+		bundle.putString(CYMGProtocolKeys.TYPE, type);
+		bundle.putString(CYMGProtocolKeys.USERIP, userIp);
+		bundle.putString(CYMGProtocolKeys.DEVICEID, deviceid);
+		bundle.putString(CYMGProtocolKeys.ISDEBUG, SDKConfig.DEBUG ? "true" : "false");
+		bundle.putString(CYMGProtocolKeys.CHANNEL_ID,activity.getString(AccResource.getInstance(activity).mgp_channel_cy));
+		bundle.putString(CYMGProtocolKeys.OPCODE, "10001");
+		CYMGCallbackHelper.callbackResult(CYMGCallbackHelper.getLoginResult(CYMGPrompt.CODE_LOGIN_SUCCESS, bundle,activity),activity);
+		activity.finish();
+	}
+	
+	private static void activateCodeVerify(final Activity activity,final String uid,final String token,final String type){
+		mLoadingDialog=CYMGLoadingDialogFragment.newInewInstance(activity);
+		String deviceid = SystemUtils.getDeviceId(activity);
+		MyHttpClient myHttpClient=new MyHttpClient(activity);
+		Map map=new HashMap();
+		map.put("user_id", uid);
+		myHttpClient.post(HttpContants.getURL(HttpContants.ACTIVATE_CODE_VERIFY), map, new MyAsyncResponseHandler(){
+			@Override
+			public void onStart() {
+				CMBILogManager.printEventLog(activity, "0", "110022", "");
+				mLoadingDialog.setMessage(activity.getString(AccResource.getInstance(activity).mgp_sdk_2_0_loading_verify));
+				mLoadingDialog.showDialog();
+			}
+			
+			@Override
+			public void onSuccess(int statusCode, String content) {
+				try {
+					CMBILogManager.printEventLog(activity, "0", "120022", "");
+					log.d("statusCode:"+statusCode+",content:"+content);
+					mLoadingDialog.dismissDialog();
+					if(!TextUtils.isEmpty(content)){
+						JSONObject jsonObject=new JSONObject(content);
+						int avticate_status = jsonObject.getInt("activate_status");
+						if(avticate_status==-1){
+							Bundle bundle=new Bundle();
+							bundle.putString(Params.UID, uid);
+							bundle.putString(Params.TOKEN, token);
+							bundle.putString(Params.TYPE, Contants.LOGIN_CHENGYOU_TYPE);
+							((CYMGMainDialogFragmentActivity)activity).changeDialogFragment(Contants.DialogFragmentTag.ACTIVATE_CODE, bundle);
+						}else{
+							loginCallbackResult(activity,uid,token,type);
+						}
+					}else{
+						Toast.makeText(activity, AccResource.getInstance(activity).mgp_sdk_2_0_error_common_server, Toast.LENGTH_SHORT).show();
+					}
+				} catch (Exception e) {
+					log.e(e);
+				}
+			}
+			
+			@Override
+			public void onFailure(int statusCode, Header[] headers,
+					Throwable error, String content) {
+				try {
+					CMBILogManager.printEventLog(activity, "0", "120022", "");
+					mLoadingDialog.dismissDialog();
+					log.d("statusCode:"+statusCode+",Header:"+headers+",content:"+content);
+					if (!TextUtils.isEmpty(content)) {
+						ErrorInfo info = JSONUtil.getMapper().readValue(content,new TypeReference<ErrorInfo>() {});
+						if (info != null) {
+							Toast.makeText(activity, info.getClient_message(), Toast.LENGTH_SHORT).show();
+						} else {
+							Toast.makeText(activity, AccResource.getInstance(activity).mgp_sdk_2_0_error_common_server, Toast.LENGTH_SHORT).show();
+						}
+					} else {
+						Toast.makeText(activity, AccResource.getInstance(activity).mgp_sdk_2_0_error_common_server, Toast.LENGTH_SHORT).show();
+					}
+					((CYMGMainDialogFragmentActivity)activity).changeDialogFragment(Contants.DialogFragmentTag.SWITCH_ACCOUNT, null);
+				} catch (Exception e) {
+					log.e(e);
+				}
+			}
+		});
+	}
+
+}

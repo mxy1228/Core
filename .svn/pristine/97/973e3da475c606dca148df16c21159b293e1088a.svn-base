@@ -1,0 +1,87 @@
+package com.changyou.mgp.sdk.mbi.update.ui;
+
+import android.app.Activity;
+import android.os.Bundle;
+import android.support.v4.app.DialogFragment;
+import android.support.v4.app.FragmentActivity;
+import android.support.v4.app.FragmentTransaction;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.ViewGroup;
+import android.widget.LinearLayout;
+
+import com.changyou.mgp.sdk.mbi.R;
+import com.changyou.mgp.sdk.mbi.account.ui.BaseDialogFragment;
+import com.changyou.mgp.sdk.mbi.config.Contants;
+import com.changyou.mgp.sdk.mbi.update.id.UpdateResource;
+/**
+ * 
+ * @ClassName: CYMGUpdateWifiNoticeDialogFragment 
+ * @Description: WIFI提示Dialog
+ * @author J.Beyond 
+ * @date 2014年8月6日 上午10:33:42 
+ *
+ */
+public class CYMGUpdateWifiNoticeDialogFragment extends BaseDialogFragment implements OnClickListener{
+
+	private static Activity mActivity;
+	private static UpdateResource mRes;
+	private LinearLayout mLlUpdateConfirmBtn;
+	private LinearLayout mLlUpdateCancelBtn;
+
+	public static CYMGUpdateWifiNoticeDialogFragment newInstance(Activity activity){
+		mActivity = activity;
+		mRes = UpdateResource.getInstance(mActivity);
+		CYMGUpdateWifiNoticeDialogFragment wifiNoticeDialogFragment = new CYMGUpdateWifiNoticeDialogFragment();
+		wifiNoticeDialogFragment.setStyle(DialogFragment.STYLE_NORMAL, mRes.mgp_sdk_2_0_update_mian_dialog);
+		return wifiNoticeDialogFragment;
+	}
+	
+	public void showDialog() {
+		FragmentTransaction transaction=((FragmentActivity)mActivity).getSupportFragmentManager().beginTransaction();
+		show(transaction, Contants.DialogFragmentTag.UPDATE_WIFI_NOTICE);
+	}
+	
+	@Override
+	public View onCreateView(LayoutInflater inflater, ViewGroup container,
+			Bundle savedInstanceState) {
+		View view = inflater.inflate(mRes.mgp_sdk_2_0_dialog_update_wifi_notice, container,false);
+		initView(view);
+		initData();
+		initEvent();
+		return view;
+	}
+	
+	@Override  
+	protected void initView(View view) {
+		mLlUpdateCancelBtn = (LinearLayout) view.findViewById(mRes.mgp_update_download_cancel_btn_ll);
+		mLlUpdateConfirmBtn = (LinearLayout) view.findViewById(mRes.mgp_update_download_confirm_btn_ll);
+	}
+
+	@Override
+	protected void initData() {
+		
+	}
+
+	@Override
+	protected void initEvent() {
+		mLlUpdateConfirmBtn.setOnClickListener(this);
+		mLlUpdateCancelBtn.setOnClickListener(this);
+	}
+
+	@Override
+	public void onClick(View view) {
+		if (view == mLlUpdateConfirmBtn) {
+			//切换至下载Dialog
+			((CYMGUpdateDialogFragmentActivity)mActivity).changeDialogFragment(Contants.DialogFragmentTag.UPDATE_DOWNLOAD);
+			((CYMGUpdateDialogFragmentActivity)mActivity).setWillingDownloadWithoutWifi(true);
+			dismiss();
+		}else if(view == mLlUpdateCancelBtn){
+			//销毁Dialog
+			((CYMGUpdateDialogFragmentActivity)mActivity).setDownloadCancled(true);
+			dismiss();
+		}
+	}
+
+}

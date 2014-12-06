@@ -1,0 +1,88 @@
+package com.changyou.mgp.sdk.mbi.account.widget;
+
+import android.content.Context;
+import android.graphics.Color;
+import android.view.Gravity;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import com.changyou.mgp.sdk.mbi.account.id.AccResource;
+import com.changyou.mgp.sdk.mbi.utils.ResourceUtil;
+
+/**
+ * 
+ * 功能描述: 登录成功提示框
+ * 
+ * @author 欧阳海冰(OuyangHaibing)
+ * @date 2014-5-9 下午5:49:34
+ */
+public class MGPLoginSuccessBar {
+
+	private Context mContext;
+	private TextView mAccountTv;
+	private View mView;
+	private LayoutInflater mInflater;
+	private String mAccount;
+	private Toast mToast;
+	public MGPLoginSuccessBar(Context context,String account) {
+		this.mContext = context;
+		this.mAccount = account;
+		init();
+	}
+	
+	
+
+	/**
+	 * 
+	 * 功能描述: 初始化
+	 * 
+	 * @param
+	 * @return void 返回类型
+	 * @author 欧阳海冰(OuyangHaibing)
+	 * @date 2014-5-9 下午5:38:26
+	 */
+	private void init() {
+		mInflater = LayoutInflater.from(mContext);
+		mView = mInflater.inflate(AccResource.getInstance(mContext).mgp_login_success_custom_toast, null);
+		mAccountTv = (TextView) mView.findViewById(AccResource.getInstance(mContext).mgp_auto_login_success_account_tv);
+		mAccountTv.setText(mAccount);
+	}
+	
+	/**
+	 * 
+	 * 功能描述: 对外公开的显示Toast的方法
+	 * @param   
+	 * @return void    返回类型 
+	 * @author 欧阳海冰(OuyangHaibing)
+	 * @date 2014-5-13 下午4:01:08
+	 */
+	public void showToast() {
+	    if (mToast == null) {
+	        mToast = new Toast(mContext);
+	        mToast.setView(mView);
+	        mToast.setGravity(Gravity.TOP|Gravity.CENTER, 0, 100);
+	        mToast.setDuration(Toast.LENGTH_LONG);
+	    }
+	    mToast.show();
+	}
+
+	/**
+	 * 
+	 * 功能描述: 对外公开的设置设置账号信息的方法
+	 * 
+	 * @param @param content
+	 * @return void 返回类型
+	 * @author 欧阳海冰(OuyangHaibing)
+	 * @date 2014-5-9 下午5:38:48
+	 */
+	public void setText(String content) {
+		if (mAccountTv == null) {
+			return;
+		}
+		this.mAccountTv.setText(content);
+	}
+
+
+}

@@ -1,0 +1,1241 @@
+package com.changyou.mgp.sdk.mbi.cts.ui;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+
+import org.codehaus.jackson.type.TypeReference;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.Dialog;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.net.Uri;
+import android.os.Bundle;
+import android.support.v4.app.FragmentManager;
+import android.support.v4.app.FragmentTransaction;
+import android.text.TextUtils;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemClickListener;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
+import android.widget.RadioGroup.LayoutParams;
+import android.widget.RadioGroup.OnCheckedChangeListener;
+import android.widget.ScrollView;
+import android.widget.TextView;
+
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolConfig;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolKeys;
+import com.changyou.mgp.sdk.mbi.config.Contants;
+import com.changyou.mgp.sdk.mbi.config.HttpContants;
+import com.changyou.mgp.sdk.mbi.cts.adapter.AbnormalOrderListAdapter;
+import com.changyou.mgp.sdk.mbi.cts.id.CtsResource;
+import com.changyou.mgp.sdk.mbi.entity.ErrorInfo;
+import com.changyou.mgp.sdk.mbi.entity.OrderItem;
+import com.changyou.mgp.sdk.mbi.entity.OrderList;
+import com.changyou.mgp.sdk.mbi.entity.WorkOrderTypeItem;
+import com.changyou.mgp.sdk.mbi.entity.WorkOrderTypeList;
+import com.changyou.mgp.sdk.mbi.http.MyAsyncResponseHandler;
+import com.changyou.mgp.sdk.mbi.http.MyHttpClient;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.mbi.manager.CMBILogManager;
+import com.changyou.mgp.sdk.mbi.ui.base.BaseFragment;
+import com.changyou.mgp.sdk.mbi.ui.widget.MGPDropDownListView;
+import com.changyou.mgp.sdk.mbi.ui.widget.MGPDropDownListView.OnBottomListener;
+import com.changyou.mgp.sdk.mbi.ui.widget.MGPDropDownListView.OnDropDownListener;
+import com.changyou.mgp.sdk.mbi.ui.widget.NetErrorView;
+import com.changyou.mgp.sdk.mbi.ui.widget.ScrollEditLayout;
+import com.changyou.mgp.sdk.mbi.ui.widget.WaitingDialog;
+import com.changyou.mgp.sdk.mbi.ui.widget.WaitingDialog.MyDialogDismissListener;
+import com.changyou.mgp.sdk.mbi.utils.JSONUtil;
+import com.changyou.mgp.sdk.mbi.utils.MetaDataValueUtils;
+import com.changyou.mgp.sdk.mbi.utils.MyToast;
+import com.changyou.mgp.sdk.mbi.utils.NetWorkUtils;
+import com.changyou.mgp.sdk.mbi.utils.SettingSPUtil;
+import com.changyou.mgp.sdk.mbi.utils.StringUtils;
+import com.changyou.mgp.sdk.mbi.utils.SystemUtils;
+import com.loopj.android.http.RequestParams;
+
+/**
+ * 
+ * 功能描述：客服反馈页面
+ * 
+ * @author 严峥(yanzheng)
+ * @date 2014-3-26 下午1:55:32 修改历史：(修改人，修改时间，修改原因/内容)
+ */
+public class CYMGCustomerServiceFeedbackFragment extends BaseFragment implements
+		OnClickListener {
+
+	private CYLog log = CYLog.getInstance();
+
+	private Activity mContext;
+	private CtsResource mResource;
+	private FragmentManager mFragmentManager;
+
+	// title控件
+	private View mTitle;
+	private ImageButton mBackIBtn;
+	private Button mqueryBtn;
+	private TextView mTitleTv;
+
+	// 空数据及网络错误页控件
+	private NetErrorView mNetErrorView;
+	private Button mRefreshBtn;
+
+	// 客服反馈页控件
+	private LinearLayout mDataLayout;
+	private TextView mQuestionTV;
+	private ScrollView mParentScrollView;
+	private ScrollEditLayout mEditScroll;
+	private EditText mFeedbackEd;
+	private EditText mPhoneEd;
+	private Button mFeedbackBtn;
+	private LinearLayout mOnlineIMBtn;
+	private LinearLayout mServerTELBtn;
+
+	// 系统dialog
+	private WaitingDialog mWaitingDialog;
+	private AlertDialog.Builder mAlertDialog;
+
+	// 屏幕宽高
+	private int mScreenWidth;
+	private int mScreenHeight;
+
+	// 自定义dialog宽高
+	private int dialogHeight;
+	private int dialogWidth;
+
+	// 自定义反馈问题dialog
+	private Dialog mQuestionDialog;
+	private RadioGroup mRadioGroup;
+
+	// 自定义异常订单dialog
+	private Dialog mOrderListDialog;
+	private ImageView mDialogCloseIV;
+	private LinearLayout mDialogRoot_Layout;
+	private LinearLayout.LayoutParams dialog_lp;
+	private LinearLayout mScreen_Layout;
+	private LinearLayout.LayoutParams screen_lp;
+	private LinearLayout mDialogListLayout;
+	private MGPDropDownListView mDialogListView;
+	private LinearLayout mDialogNotDataLayout;
+	private NetErrorView mDialogNetErrorView;
+	private Button mDialogRefreshBtn;
+	private Button mDialogCloseBtn;
+
+	// 异常订单适配器
+	private AbnormalOrderListAdapter mAbnormalOrderListAdapter = null;
+	private List<OrderItem> mOrderList;
+
+	// 异常订单类型
+	private int order_type = 0;
+
+	// Activity传递过来的数据
+	private Bundle mBundle;
+
+	// 异常订单请求页面编号
+	private int mPage_no = 1;
+	
+	private String mPhoneNumStr;
+
+	/**
+	 * 
+	 * 功能描述：获取反馈问题TextView控件
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param @return
+	 * @return TextView
+	 * @date 2014-4-11 上午11:29:04
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public TextView getmQuestionTV() {
+		return mQuestionTV;
+	}
+
+	/**
+	 * 
+	 * 功能描述：获取反馈描述EditText控件
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param @return
+	 * @return EditText
+	 * @date 2014-4-11 上午11:29:32
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public EditText getmFeedbackEd() {
+		return mFeedbackEd;
+	}
+
+	/**
+	 * 
+	 * 功能描述：获取输入手机号EditText控件
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param @return
+	 * @return EditText
+	 * @date 2014-4-11 上午11:30:06
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public EditText getmPhoneEd() {
+		return mPhoneEd;
+	}
+
+	@Override
+	public void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		log.d("CYMGCustomerServiceFeedbackFragment,onCreate");
+		this.mFragmentManager = getFragmentManager();
+		mResource=CtsResource.getInstance(mContext);
+	}
+
+	@Override
+	public void onAttach(Activity activity) {
+		super.onAttach(activity);
+		log.d("CYMGCustomerServiceFeedbackFragment,onAttach");
+		this.mContext = activity;
+	}
+
+	@Override
+	public void onResume() {
+		super.onResume();
+		log.d("CYMGCustomerServiceFeedbackFragment,onResume");
+		CMBILogManager.page_A_Server(mContext);
+	}
+	
+	@Override
+	public void onPause() {
+		super.onPause();
+		log.d("CYMGCustomerServiceFeedbackFragment,onPause");
+		SystemUtils.dissmisSoftInput(mContext);
+	}
+	
+	@Override
+	public void onStop() {
+		super.onStop();
+	}
+
+	@Override
+	public void onDestroy() {
+		log.d("CYMGCustomerServiceFeedbackFragment,onDestroy");
+		super.onDestroy();
+		mWaitingDialog.destory();
+	}
+
+	@Override
+	public View onCreateView(LayoutInflater inflater, ViewGroup container,
+			Bundle savedInstanceState) {
+		log.d("CYMGCustomerServiceFeedbackFragment,onCreateView");
+		View view = inflater.inflate(mResource.mgp_onlineserver_feedback_1_03,container, false);
+		initTitle(view);
+		initNetErrorView(view);
+		initView(view);
+		initSystemDialog();
+		getScreenSize();
+		initDialogSize();
+		initQuestionDialog();
+		initOrderDialog();
+		initData();
+		initEvent();
+		return view;
+	}
+
+	/**
+	 * 
+	 * 功能描述：初始化title
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param @param view
+	 * @return void
+	 * @date 2014-4-11 上午11:31:45
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void initTitle(View view) {
+		this.mTitle = view.findViewById(mResource.mgp_onlineserver_feedback_1_03_title);
+		this.mBackIBtn = (ImageButton) mTitle.findViewById(mResource.mgp_title_left_ibtn);
+		this.mTitleTv = (TextView) mTitle.findViewById(mResource.mgp_title_tv);
+		this.mqueryBtn = (Button) mTitle.findViewById(mResource.mgp_title_right_btn);
+		this.mTitleTv.setText(mResource.mgp_title_tv_onlineserver);
+		this.mqueryBtn.setText(mResource.mgp_title_btn_onlineserver);
+	}
+
+	/**
+	 * 
+	 * 功能描述：初始化反馈页面控件
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param @param view
+	 * @return void
+	 * @date 2014-4-11 上午11:31:59
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void initView(View view) {
+		this.mQuestionTV = (TextView) view
+				.findViewById(mResource.mgp_onlineserver_feedback_1_03_question_TextView);
+		this.mParentScrollView = (ScrollView) view
+				.findViewById(mResource.mgp_onlineserver_feedback_1_03_ScrollView);
+		this.mEditScroll = (ScrollEditLayout) view
+				.findViewById(mResource.mgp_onlineserver_feedback_1_03_ScrollEditLayout);
+		this.mEditScroll.setParent_scrollview(mParentScrollView);
+		this.mEditScroll.setActivity(mContext);
+		this.mFeedbackEd = (EditText) view
+				.findViewById(mResource.mgp_onlineserver_feedback_1_03_content_EditText);
+		this.mEditScroll.setEditText(mFeedbackEd);
+		this.mPhoneEd = (EditText) view
+				.findViewById(mResource.mgp_onlineserver_feedback_1_03_phone_EditText);
+		this.mFeedbackBtn = (Button) view
+				.findViewById(mResource.mgp_onlineserver_feedback_1_03_feedback_button);
+		this.mOnlineIMBtn = (LinearLayout) view
+				.findViewById(mResource.mgp_onlineserver_feedback_1_03_onlineIM_LinearLayout);
+		this.mServerTELBtn = (LinearLayout) view
+				.findViewById(mResource.mgp_onlineserver_feedback_1_03_serverTEL_LinearLayout);
+		this.mDataLayout = (LinearLayout) view
+				.findViewById(mResource.mgp_onlineserver_feedback_1_03_LinearLayout);
+	}
+
+	/**
+	 * 
+	 * 功能描述：初始化网络错误页
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param @param view
+	 * @return void
+	 * @date 2014-4-11 上午11:32:19
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void initNetErrorView(View view) {
+		this.mNetErrorView = (NetErrorView) view
+				.findViewById(mResource.mgp_onlineserver_feedback_1_03_error_ll);
+		this.mRefreshBtn = mNetErrorView.getRefreshBtn();
+	}
+
+	/**
+	 * 
+	 * 功能描述：初始化系统dialog
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param
+	 * @return void
+	 * @date 2014-4-11 上午11:32:37
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void initSystemDialog() {
+		this.mWaitingDialog = new WaitingDialog(mContext);
+		this.mWaitingDialog.setMessage(mContext.getString(mResource.mgp_loading));
+		this.mAlertDialog = new AlertDialog.Builder(mContext);
+		this.mAlertDialog.setTitle(mContext.getString(mResource.mgp_login_dialog_title));
+		this.mAlertDialog.setMessage(mContext.getString(mResource.mgp_onlineserver_feedback_dialog_commit_error));
+		this.mAlertDialog.setPositiveButton(mContext.getString(mResource.mgp_login_dialog_retry),
+				new DialogInterface.OnClickListener() {
+
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						if (checkET()) {
+							postWordOrder();
+						}
+					}
+				});
+		this.mAlertDialog.setNegativeButton(mContext.getString(mResource.mgp_login_dialog_cancel),
+				new DialogInterface.OnClickListener() {
+
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+
+					}
+				});
+	}
+
+	/**
+	 * 
+	 * 功能描述：获取屏幕宽高
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param
+	 * @return void
+	 * @date 2014-4-11 上午11:32:58
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void getScreenSize() {
+		this.mScreenWidth = SystemUtils.getScreenWidthSize(mContext);
+		this.mScreenHeight = SystemUtils.getScreenHeightSize(mContext);
+	}
+
+	/**
+	 * 
+	 * 功能描述：初始化自定义Dialog尺寸
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param
+	 * @return void
+	 * @date 2014-3-26 下午2:57:39
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void initDialogSize() {
+		if (SettingSPUtil.getLandScape(mContext) == CYMGProtocolConfig.LANDSCAPE) {
+			this.dialogWidth = mScreenWidth - (mScreenWidth / 12);
+			this.dialogHeight = mScreenHeight / 10 * 7;
+		} else {
+			this.dialogWidth = mScreenWidth - (mScreenWidth / 12);
+			this.dialogHeight = mScreenHeight / 2;
+		}
+	}
+
+	/**
+	 * 
+	 * 功能描述：初始化反馈问题dialog
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param
+	 * @return void
+	 * @date 2014-3-26 下午1:49:29
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void initQuestionDialog() {
+		this.mQuestionDialog = new Dialog(mContext,mResource.mgp_onlineserver_custom_dialog_style);
+		this.mQuestionDialog
+				.setContentView(mResource.mgp_onlineserver_question_dialog);// 加载自定义布局
+		this.mRadioGroup = (RadioGroup) mQuestionDialog
+				.findViewById(mResource.mgp_onlineserver_question_dialog_RadioGroup);
+	}
+
+	/**
+	 * 
+	 * 功能描述：初始化异常订单列表dialog
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param
+	 * @return void
+	 * @date 2014-3-3 上午10:43:26
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void initOrderDialog() {
+		this.dialog_lp = new LinearLayout.LayoutParams(dialogWidth,
+				dialogHeight);
+		this.screen_lp = new LinearLayout.LayoutParams(mScreenWidth,
+				mScreenHeight);
+		this.mOrderListDialog = new Dialog(mContext,mResource.mgp_onlineserver_custom_dialog_style);
+		this.mOrderListDialog
+				.setContentView(mResource.mgp_onlineserver_custom_dialog);
+		this.mOrderListDialog.setCancelable(false);
+		this.mScreen_Layout = (LinearLayout) mOrderListDialog
+				.findViewById(mResource.mgp_onlineserver_dialog_screen_LinearLayout);
+		this.mScreen_Layout.setLayoutParams(screen_lp);
+		this.mDialogRoot_Layout = (LinearLayout) mOrderListDialog
+				.findViewById(mResource.mgp_onlineserver_dialog_root_LinearLayout);
+		this.mDialogRoot_Layout.setLayoutParams(dialog_lp);
+		this.mDialogCloseIV = (ImageView) mOrderListDialog
+				.findViewById(mResource.mgp_onlineserver_dialog_close_ImageView);
+		this.mDialogNotDataLayout = (LinearLayout) mOrderListDialog
+				.findViewById(mResource.mgp_onlineserver_dialog_notdata_LinearLayout);
+		this.mDialogCloseBtn = (Button) mOrderListDialog
+				.findViewById(mResource.mgp_onlineserver_dialog_notdata_Button);
+		this.mDialogNetErrorView = (NetErrorView) mOrderListDialog
+				.findViewById(mResource.mgp_onlineserver_dialog_error_LinearLayout);
+		this.mDialogRefreshBtn = mDialogNetErrorView.getRefreshBtn();
+		this.mDialogListLayout = (LinearLayout) mOrderListDialog
+				.findViewById(mResource.mgp_onlineserver_dialog_list_LinearLayout);
+		this.mDialogListView = (MGPDropDownListView) mOrderListDialog
+				.findViewById(mResource.mgp_onlineserver_dialog_listView);
+		this.mOrderList = new ArrayList<OrderItem>();
+		this.mAbnormalOrderListAdapter = new AbnormalOrderListAdapter(mContext,
+				mOrderList);
+		this.mDialogListView.setAdapter(mAbnormalOrderListAdapter);
+	}
+
+	@Override
+	protected void initData() {
+		this.mBundle = getArguments();
+		getWorkorderType();
+	}
+
+	@Override
+	protected void initEvent() {
+		this.mBackIBtn.setOnClickListener(this);
+		this.mqueryBtn.setOnClickListener(this);
+		this.mRefreshBtn.setOnClickListener(this);
+		this.mQuestionTV.setOnClickListener(this);
+		this.mFeedbackBtn.setOnClickListener(this);
+		this.mOnlineIMBtn.setOnClickListener(this);
+		this.mServerTELBtn.setOnClickListener(this);
+		this.mRadioGroup
+				.setOnCheckedChangeListener(new OnCheckedChangeListener() {
+
+					@Override
+					public void onCheckedChanged(RadioGroup group, int checkedId) {
+						log.d("setOnCheckedChangeListener,checkedId:"
+								+ checkedId);
+						int radioButtonId = group.getCheckedRadioButtonId();
+						// 根据ID获取RadioButton的实例
+						RadioButton rb = (RadioButton) group
+								.findViewById(radioButtonId);
+						order_type = (Integer) rb.getTag();
+						switch (order_type) {
+						case 1:
+							CMBILogManager.action_A_Server_Question(mContext, "01");
+							break;
+						case 2:
+							CMBILogManager.action_A_Server_Question(mContext, "02");
+							break;
+						case 3:
+							CMBILogManager.action_A_Server_Question(mContext, "03");
+							break;
+						case 4:
+							CMBILogManager.action_A_Server_Question(mContext, "04");
+							break;
+						case 5:
+							CMBILogManager.action_A_Server_Question(mContext, "05");
+							break;
+						}
+						mQuestionTV.setText(rb.getText());
+						if (radioButtonId == 10000) {
+							initOrderDialog();
+							getAbnormalOrderList(mPage_no, false, false);
+						}
+						rb.setChecked(false);
+						mQuestionDialog.dismiss();
+					}
+				});
+	}
+
+	@Override
+	public void onClick(View v) {
+		if (v.getId() == mResource.mgp_onlineserver_feedback_1_03_feedback_button) {
+			if (checkET()) {
+				postWordOrder();
+			}
+		} else if (v.getId() == mResource.mgp_onlineserver_feedback_1_03_onlineIM_LinearLayout) {
+			CMBILogManager.action_A_Server_IM(mContext);
+			MyToast.showToast(
+					mContext,
+					mContext.getString(mResource.mgp_onlineserver_feedback_toast_im_and_bbs_error));
+		} else if (v.getId() == mResource.mgp_onlineserver_feedback_1_03_serverTEL_LinearLayout) {
+			CMBILogManager.action_A_Server_TEL(mContext);
+			callServerTel();
+		} else if (v.getId() == mResource.mgp_onlineserver_feedback_1_03_question_TextView) {
+			this.mQuestionDialog.show();
+		} else if (v.getId() == mResource.mgp_title_left_ibtn) {
+			if (this.mFragmentManager.getBackStackEntryCount() == 0) {
+				mContext.finish();
+				return;
+			} else {
+				this.mFragmentManager.popBackStack();
+			}
+		} else if (v.getId() == mResource.mgp_title_right_btn) {
+			if (this.mFragmentManager.getBackStackEntryCount() == 0) {
+				CMBILogManager.action_A_Server_Feedback(mContext);
+				// 跳转到在线客服查询页面
+				intoMGPWordOrderQueryFragment();
+			}
+		} else if (v.getId() == mResource.mgp_net_error_refresh_btn_id) {
+			getWorkorderType();
+		}
+	}
+
+	/**
+	 * 
+	 * 功能描述：获取工单类型列表
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param
+	 * @return void
+	 * @date 2014-2-20 下午4:41:41
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void getWorkorderType() {
+		if (NetWorkUtils.isNetworkConnected(mContext)) {
+			final MyHttpClient mHttpClient = new MyHttpClient(mContext);
+			RequestParams params = new RequestParams();
+			mHttpClient.get(HttpContants.getURL(HttpContants.WORK_ORDER_TYPE),
+					params, new MyAsyncResponseHandler() {
+
+						@Override
+						public void onStart() {
+							mWaitingDialog.setDismissListener(mHttpClient.getTimeout(), new MyDialogDismissListener() {
+								
+								@Override
+								public void onTimeOutDismiss() {
+									showNetErrorView();
+								}
+							});
+							mWaitingDialog.setMessage(mContext.getString(mResource.mgp_loading));
+							showWaitingDialog();
+						}
+
+						@Override
+						public void onSuccess(int statusCode, String content) {
+							log.d("getWorkorderType,onSuccess,content:"
+									+ content);
+							dismissWaitingDialog();
+							if (!StringUtils.isEmpty(content)) {
+								try {
+									WorkOrderTypeList mData = JSONUtil
+											.getMapper()
+											.readValue(
+													JSONUtil.initJsonArrayStr(content),
+													new TypeReference<WorkOrderTypeList>() {
+													});
+									List<WorkOrderTypeItem> mList = mData
+											.getData();
+									if (!mList.isEmpty()) {
+										RadioGroup.LayoutParams lp = new RadioGroup.LayoutParams(
+												dialogWidth,
+												LayoutParams.WRAP_CONTENT);
+										lp.setMargins(10, 10, 10, 10);
+										int size = mList.size();
+										for (int i = 0; i < size; i++) {
+											WorkOrderTypeItem workOrderTypeItem = mList
+													.get(i);
+											RadioButton radioButton = new RadioButton(
+													mContext);
+											radioButton.setLayoutParams(lp);
+											radioButton.setText(workOrderTypeItem
+													.getOrder_type_name());
+											radioButton.setTag(workOrderTypeItem
+													.getOrder_type_id());
+											radioButton.setTextSize(20);
+											radioButton.setTextColor(mContext
+													.getResources().getColor(mResource.mgp_black));
+											radioButton.setId(10000 + i);
+											mRadioGroup.addView(radioButton);
+										}
+										showRootLayout();
+									} else {
+										showNetErrorView();
+									}
+								} catch (Exception e) {
+									log.e(e);
+								}
+							} else {
+								showNetErrorView();
+							}
+						}
+
+						@Override
+						public void onFailure(Throwable error, String content) {
+							log.d("getWorkorderType,onFailure,content:"
+									+ content);
+							dismissWaitingDialog();
+							showNetErrorView();
+						}
+					});
+		} else {
+			log.d("getWorkorderType无网络");
+			showNetErrorView();
+		}
+	}
+
+	/**
+	 * 
+	 * 功能描述：获取异常订单列表
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param @param page_no
+	 * @return void
+	 * @date 2014-2-20 下午2:33:21
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void getAbnormalOrderList(int page_no, final boolean isRefresh,
+			final boolean isMore) {
+		if (NetWorkUtils.isNetworkConnected(mContext)) {
+			final MyHttpClient mHttpClient = new MyHttpClient(mContext);
+			RequestParams map = new RequestParams();
+			map.put("status", 1 + "," + 4 + "," + 5 + "," + 6);
+			map.put("page_size", String.valueOf(Contants.PAGE_SIZE));
+			map.put("page_no", String.valueOf(page_no));
+			map.put("user_id", mBundle.getString(CYMGProtocolKeys.UID));
+			mHttpClient.get(HttpContants.getURL(HttpContants.ORDER_LIST), map,
+					new MyAsyncResponseHandler() {
+						@Override
+						public void onStart() {
+							if (isRefresh == false && isMore == false) {
+								mWaitingDialog.setDismissListener(mHttpClient.getTimeout(), new MyDialogDismissListener() {
+									
+									@Override
+									public void onTimeOutDismiss() {
+										showNetErrorDialog();
+									}
+								});
+								mWaitingDialog.setMessage(mContext.getString(mResource.mgp_loading));
+								showWaitingDialog();
+							}
+						}
+
+						@Override
+						public void onSuccess(int statusCode, String content) {
+							log.d("getAbnormalOrderList,onSuccess,content:"
+									+ content);
+							dismissWaitingDialog();
+							if (!StringUtils.isEmpty(content)) {
+								try {
+									OrderList mData = JSONUtil
+											.getMapper()
+											.readValue(
+													JSONUtil.initJsonArrayStr(content),
+													new TypeReference<OrderList>() {
+													});
+									List<OrderItem> orderList = mData.getData();
+									if (!orderList.isEmpty()) {
+										if (isRefresh) {
+											mOrderList.clear();
+											mOrderList.addAll(orderList);
+											mDialogListView
+													.onDropDownComplete();
+										} else {
+											mOrderList.addAll(orderList);
+										}
+										mDialogListView
+												.onBottomComplete(orderList);
+										showOrderListDialog();
+									} else {
+										mDialogListView
+												.onBottomComplete(orderList);
+										if (!mOrderList.isEmpty()) {
+											showOrderListDialog();
+										} else {
+											showNotDataDialog();
+										}
+									}
+									if (isMore == true) {
+										if (orderList.size() == 0) {
+											MyToast.showToast(
+													mContext,
+													mContext.getString(mResource.mgp_feedback_refresh_nodata_text));
+										}
+									}
+								} catch (Exception e) {
+									log.e(e);
+								}
+							} else {
+								if (!mOrderList.isEmpty()) {
+									showOrderListDialog();
+								} else {
+									showNotDataDialog();
+								}
+							}
+						}
+
+						@Override
+						public void onFailure(int statusCode, Throwable error,
+								String content) {
+							log.d("getAbnormalOrderList,onFailure,content:"
+									+ content);
+							dismissWaitingDialog();
+							if (isMore) {
+								mDialogListView
+										.setFooterBtnText(mResource.mgp_drop_down_list_footer_default_text);
+								MyToast.showToast(mContext, mContext
+										.getString(mResource.mgp_net_error_hint));
+								return;
+							}
+							if (statusCode == 404) {
+								showNetErrorDialog();
+							} else {
+								if (content != null) {
+									try {
+										ErrorInfo info = JSONUtil
+												.getMapper()
+												.readValue(
+														content,
+														new TypeReference<ErrorInfo>() {
+														});
+										showNetErrorDialog();
+									} catch (Exception e) {
+										log.e(e);
+									}
+								} else {
+									showNetErrorDialog();
+								}
+							}
+						}
+					});
+		} else {
+			if (isMore) {
+				mDialogListView
+						.setFooterBtnText(mResource.mgp_drop_down_list_footer_default_text);
+				MyToast.showToast(mContext,
+						mContext.getString(mResource.mgp_net_error_hint));
+				return;
+			}
+			showNetErrorDialog();
+		}
+	}
+
+	/**
+	 * 
+	 * 功能描述：工单上传
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param
+	 * @return void
+	 * @date 2014-2-21 下午6:27:06
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void postWordOrder() {
+		if (NetWorkUtils.isNetworkConnected(mContext)) {
+			String channelID = MetaDataValueUtils.getChannelID(mContext);
+			String order_content = mFeedbackEd.getText().toString();
+			String user_account = mBundle.getString(CYMGProtocolKeys.UID);
+			String user_system = "Android";
+			String user_role_id = mBundle.getString(CYMGProtocolKeys.ROLE_ID);
+			String game_name = mBundle.getString(CYMGProtocolKeys.GAME_NAME);
+			String game_server = mBundle
+					.getString(CYMGProtocolKeys.SERVER_NAME);
+			String user_tel = mPhoneNumStr;
+			String user_udid = SystemUtils.getDeviceId(mContext);
+			Map map = new HashMap();
+			map.put("order_type", order_type);
+			map.put("order_channel", channelID);
+			map.put("order_content", order_content);
+			map.put("user_account", user_account);
+			map.put("user_system", user_system);
+			map.put("user_role_id", user_role_id);
+			map.put("game_name", game_name);
+			map.put("game_server", game_server);
+			map.put("user_tel", user_tel);
+			map.put("user_udid", user_udid);
+			map.put("user_channel_id", channelID);
+			map.put("user_channel_name", "why need the channel_name param?");
+			if (checkPostWordOrderParams(map)) {
+				final MyHttpClient mHttpClient = new MyHttpClient(mContext);
+				mHttpClient.post(
+						HttpContants.getURL(HttpContants.WORK_ORDER_IMPORT),
+						map, new MyAsyncResponseHandler() {
+							@Override
+							public void onStart() {
+								mWaitingDialog.setDismissListener(mHttpClient.getTimeout(), new MyDialogDismissListener() {
+									
+									@Override
+									public void onTimeOutDismiss() {
+										showAlertDialog();
+									}
+								});
+								mWaitingDialog.setMessage(mContext
+										.getString(mResource.mgp_comitting));
+								showWaitingDialog();
+							}
+
+							@Override
+							public void onSuccess(int statusCode, String content) {
+								log.d("postWordOrder,onSuccess,content:"
+										+ content);
+								dismissWaitingDialog();
+								if(!TextUtils.isEmpty(content)){
+									try {
+										JSONObject jsonObject=new JSONObject(content);
+										String message=jsonObject.getString("message");
+										if("success".equals(message)){
+											MyToast.showToast(
+													mContext,
+													mContext.getString(mResource.mgp_onlineserver_feedback_toast_commit));
+											intoMGPWordOrderQueryFragment();
+										}else{
+											showAlertDialog();
+										}
+									} catch (JSONException e) {
+										log.e(e);
+									}
+								}else{
+									showAlertDialog();
+								}
+							}
+
+							@Override
+							public void onFailure(Throwable error,
+									String content) {
+								log.d("postWordOrder,onFailure,content:"
+										+ content);
+								dismissWaitingDialog();
+								showAlertDialog();
+							}
+						});
+			} else {
+				log.e("客服工单上传参数不完整");
+			}
+		} else {
+			MyToast.showToast(mContext,
+					mContext.getString(mResource.mgp_net_error_hint));
+		}
+	}
+
+	/**
+	 * 
+	 * 功能描述：显示网络错误页的dialog
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param
+	 * @return void
+	 * @date 2014-3-3 下午4:23:10
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void showNetErrorDialog() {
+		mDialogListLayout.setVisibility(View.GONE);
+		mDialogNotDataLayout.setVisibility(View.GONE);
+		mDialogNetErrorView.setVisibility(View.VISIBLE);
+		mDialogCloseIV.setOnClickListener(new OnClickListener() {
+
+			@Override
+			public void onClick(View v) {
+				mQuestionTV.setText("");
+//				mOrderList.clear();
+				mPage_no = 1;
+				mOrderListDialog.dismiss();
+			}
+		});
+		mDialogRefreshBtn.setOnClickListener(new OnClickListener() {
+
+			@Override
+			public void onClick(View v) {
+//				mOrderList.clear();
+				mPage_no = 1;
+				getAbnormalOrderList(mPage_no, true, false);
+			}
+		});
+		mOrderListDialog.show();
+	}
+
+	/**
+	 * 
+	 * 功能描述：显示空数据页的dialog
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param
+	 * @return void
+	 * @date 2014-3-3 下午4:23:10
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void showNotDataDialog() {
+		mDialogListLayout.setVisibility(View.GONE);
+		mDialogNotDataLayout.setVisibility(View.VISIBLE);
+		mDialogNetErrorView.setVisibility(View.GONE);
+		mDialogCloseIV.setOnClickListener(new OnClickListener() {
+
+			@Override
+			public void onClick(View v) {
+				mQuestionTV.setText("");
+//				mOrderList.clear();
+				mPage_no = 1;
+				mOrderListDialog.dismiss();
+			}
+		});
+		mDialogCloseBtn.setOnClickListener(new OnClickListener() {
+
+			@Override
+			public void onClick(View v) {
+				mQuestionTV.setText("");
+//				mOrderList.clear();
+				mPage_no = 1;
+				mOrderListDialog.dismiss();
+			}
+		});
+		mOrderListDialog.show();
+	}
+
+	/**
+	 * 
+	 * 功能描述：显示正常有数据页的dialog
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param
+	 * @return void
+	 * @date 2014-3-3 下午4:23:10
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void showOrderListDialog() {
+		mDialogListLayout.setVisibility(View.VISIBLE);
+		mDialogNotDataLayout.setVisibility(View.GONE);
+		mDialogNetErrorView.setVisibility(View.GONE);
+		mAbnormalOrderListAdapter.notifyDataSetChanged();
+		mDialogListView.setOnItemClickListener(new OnItemClickListener() {
+
+			@Override
+			public void onItemClick(AdapterView<?> parent, View view,
+					int position, long id) {
+				OrderItem orderItem = mOrderList.get(position - 1);
+				mFeedbackEd.setText("我在" + orderItem.getCreate_date() + "支付的"
+						+ orderItem.getGoods_price() + "元" + orderItem.getOrder_status_msg()
+						+ "的订单出现了问题，请帮忙解决");
+				mPage_no = 1;
+//				mOrderList.clear();
+				mAbnormalOrderListAdapter.notifyDataSetChanged();
+				mOrderListDialog.dismiss();
+
+			}
+		});
+		mDialogListView.setOnDropDownListener(new OnDropDownListener() {
+
+			@Override
+			public void onDropDown() {
+				mPage_no = 1;
+				getAbnormalOrderList(mPage_no, true, false);
+			}
+		});
+		mDialogListView.setOnBottomListener(new OnBottomListener() {
+
+			@Override
+			public void onBottomLoad() {
+				mPage_no++;
+				log.d("setOnBottomListener,page_no:" + mPage_no);
+				getAbnormalOrderList(mPage_no, false, true);
+			}
+		});
+		mDialogCloseIV.setOnClickListener(new OnClickListener() {
+
+			@Override
+			public void onClick(View v) {
+				mQuestionTV.setText("");
+//				mOrderList.clear();
+				mPage_no = 1;
+				mOrderListDialog.dismiss();
+			}
+		});
+		mOrderListDialog.show();
+	}
+
+	/**
+	 * 
+	 * 功能描述：检查EditText输入合法性
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param @return
+	 * @return boolean
+	 * @date 2014-3-26 下午1:51:31
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private boolean checkET() {
+		boolean b1 = TextUtils.isEmpty(mQuestionTV.getText().toString().trim());
+		boolean b2 = TextUtils.isEmpty(mFeedbackEd.getText().toString().trim());
+		boolean b3 = TextUtils.isEmpty(mPhoneEd.getText().toString().trim());
+		if (b1 && b2 && b3) {
+			MyToast.showToast(
+					mContext,
+					mContext.getString(mResource.mgp_onlineserver_feedback_toast_all_error));
+			return false;
+		} else {
+			if (b1) {
+				MyToast.showToast(
+						mContext,
+						mContext.getString(mResource.mgp_onlineserver_feedback_toast_question_error));
+				return false;
+			}
+			if (b2) {
+				MyToast.showToast(
+						mContext,
+						mContext.getString(mResource.mgp_onlineserver_feedback_toast_content_error));
+				return false;
+			}
+			if (b3) {
+				mPhoneNumStr="99999999999";
+//				MyToast.showToast(
+//						mContext,
+//						mContext.getString(mResource.mgp_onlineserver_feedback_toast_phone_null));
+//				return false;
+			}else{
+				mPhoneNumStr=mPhoneEd.getText().toString().trim();
+			}
+//			else {
+//				boolean b4 = mPhoneEd.getText().toString().trim().length() < 11;
+//				if (b4) {
+//					MyToast.showToast(
+//							mContext,
+//							mContext.getString(mResource.mgp_onlineserver_feedback_toast_phone_error));
+//					return false;
+//				}
+//			}
+		}
+		return true;
+	}
+
+	/**
+	 * 
+	 * 功能描述：检查工单上传参数合法性
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param @param map
+	 * @param @return
+	 * @return boolean
+	 * @date 2014-4-14 下午5:39:57
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private boolean checkPostWordOrderParams(Map map) {
+		Iterator it = map.entrySet().iterator();
+		while (it.hasNext()) {
+			Map.Entry pairs = (Map.Entry) it.next();
+			if (TextUtils.isEmpty(pairs.getValue().toString())) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * 
+	 * 功能描述：拨打客服电话
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param
+	 * @return void
+	 * @date 2014-3-26 下午1:54:04
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void callServerTel() {
+		try {
+			Intent intent = new Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + getString(mResource.mgp_onlineserver_feedback_server_tel)));
+			startActivity(intent);
+		} catch (Exception e) {
+			MyToast.showToast(mContext, getString(mResource.mgp_onlineserver_feedback_server_tel_error));
+			log.e(e);
+		}
+	}
+
+	/**
+	 * 
+	 * 功能描述：显示系统等待提示框
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param
+	 * @return void
+	 * @date 2014-4-11 上午11:36:40
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void showWaitingDialog() {
+		mWaitingDialog.show();
+	}
+
+	/**
+	 * 
+	 * 功能描述：关闭系统等待提示框
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param
+	 * @return void
+	 * @date 2014-4-11 上午11:36:58
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void dismissWaitingDialog() {
+		mWaitingDialog.dismiss();
+	}
+
+	/**
+	 * 
+	 * 功能描述：显示登录按钮弹出的dialog
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param @param error_code
+	 * @return void
+	 * @date 2014-3-7 下午7:34:42
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void showAlertDialog() {
+		mAlertDialog.show();
+	}
+
+	/**
+	 * 
+	 * 功能描述：显示正常页面
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param
+	 * @return void
+	 * @date 2014-3-26 下午1:56:37
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void showRootLayout() {
+		mDataLayout.setVisibility(View.VISIBLE);
+		mNetErrorView.setVisibility(View.GONE);
+	}
+
+	/**
+	 * 
+	 * 功能描述：显示网络异常页面
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param
+	 * @return void
+	 * @date 2014-3-26 下午1:56:22
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void showNetErrorView() {
+		mDataLayout.setVisibility(View.GONE);
+		mNetErrorView.setVisibility(View.VISIBLE);
+	}
+
+	/**
+	 * 
+	 * 功能描述：进入工单查询页面
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param
+	 * @return void
+	 * @date 2014-3-26 下午1:55:55
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void intoMGPWordOrderQueryFragment() {
+		FragmentTransaction fragmentTransaction = mFragmentManager
+				.beginTransaction();
+		CYMGWordOrderQueryFragment wordOrderQueryFragment = new CYMGWordOrderQueryFragment();
+		wordOrderQueryFragment.setArguments(mBundle);
+		fragmentTransaction.replace(mResource.mgp_onlineserver_root_layout,
+				wordOrderQueryFragment,
+				Contants.FragmentTag.ONLINESERVER_WORDORDER_FRAGMENT)
+				.addToBackStack(
+						Contants.FragmentTag.ONLINESERVER_WORDORDER_FRAGMENT);
+		fragmentTransaction.commit();
+		clearETData();
+	}
+
+	/**
+	 * 
+	 * 功能描述：清除EditText输入的数据
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param
+	 * @return void
+	 * @date 2014-4-11 上午11:39:07
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void clearETData() {
+		this.mQuestionTV.setText("");
+		this.mFeedbackEd.setText("");
+		this.mPhoneEd.setText("");
+	}
+}

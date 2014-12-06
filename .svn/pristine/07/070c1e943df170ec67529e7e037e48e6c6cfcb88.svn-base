@@ -1,0 +1,471 @@
+package com.changyou.mgp.sdk.mbi.cts.id;
+
+import android.content.Context;
+
+import com.changyou.mgp.sdk.mbi.utils.ResourceUtil;
+
+public class Resource {
+
+	private Resource() {
+		
+	}
+
+	private static Resource instance = null;
+
+	public static Resource getInstance() {
+		if (instance == null) {
+			synchronized (Resource.class) {
+				if (instance == null) {
+					instance = new Resource();
+				}
+			}
+		}
+		return instance;
+	}
+	
+	// CYMGCustomerServiceActivity.R
+	public int mgp_onlineserver_root_1_03;
+	public int mgp_onlineserver_root_layout;
+
+	// CYMGCustomerServiceFeedbackFragment.R
+	public int mgp_onlineserver_feedback_1_03;
+	public int mgp_onlineserver_question_dialog;
+	public int mgp_onlineserver_custom_dialog;
+
+	public int mgp_onlineserver_feedback_1_03_title;
+	public int mgp_onlineserver_feedback_1_03_question_TextView;
+	public int mgp_onlineserver_feedback_1_03_ScrollView;
+	public int mgp_onlineserver_feedback_1_03_ScrollEditLayout;
+	public int mgp_onlineserver_feedback_1_03_ScrollEditLayout_LinearLayout;
+	public int mgp_onlineserver_feedback_1_03_content_EditText;
+	public int mgp_onlineserver_feedback_1_03_phone_EditText;
+	public int mgp_onlineserver_feedback_1_03_feedback_button;
+	public int mgp_onlineserver_feedback_1_03_onlineIM_LinearLayout;
+	public int mgp_onlineserver_feedback_1_03_serverTEL_LinearLayout;
+	public int mgp_onlineserver_feedback_1_03_intoBBS_LinearLayout;
+	public int mgp_onlineserver_feedback_1_03_LinearLayout;
+	public int mgp_onlineserver_feedback_1_03_error_ll;
+	public int mgp_onlineserver_question_dialog_RadioGroup;
+	public int mgp_onlineserver_dialog_screen_LinearLayout;
+	public int mgp_onlineserver_dialog_root_LinearLayout;
+	public int mgp_onlineserver_dialog_close_ImageView;
+	public int mgp_onlineserver_dialog_notdata_LinearLayout;
+	public int mgp_onlineserver_dialog_notdata_Button;
+	public int mgp_onlineserver_dialog_error_LinearLayout;
+	public int mgp_onlineserver_dialog_list_LinearLayout;
+	public int mgp_onlineserver_dialog_listView;
+	public int mgp_net_error_refresh_btn_id;
+
+	public int mgp_title_tv_onlineserver;
+	public int mgp_title_btn_onlineserver;
+	public int mgp_login_dialog_title;
+	public int mgp_onlineserver_feedback_dialog_commit_error;
+	public int mgp_login_dialog_retry;
+	public int mgp_login_dialog_cancel;
+	public int mgp_onlineserver_feedback_toast_im_and_bbs_error;
+	public int mgp_drop_down_list_footer_default_text;
+	public int mgp_net_error_hint;
+	public int mgp_comitting;
+	public int mgp_onlineserver_feedback_toast_commit;
+	public int mgp_onlineserver_feedback_toast_all_error;
+	public int mgp_onlineserver_feedback_toast_question_error;
+	public int mgp_onlineserver_feedback_toast_content_error;
+	public int mgp_onlineserver_feedback_toast_phone_null;
+	public int mgp_onlineserver_feedback_toast_phone_error;
+	public int mgp_onlineserver_feedback_server_tel;
+
+	public int mgp_onlineserver_custom_dialog_style;
+
+	public int mgp_black;
+
+	// CYMGWordOrderQueryFragment.R
+	public int mgp_feedback_query;
+	public int mgp_feedback_query_popup_dialog;
+	public int mgp_feedback_query_popup_item_text;
+
+	public int mgp_feedback_query_lv;
+	public int mgp_feedback_query_driver_tv;
+	public int mgp_feedback_query_empty_ll;
+	public int mgp_feedback_query_empty_tv;
+	public int mgp_feedback_query_error_layout;
+	public int mgp_onlineserver_feedback_query_title;
+	public int mgp_title_left_ibtn;
+	public int mgp_title_tv;
+	public int mgp_title_right_btn;
+	public int mgp_feedback_query_lv_dialog;
+	public int tv_text;
+
+	public int mgp_title_tv_feedback;
+	public int mgp_title_btn_feedback;
+	public int mgp_loading;
+	public int mgp_no_feedback_text;
+	public int mgp_feedback_replyied_empty_text;
+	public int mgp_feedback_noreply_empty_text;
+	public int mgp_feedback_refresh_nodata_text;
+
+	public int mgp_feedback_query_filter;
+
+	// AbnormalOrderListAdapter.R
+	public int mgp_onlineserver_custom_dialog_list_item;
+
+	public int mgp_onlineserver_feedback_dialog_order_status_1;
+	public int mgp_onlineserver_feedback_dialog_order_status_2;
+	public int mgp_onlineserver_feedback_dialog_order_status_3;
+	public int mgp_onlineserver_feedback_dialog_order_status_4;
+	public int mgp_onlineserver_feedback_dialog_order_status_5;
+
+	// AbnormalOrderListViewCache.R
+	public int mgp_onlineserver_custom_dialog_list_item_date_TextView;
+	public int mgp_onlineserver_custom_dialog_list_item_amount_TextView;
+	public int mgp_onlineserver_custom_dialog_list_item_state_TextView;
+
+	// WordOrderListAdapter.R
+	public int mgp_feedback_query_item;
+
+	public int mgp_feedback_qurey_item_time_tv;
+	public int mgp_feedback_qurey_item_dot_iv;
+	public int mgp_feedback_qurey_item_date_tv;
+	public int mgp_feedback_qurey_item_classification_tv;
+	public int mgp_feedback_qurey_item_question_tv;
+	public int mgp_feedback_qurey_item_state_tv;
+	public int mgp_feedback_qurey_item_operation;
+	public int mgp_feedback_operation_tv;
+	public int mgp_feedback_qurey_item_arrow_iv;
+	public int mgp_feedback_item_viewstub_ll;
+	public int mgp_feedback_item_reply_tv;
+	public int mgp_feedback_qurey_item_operation_reply;
+	public int mgp_feedback_operation_reply_tv;
+	public int mgp_feedback_qurey_item_arrow_reply_iv;
+
+	public int mgp_list_line_margin_left;
+	public int mgp_feedback_list_item_triangle_margin_bottom;
+
+	public int mgp_feedback_query_status_noreply;
+	public int mgp_feedback_query_detail;
+	public int mgp_feedback_query_close;
+	public int mgp_feedback_query_status_reply;
+	public int mgp_feedback_query_date;
+
+	public int mgp_feedback_arrow_down;
+	public int mgp_feedback_arrow_up;
+
+	public int mgp_order_state_color;
+	public int mgp_feedback_question_type_value;
+
+	public void getResourceID(Context context) {
+		String packageName=context.getPackageName();
+		// CYMGCustomerServiceActivity.R
+		mgp_onlineserver_root_1_03 = ResourceUtil.getResourceIDByName(
+				packageName, "layout",
+				"mgp_onlineserver_root_1_03");
+		mgp_onlineserver_root_layout = ResourceUtil
+				.getResourceIDByName(packageName, "id",
+						"mgp_onlineserver_root_layout");
+
+		// CYMGCustomerServiceFeedbackFragment.R
+		mgp_onlineserver_feedback_1_03 = ResourceUtil.getResourceIDByName(
+				packageName, "layout",
+				"mgp_onlineserver_feedback_1_03");
+		mgp_onlineserver_question_dialog = ResourceUtil.getResourceIDByName(
+				packageName, "layout",
+				"mgp_onlineserver_question_dialog");
+		mgp_onlineserver_custom_dialog = ResourceUtil.getResourceIDByName(
+				packageName, "layout",
+				"mgp_onlineserver_custom_dialog");
+
+		mgp_onlineserver_feedback_1_03_title = ResourceUtil
+				.getResourceIDByName(packageName, "id",
+						"mgp_onlineserver_feedback_1_03_title");
+		mgp_onlineserver_feedback_1_03_question_TextView = ResourceUtil
+				.getResourceIDByName(packageName, "id",
+						"mgp_onlineserver_feedback_1_03_question_TextView");
+		mgp_onlineserver_feedback_1_03_ScrollView = ResourceUtil
+				.getResourceIDByName(packageName, "id",
+						"mgp_onlineserver_feedback_1_03_ScrollView");
+		mgp_onlineserver_feedback_1_03_ScrollEditLayout = ResourceUtil
+				.getResourceIDByName(packageName, "id",
+						"mgp_onlineserver_feedback_1_03_ScrollEditLayout");
+		mgp_onlineserver_feedback_1_03_ScrollEditLayout_LinearLayout = ResourceUtil
+				.getResourceIDByName(packageName, "id",
+						"mgp_onlineserver_feedback_1_03_ScrollEditLayout_LinearLayout");
+		mgp_onlineserver_feedback_1_03_content_EditText = ResourceUtil
+				.getResourceIDByName(packageName, "id",
+						"mgp_onlineserver_feedback_1_03_content_EditText");
+		mgp_onlineserver_feedback_1_03_phone_EditText = ResourceUtil
+				.getResourceIDByName(packageName, "id",
+						"mgp_onlineserver_feedback_1_03_phone_EditText");
+		mgp_onlineserver_feedback_1_03_feedback_button = ResourceUtil
+				.getResourceIDByName(packageName, "id",
+						"mgp_onlineserver_feedback_1_03_feedback_button");
+		mgp_onlineserver_feedback_1_03_onlineIM_LinearLayout = ResourceUtil
+				.getResourceIDByName(packageName, "id",
+						"mgp_onlineserver_feedback_1_03_onlineIM_LinearLayout");
+		mgp_onlineserver_feedback_1_03_serverTEL_LinearLayout = ResourceUtil
+				.getResourceIDByName(packageName, "id",
+						"mgp_onlineserver_feedback_1_03_serverTEL_LinearLayout");
+		mgp_onlineserver_feedback_1_03_intoBBS_LinearLayout = ResourceUtil
+				.getResourceIDByName(packageName, "id",
+						"mgp_onlineserver_feedback_1_03_intoBBS_LinearLayout");
+		mgp_onlineserver_feedback_1_03_LinearLayout = ResourceUtil
+				.getResourceIDByName(packageName, "id",
+						"mgp_onlineserver_feedback_1_03_LinearLayout");
+		mgp_onlineserver_feedback_1_03_error_ll = ResourceUtil
+				.getResourceIDByName(packageName, "id",
+						"mgp_onlineserver_feedback_1_03_error_ll");
+		mgp_onlineserver_question_dialog_RadioGroup = ResourceUtil
+				.getResourceIDByName(packageName, "id",
+						"mgp_onlineserver_question_dialog_RadioGroup");
+		mgp_onlineserver_dialog_screen_LinearLayout = ResourceUtil
+				.getResourceIDByName(packageName, "id",
+						"mgp_onlineserver_dialog_screen_LinearLayout");
+		mgp_onlineserver_dialog_root_LinearLayout = ResourceUtil
+				.getResourceIDByName(packageName, "id",
+						"mgp_onlineserver_dialog_root_LinearLayout");
+		mgp_onlineserver_dialog_close_ImageView = ResourceUtil
+				.getResourceIDByName(packageName, "id",
+						"mgp_onlineserver_dialog_close_ImageView");
+		mgp_onlineserver_dialog_notdata_LinearLayout = ResourceUtil
+				.getResourceIDByName(packageName, "id",
+						"mgp_onlineserver_dialog_notdata_LinearLayout");
+		mgp_onlineserver_dialog_notdata_Button = ResourceUtil
+				.getResourceIDByName(packageName, "id",
+						"mgp_onlineserver_dialog_notdata_Button");
+		mgp_onlineserver_dialog_error_LinearLayout = ResourceUtil
+				.getResourceIDByName(packageName, "id",
+						"mgp_onlineserver_dialog_error_LinearLayout");
+		mgp_onlineserver_dialog_list_LinearLayout = ResourceUtil
+				.getResourceIDByName(packageName, "id",
+						"mgp_onlineserver_dialog_list_LinearLayout");
+		mgp_onlineserver_dialog_listView = ResourceUtil.getResourceIDByName(
+				packageName, "id",
+				"mgp_onlineserver_dialog_listView");
+		mgp_net_error_refresh_btn_id = ResourceUtil
+				.getResourceIDByName(packageName, "id",
+						"mgp_net_error_refresh_btn_id");
+
+		mgp_title_tv_onlineserver = ResourceUtil.getResourceIDByName(
+				packageName, "string",
+				"mgp_title_tv_onlineserver");
+		mgp_title_btn_onlineserver = ResourceUtil.getResourceIDByName(
+				packageName, "string",
+				"mgp_title_btn_onlineserver");
+		mgp_login_dialog_title = ResourceUtil.getResourceIDByName(
+				packageName, "string", "mgp_login_dialog_title");
+		mgp_onlineserver_feedback_dialog_commit_error = ResourceUtil
+				.getResourceIDByName(packageName, "string",
+						"mgp_onlineserver_feedback_dialog_commit_error");
+		mgp_login_dialog_retry = ResourceUtil.getResourceIDByName(
+				packageName, "string", "mgp_login_dialog_retry");
+		mgp_login_dialog_cancel = ResourceUtil.getResourceIDByName(
+				packageName, "string", "mgp_login_dialog_cancel");
+		mgp_onlineserver_feedback_toast_im_and_bbs_error = ResourceUtil
+				.getResourceIDByName(packageName, "string",
+						"mgp_onlineserver_feedback_toast_im_and_bbs_error");
+		mgp_drop_down_list_footer_default_text = ResourceUtil
+				.getResourceIDByName(packageName, "string",
+						"mgp_drop_down_list_footer_default_text");
+		mgp_net_error_hint = ResourceUtil.getResourceIDByName(
+				packageName, "string", "mgp_net_error_hint");
+		mgp_comitting = ResourceUtil.getResourceIDByName(
+				packageName, "string", "mgp_comitting");
+		mgp_onlineserver_feedback_toast_commit = ResourceUtil
+				.getResourceIDByName(packageName, "string",
+						"mgp_onlineserver_feedback_toast_commit");
+		mgp_onlineserver_feedback_toast_all_error = ResourceUtil
+				.getResourceIDByName(packageName, "string",
+						"mgp_onlineserver_feedback_toast_all_error");
+		mgp_onlineserver_feedback_toast_question_error = ResourceUtil
+				.getResourceIDByName(packageName, "string",
+						"mgp_onlineserver_feedback_toast_question_error");
+		mgp_onlineserver_feedback_toast_content_error = ResourceUtil
+				.getResourceIDByName(packageName, "string",
+						"mgp_onlineserver_feedback_toast_content_error");
+		mgp_onlineserver_feedback_toast_phone_null = ResourceUtil
+				.getResourceIDByName(packageName, "string",
+						"mgp_onlineserver_feedback_toast_phone_null");
+		mgp_onlineserver_feedback_toast_phone_error = ResourceUtil
+				.getResourceIDByName(packageName, "string",
+						"mgp_onlineserver_feedback_toast_phone_error");
+		mgp_onlineserver_feedback_server_tel = ResourceUtil
+				.getResourceIDByName(packageName, "string",
+						"mgp_onlineserver_feedback_server_tel");
+
+		mgp_onlineserver_custom_dialog_style = ResourceUtil
+				.getResourceIDByName(packageName, "style",
+						"mgp_onlineserver_custom_dialog_style");
+
+		mgp_black = ResourceUtil.getResourceIDByName(packageName,
+				"color", "mgp_black");
+
+		// CYMGWordOrderQueryFragment.R
+		mgp_feedback_query = ResourceUtil.getResourceIDByName(
+				packageName, "layout", "mgp_feedback_query");
+		mgp_feedback_query_popup_dialog = ResourceUtil.getResourceIDByName(
+				packageName, "layout",
+				"mgp_feedback_query_popup_dialog");
+		mgp_feedback_query_popup_item_text = ResourceUtil.getResourceIDByName(
+				packageName, "layout",
+				"mgp_feedback_query_popup_item_text");
+
+		mgp_feedback_query_lv = ResourceUtil.getResourceIDByName(
+				packageName, "id", "mgp_feedback_query_lv");
+		mgp_feedback_query_driver_tv = ResourceUtil
+				.getResourceIDByName(packageName, "id",
+						"mgp_feedback_query_driver_tv");
+		mgp_feedback_query_empty_ll = ResourceUtil.getResourceIDByName(
+				packageName, "id", "mgp_feedback_query_empty_ll");
+		mgp_feedback_query_empty_tv = ResourceUtil.getResourceIDByName(
+				packageName, "id", "mgp_feedback_query_empty_tv");
+		mgp_feedback_query_error_layout = ResourceUtil.getResourceIDByName(
+				packageName, "id",
+				"mgp_feedback_query_error_layout");
+		mgp_onlineserver_feedback_query_title = ResourceUtil
+				.getResourceIDByName(packageName, "id",
+						"mgp_onlineserver_feedback_query_title");
+		mgp_title_left_ibtn = ResourceUtil.getResourceIDByName(
+				packageName, "id", "mgp_title_left_ibtn");
+		mgp_title_tv = ResourceUtil.getResourceIDByName(
+				packageName, "id", "mgp_title_tv");
+		mgp_title_right_btn = ResourceUtil.getResourceIDByName(
+				packageName, "id", "mgp_title_right_btn");
+		mgp_feedback_query_lv_dialog = ResourceUtil
+				.getResourceIDByName(packageName, "id",
+						"mgp_feedback_query_lv_dialog");
+		tv_text = ResourceUtil.getResourceIDByName(packageName,
+				"id", "tv_text");
+
+		mgp_title_tv_feedback = ResourceUtil.getResourceIDByName(
+				packageName, "string", "mgp_title_tv_feedback");
+		mgp_title_btn_feedback = ResourceUtil.getResourceIDByName(
+				packageName, "string", "mgp_title_btn_feedback");
+		mgp_loading = ResourceUtil.getResourceIDByName(
+				packageName, "string", "mgp_loading");
+		mgp_no_feedback_text = ResourceUtil.getResourceIDByName(
+				packageName, "string", "mgp_no_feedback_text");
+		mgp_feedback_replyied_empty_text = ResourceUtil.getResourceIDByName(
+				packageName, "string",
+				"mgp_feedback_replyied_empty_text");
+		mgp_feedback_noreply_empty_text = ResourceUtil.getResourceIDByName(
+				packageName, "string",
+				"mgp_feedback_noreply_empty_text");
+		mgp_feedback_refresh_nodata_text = ResourceUtil.getResourceIDByName(
+				packageName, "string",
+				"mgp_feedback_refresh_nodata_text");
+
+		mgp_feedback_query_filter = ResourceUtil
+				.getResourceIDByName(packageName, "array",
+						"mgp_feedback_query_filter");
+
+		// AbnormalOrderListAdapter.R
+		mgp_onlineserver_custom_dialog_list_item = ResourceUtil
+				.getResourceIDByName(packageName, "layout",
+						"mgp_onlineserver_custom_dialog_list_item");
+
+		mgp_onlineserver_feedback_dialog_order_status_1 = ResourceUtil
+				.getResourceIDByName(packageName, "string",
+						"mgp_onlineserver_feedback_dialog_order_status_1");
+		mgp_onlineserver_feedback_dialog_order_status_2 = ResourceUtil
+				.getResourceIDByName(packageName, "string",
+						"mgp_onlineserver_feedback_dialog_order_status_2");
+		mgp_onlineserver_feedback_dialog_order_status_3 = ResourceUtil
+				.getResourceIDByName(packageName, "string",
+						"mgp_onlineserver_feedback_dialog_order_status_3");
+		mgp_onlineserver_feedback_dialog_order_status_4 = ResourceUtil
+				.getResourceIDByName(packageName, "string",
+						"mgp_onlineserver_feedback_dialog_order_status_4");
+		mgp_onlineserver_feedback_dialog_order_status_5 = ResourceUtil
+				.getResourceIDByName(packageName, "string",
+						"mgp_onlineserver_feedback_dialog_order_status_5");
+
+		// AbnormalOrderListViewCache.R
+		mgp_onlineserver_custom_dialog_list_item_date_TextView = ResourceUtil
+				.getResourceIDByName(packageName, "id",
+						"mgp_onlineserver_custom_dialog_list_item_date_TextView");
+		mgp_onlineserver_custom_dialog_list_item_amount_TextView = ResourceUtil
+				.getResourceIDByName(packageName, "id",
+						"mgp_onlineserver_custom_dialog_list_item_amount_TextView");
+		mgp_onlineserver_custom_dialog_list_item_state_TextView = ResourceUtil
+				.getResourceIDByName(packageName, "id",
+						"mgp_onlineserver_custom_dialog_list_item_state_TextView");
+
+		// WordOrderListAdapter.R
+		mgp_feedback_query_item = ResourceUtil.getResourceIDByName(
+				packageName, "layout", "mgp_feedback_query_item");
+
+		mgp_feedback_qurey_item_time_tv = ResourceUtil.getResourceIDByName(
+				packageName, "id",
+				"mgp_feedback_qurey_item_time_tv");
+		mgp_feedback_qurey_item_dot_iv = ResourceUtil.getResourceIDByName(
+				packageName, "id",
+				"mgp_feedback_qurey_item_dot_iv");
+		mgp_feedback_qurey_item_date_tv = ResourceUtil.getResourceIDByName(
+				packageName, "id",
+				"mgp_feedback_qurey_item_date_tv");
+		mgp_feedback_qurey_item_classification_tv = ResourceUtil
+				.getResourceIDByName(packageName, "id",
+						"mgp_feedback_qurey_item_classification_tv");
+		mgp_feedback_qurey_item_question_tv = ResourceUtil.getResourceIDByName(
+				packageName, "id",
+				"mgp_feedback_qurey_item_question_tv");
+		mgp_feedback_qurey_item_state_tv = ResourceUtil.getResourceIDByName(
+				packageName, "id",
+				"mgp_feedback_qurey_item_state_tv");
+		mgp_feedback_qurey_item_operation = ResourceUtil.getResourceIDByName(
+				packageName, "id",
+				"mgp_feedback_qurey_item_operation");
+		mgp_feedback_operation_tv = ResourceUtil.getResourceIDByName(
+				packageName, "id", "mgp_feedback_operation_tv");
+		mgp_feedback_qurey_item_arrow_iv = ResourceUtil.getResourceIDByName(
+				packageName, "id",
+				"mgp_feedback_qurey_item_arrow_iv");
+		mgp_feedback_item_viewstub_ll = ResourceUtil.getResourceIDByName(
+				packageName, "id",
+				"mgp_feedback_item_viewstub_ll");
+		mgp_feedback_item_reply_tv = ResourceUtil.getResourceIDByName(
+				packageName, "id", "mgp_feedback_item_reply_tv");
+		mgp_feedback_qurey_item_operation_reply = ResourceUtil
+				.getResourceIDByName(packageName, "id",
+						"mgp_feedback_qurey_item_operation_reply");
+		mgp_feedback_operation_reply_tv = ResourceUtil.getResourceIDByName(
+				packageName, "id",
+				"mgp_feedback_operation_reply_tv");
+		mgp_feedback_qurey_item_arrow_reply_iv = ResourceUtil
+				.getResourceIDByName(packageName, "id",
+						"mgp_feedback_qurey_item_arrow_reply_iv");
+
+		mgp_list_line_margin_left = ResourceUtil
+				.getResourceIDByName(packageName, "dimen",
+						"mgp_list_line_margin_left");
+		mgp_feedback_list_item_triangle_margin_bottom = ResourceUtil
+				.getResourceIDByName(packageName, "dimen",
+						"mgp_feedback_list_item_triangle_margin_bottom");
+
+		mgp_feedback_query_status_noreply = ResourceUtil.getResourceIDByName(
+				packageName, "string",
+				"mgp_feedback_query_status_noreply");
+		mgp_feedback_query_detail = ResourceUtil.getResourceIDByName(
+				packageName, "string",
+				"mgp_feedback_query_detail");
+		mgp_feedback_query_close = ResourceUtil
+				.getResourceIDByName(packageName, "string",
+						"mgp_feedback_query_close");
+		mgp_feedback_query_status_reply = ResourceUtil.getResourceIDByName(
+				packageName, "string",
+				"mgp_feedback_query_status_reply");
+		mgp_feedback_query_date = ResourceUtil.getResourceIDByName(
+				packageName, "string", "mgp_feedback_query_date");
+
+		mgp_feedback_arrow_down = ResourceUtil.getResourceIDByName(
+				packageName, "drawable",
+				"mgp_feedback_arrow_down");
+		mgp_feedback_arrow_up = ResourceUtil.getResourceIDByName(
+				packageName, "drawable", "mgp_feedback_arrow_up");
+
+		mgp_order_state_color = ResourceUtil.getResourceIDByName(
+				packageName, "array", "mgp_order_state_color");
+		mgp_feedback_question_type_value = ResourceUtil.getResourceIDByName(
+				packageName, "array",
+				"mgp_feedback_question_type_value");
+	}
+
+}

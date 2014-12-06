@@ -1,0 +1,73 @@
+package com.changyou.mgp.sdk.mbi.pay.viewcache;
+
+import android.view.View;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+
+import com.changyou.mgp.sdk.mbi.R;
+import com.changyou.mgp.sdk.mbi.ui.widget.MarqueeTextView;
+/**
+ * 
+ * 功能描述：商品列表ViewHolder类
+ *
+ * @author 严峥(yanzheng)
+ * @date 2014-1-20 上午10:34:47
+ * 修改历史：(修改人，修改时间，修改原因/内容)
+ */
+public class GoodsListViewCache {
+	
+	private View view;
+	private ImageView goodsIconImg;
+	private MarqueeTextView goodsNameTv;
+	private MarqueeTextView goodsDescribeTv;
+	private TextView goodsPriceTv;
+	private LinearLayout goodsPriceLl;
+	private LinearLayout goodsLl;
+	
+	public void setView(View view){
+		this.view=view;
+	}
+	
+	public ImageView getGoodsIconImg() {
+		if(goodsIconImg==null){
+			goodsIconImg = (ImageView) view.findViewById(R.id.mgp_payment_item_1_03_goodsIcon_ImageView);
+		}
+		return goodsIconImg;
+	}
+
+	public MarqueeTextView getGoodsNameTv() {
+		if(goodsNameTv==null){
+			goodsNameTv=(MarqueeTextView) view.findViewById(R.id.mgp_payment_item_1_03_goodsName_TextView);
+		}
+		return goodsNameTv;
+	}
+
+	public MarqueeTextView getGoodsDescribeTv() {
+		if(goodsDescribeTv==null){
+			goodsDescribeTv=(MarqueeTextView) view.findViewById(R.id.mgp_payment_item_1_03_goodsDescribe_TextView);
+		}
+		return goodsDescribeTv;
+	}
+
+	public TextView getGoodsPriceTv() {
+		if(goodsPriceTv==null){
+			goodsPriceTv=(TextView) view.findViewById(R.id.mgp_payment_item_1_03_goodsPrice_TextView);
+		}
+		return goodsPriceTv;
+	}
+	
+	public LinearLayout getGoodsPriceLl() {
+		if(goodsPriceLl==null){
+			goodsPriceLl=(LinearLayout) view.findViewById(R.id.mgp_payment_item_1_03_goodsPrice_LinearLayout);
+		}
+		return goodsPriceLl;
+	}
+	
+	public LinearLayout getGoodsLl() {
+		if(goodsLl==null){
+			goodsLl=(LinearLayout) view.findViewById(R.id.mgp_payment_item_1_03_LinearLayout);
+		}
+		return goodsLl;
+	}
+}

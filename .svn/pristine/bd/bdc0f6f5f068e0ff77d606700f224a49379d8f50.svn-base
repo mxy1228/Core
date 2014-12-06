@@ -1,0 +1,19 @@
+package com.changyou.mgp.sdk.mbi.channel;
+
+import android.os.Bundle;
+
+public interface CYMGFunHelper {
+	
+	/**
+	 * 
+	 * 功能描述：检测必需参数的安全性
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param @param b
+	 * @param @return
+	 * @return boolean
+	 * @date 2014-3-25 下午8:03:41
+	 *
+	 */
+	public boolean checkNesessaryParam(Bundle b);
+}

@@ -1,0 +1,237 @@
+package com.changyou.mgp.sdk.mbi.channel.impl;
+
+import android.app.Activity;
+import android.content.Context;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+
+import com.changyou.mgp.sdk.mbi.R;
+import com.changyou.mgp.sdk.mbi.account.id.AccResource;
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannel;
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannelEntity;
+import com.changyou.mgp.sdk.mbi.config.CYMGPrompt;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolKeys;
+import com.changyou.mgp.sdk.mbi.config.Params;
+import com.changyou.mgp.sdk.mbi.entity.GoodsItem;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.platform.CYMGInitHelper;
+import com.changyou.mgp.sdk.mbi.platform.CYMGLoginHelper;
+import com.changyou.mgp.sdk.mbi.platform.CYMGLoginOutHelpr;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPayHelper;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPlatformConfiguration;
+import com.changyou.mgp.sdk.mbi.utils.MetaDataValueUtils;
+import com.changyou.mgp.sdk.mbi.utils.NetWorkUtils;
+import com.changyou.mgp.sdk.mbi.utils.SystemUtils;
+import com.wandoujia.sdk.plugin.paydef.LoginCallBack;
+import com.wandoujia.sdk.plugin.paydef.MSG;
+import com.wandoujia.sdk.plugin.paydef.PayCallBack;
+import com.wandoujia.sdk.plugin.paydef.User;
+import com.wandoujia.sdk.plugin.paydef.WandouAccount;
+import com.wandoujia.sdk.plugin.paydef.WandouOrder;
+import com.wandoujia.sdk.plugin.paydef.WandouPay;
+import com.wandoujia.sdk.plugin.paysdkimpl.PayConfig;
+import com.wandoujia.sdk.plugin.paysdkimpl.WandouAccountImpl;
+import com.wandoujia.sdk.plugin.paysdkimpl.WandouPayImpl;
+import com.wandoujia.wandoujiapaymentplugin.api.WandouUser;
+
+public class CYMGWdjImpl implements CYMGChannel {
+
+	protected static final String TAG = "MGPWdjImpl";
+	private CYLog mLog = CYLog.getInstance();
+	private Context mContext;
+
+	private WandouAccount account = new WandouAccountImpl();
+	private WandouPay wandoupay = new WandouPayImpl();
+
+	@Override
+	public void init(CYMGPlatformConfiguration config) {
+		mContext = config.getmContext();
+		
+		String appKey = MetaDataValueUtils.getWdjAppKey(mContext);
+		String appSecret = MetaDataValueUtils.getWdjAppSecret(mContext);
+		
+		if (mContext == null) {
+			mLog.e("mContext is null");
+			return;
+		}
+		if (appKey.equals("0")) {
+			mLog.e("appKey is 0");
+			return;
+		}
+		if (appSecret.equals("0")) {
+			mLog.e("appSecret is 0");
+			return;
+		}
+		// 初始化豌豆荚SDk
+		PayConfig.init((Activity)mContext, appKey, appSecret);
+		mLog.d("---------------->>:init" + mContext);
+		CYMGInitHelper.getInstance().onInitResult(CYMGPrompt.CODE_INIT_SUCCESS, null);
+	}
+
+	@Override
+	public void doLogin(CYMGChannelEntity entity) {
+		mContext = entity.getmContext();
+		mLog.d("---------------->>:doLogin" + entity.toString());
+		if (account == null) {
+			mLog.e("account is null");
+			return;
+		}
+		if (mContext == null) {
+			mLog.e("context is null");
+			return;
+		}
+		final String userIp = NetWorkUtils.getLocalIpAddress(mContext);
+		final String deviceid = SystemUtils.getDeviceId(mContext);
+		final String channelID = mContext.getString(AccResource.getInstance(mContext).mgp_channel_Wdj);
+		final String appKey =  MetaDataValueUtils.getWdjAppKey(mContext);
+		account.doLogin(mContext, new LoginCallBack() {
+
+			@Override
+			public void onSuccess(User user, int type) {
+				
+				mLog.d("login success:+" + user);
+				// 豌豆荚账户UID
+				Long uid = user.getUid();
+				final String uidStr = Long.toString(uid);
+				// 豌豆荚账户昵称
+				String nick = user.getNick();
+				// 豌豆荚账户登录验证 Token ，15分钟内有效
+				final String token = user.getToken();
+				// 1.请把uid,token 提交游戏服务器
+				// 2.游戏服务器收到uid,token后提交给豌豆荚服务器验证
+				// 3.验证通过后，游戏服务器生成一个 cookie 给游戏客户端使用
+				// 4.游戏客户端得到游戏的cookie 与游戏服务器进行交互通信，保证身份验证安全
+				new Handler(Looper.getMainLooper()).post(new Runnable() {
+					
+					@Override
+					public void run() {
+						mLog.d("doLogin-->>Handler#post");
+						Bundle b = new Bundle();
+						b.putString(CYMGProtocolKeys.UID, uidStr);
+						b.putString(CYMGProtocolKeys.TOKEN, token);
+						b.putString(CYMGProtocolKeys.USERIP, userIp);
+						b.putString(CYMGProtocolKeys.DEVICEID, deviceid);
+						b.putString(CYMGProtocolKeys.CHANNEL_ID, channelID);
+						b.putString(CYMGProtocolKeys.WDJ_APPKEY_ID, appKey);
+						b.putString(CYMGProtocolKeys.OPCODE, "10001");
+						CYMGLoginHelper.getInstance().loginResult(CYMGPrompt.CODE_LOGIN_SUCCESS,b,mContext);
+					}
+				});
+				
+			}
+
+			@Override
+			public void onError(int returnCode, String info) {
+				// 请不要在这里重新调用 doLogin
+				// 游戏界面上应该留有一个登录按钮，来触发 doLogin登录
+				mLog.e(MSG.trans(info));
+			}
+
+		});
+	}
+
+	@Override
+	public void doPay(CYMGChannelEntity entity) {
+		if (entity == null) {
+			mLog.e("entity is null");
+			return;
+		}
+		this.mContext = entity.getmContext();
+		Bundle bundle = entity.getBundle();
+		final GoodsItem goodsItem = (GoodsItem) bundle
+				.getSerializable(Params.GOODSITEM);
+		final String uid = bundle.getString(Params.UID);
+		final String moneyStr = goodsItem.getGoods_price();
+		float money = Float.parseFloat(moneyStr);
+		long moneyInFen = (long) (money * 100);
+
+		// 创建订单
+		WandouOrder order = new WandouOrder(goodsItem.getGoods_name(), goodsItem.getGoods_name(),
+				moneyInFen);
+		// 设置游戏订单号，最长50个字符
+		final String orderId = bundle.getString(Params.ORDER_ID);
+		order.setOut_trade_no(orderId);
+		// 触发支付
+		wandoupay.pay(mContext, order, new PayCallBack() {
+
+			@Override
+			public void onSuccess(User user, WandouOrder order) {
+				mLog.d("pay onSuccess:" + order);
+				new Handler(Looper.getMainLooper()).post(new Runnable() {
+					@Override
+					public void run() {
+						mLog.d("doPay:onSuccess-->>Handler#post");
+						CYMGPayHelper.getInstance().paySuccess(uid,goodsItem, orderId);
+					}
+				});
+			}
+
+			@Override
+			public void onError(User user, WandouOrder order) {
+				mLog.e("pay onError:" + order);
+				new Handler(Looper.getMainLooper()).post(new Runnable() {
+					
+					@Override
+					public void run() {
+						mLog.d("doPay:onError-->>Handler#post");
+						CYMGPayHelper.getInstance().payException(CYMGPrompt.CODE_PAY_FAILED);
+					}
+				});
+			}
+		});
+	}
+
+	@Override
+	public void doLogout(CYMGChannelEntity entity) {
+		this.mContext = entity.getmContext();
+		if (account == null) {
+			mLog.e("account is null");
+			return;
+		}
+		if (mContext == null) {
+			mLog.e("context is null");
+			return;
+		}
+		// 注销
+		account.doLogout(mContext, null);
+		CYMGLoginOutHelpr.getInstance().logoutResult(CYMGPrompt.CODE_LOGOUT_SUCCESS);
+	}
+
+	@Override
+	public void doDestroy(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void doCustomerService(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void doShowUserCenter(CYMGChannelEntity entity) {
+		Context context = entity.getmContext();
+//		account.doLogout(context, null);
+	}
+
+	@Override
+	public void doResume(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void doPause(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void doStop(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+		
+	}
+
+}

@@ -1,0 +1,192 @@
+package com.changyou.mgp.sdk.mbi.account.ui;
+
+import java.util.Date;
+import java.util.Timer;
+import java.util.TimerTask;
+
+import android.app.Activity;
+import android.content.DialogInterface;
+import android.graphics.drawable.AnimationDrawable;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.support.v4.app.DialogFragment;
+import android.support.v4.app.FragmentActivity;
+import android.support.v4.app.FragmentTransaction;
+import android.text.TextUtils;
+import android.view.Gravity;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.ViewGroup;
+import android.widget.ImageView;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import com.changyou.mgp.sdk.mbi.R;
+import com.changyou.mgp.sdk.mbi.account.utils.CYMGLoginTokenVerifyUtil;
+import com.changyou.mgp.sdk.mbi.account.utils.CYMGLoginTokenVerifyUtil.MyLoginTokenVerifyListener;
+import com.changyou.mgp.sdk.mbi.config.Contants;
+import com.changyou.mgp.sdk.mbi.db.CYMGAccBean;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+
+public class CYMGAutoLoginDialogFragment extends BaseDialogFragment implements OnClickListener{
+	
+	private static CYLog log = CYLog.getInstance();
+	
+	private static Activity mActivity;
+	
+	private TextView mAccountTv;
+	private TextView mSwtichTv;
+	private ImageView mLoadingImg;
+	
+	private Timer mTimer;
+	private static final int CLOSE_TIME = 4000;
+	
+	private Bundle mBundle;
+	
+	private int isOK = 0;
+	private boolean isOK2;
+	
+	private AnimationDrawable mAnim;
+	
+	@Override
+	public View onCreateView(LayoutInflater inflater, ViewGroup container,
+			Bundle savedInstanceState) {
+		View view=inflater.inflate(R.layout.mgp_sdk_2_0_dialog_auto_login, container,false);
+		initView(view);
+		initData();
+		initEvent();
+		return view;
+	}
+
+	@Override
+	protected void initView(View view) {
+		mAccountTv=(TextView) view.findViewById(R.id.mgp_sdk_2_0_auto_login_account_TextView);
+		mSwtichTv=(TextView) view.findViewById(R.id.mgp_sdk_2_0_auto_login_switch_TextView);
+		mLoadingImg=(ImageView) view.findViewById(R.id.mgp_sdk_2_0_auto_login_loading_ImageView);
+	}
+
+	@Override
+	protected void initData() {
+		try {
+			mBundle=getArguments();
+			final String uid=mBundle.getString("uid");
+			final String token=mBundle.getString("token");
+			final String acc=mBundle.getString("acc");
+			new CYMGLoginTokenVerifyUtil().loginTokenVerify(mActivity, uid, token,"o", new MyLoginTokenVerifyListener() {
+				
+				@Override
+				public void onStart() {
+				}
+				
+				@Override
+				public void onSuccess() {
+				}
+				
+				@Override
+				public void onFailure() {
+					isOK=2;
+				}
+				
+				@Override
+				public void onComplete() {
+					Toast.makeText(mActivity, "uid:"+uid+",token:"+token, Toast.LENGTH_LONG).show();
+					CYMGAccBean bean=new CYMGAccBean();
+					bean.setmAcc(acc);
+					bean.setmUID(uid);
+					bean.setmToken(token);
+					bean.setmTimeStamp(new Date(System.currentTimeMillis()).getTime()/1000);
+					((CYMGMainDialogFragmentActivity)mActivity).getmCYMGDBMaster().login(bean);
+					isOK=1;
+					if(isOK2){
+						CYMGLoginToast.showLoginToast(mActivity, acc.substring(6, acc.length()));
+						mActivity.finish();
+					}
+				}
+			});
+			startTimer();
+			startAnim();
+		} catch (Exception e) {
+			log.e(e);
+		}
+	}
+
+	@Override
+	protected void initEvent() {
+		mSwtichTv.setOnClickListener(this);
+	}
+	
+	public static CYMGAutoLoginDialogFragment newInewInstance(Activity activity,Bundle bundle){
+		mActivity=activity;
+		CYMGAutoLoginDialogFragment cymgAutoLoginDialogFragment=new CYMGAutoLoginDialogFragment();
+		cymgAutoLoginDialogFragment.setArguments(bundle);
+		cymgAutoLoginDialogFragment.setStyle(DialogFragment.STYLE_NORMAL, R.style.mgp_sdk_2_0_mian_dialog);
+		return cymgAutoLoginDialogFragment;
+	}
+	
+	@Override
+	public void dismiss() {
+		super.dismiss();
+		if(mAnim.isRunning()){
+			mAnim.stop();
+		}
+	}
+	
+	@Override
+	public void onCancel(DialogInterface dialog) {
+		mActivity.finish();
+	}
+
+	@Override
+	public void onClick(View v) {
+		if(v.getId()==R.id.mgp_sdk_2_0_auto_login_switch_TextView){
+			((CYMGMainDialogFragmentActivity)mActivity).changeDialogFragment(Contants.DialogFragmentTag.SWITCH_ACCOUNT, null);
+			mTimer.cancel();
+			dismiss();
+		}
+	}
+	
+	@Override
+	public void onDestroy() {
+		mTimer.cancel();
+		super.onDestroy();
+	}
+	
+	private void startAnim(){
+		mLoadingImg.setBackgroundResource(R.anim.mgp_sdk_2_0_dialog_loading_anim);  
+		mAnim = (AnimationDrawable) mLoadingImg.getBackground();  
+		mAnim.start();  
+	}
+	
+	private void startTimer(){
+		TimerTask task = new TimerTask(){
+
+			@Override
+			public void run() {
+				if(isOK==1){
+					String acc=mBundle.getString("acc");
+					CYMGLoginToast.showLoginToast(mActivity, acc.substring(6, acc.length()));
+					mActivity.finish();
+				}else if(isOK==2){
+					new Handler(Looper.getMainLooper()).post(new Runnable() {
+						@Override
+						public void run() {
+							((CYMGMainDialogFragmentActivity)mActivity).changeDialogFragment(Contants.DialogFragmentTag.SWITCH_ACCOUNT, null);
+						}
+					});
+					mTimer.cancel();
+					dismiss();
+				}
+				isOK2=true;
+			}
+		};
+		mTimer=new Timer();
+		mTimer.schedule(task,CLOSE_TIME,100);
+	}
+	
+	public void showDialog() {
+		FragmentTransaction transaction=((FragmentActivity)mActivity).getSupportFragmentManager().beginTransaction();
+		show(transaction, Contants.DialogFragmentTag.AUTO_LOGIN);
+	}
+}

@@ -1,0 +1,73 @@
+package com.changyou.mgp.sdk.mbi.ui.splash;
+
+import android.content.Context;
+
+import com.changyou.mgp.sdk.mbi.utils.ResourceUtil;
+
+public class SplashResource {
+
+	private static SplashResource mInstance;
+	private ResourceUtil mResourceUtil;
+	private boolean mHadInit;
+
+	private SplashResource(Context context) {
+		this.mResourceUtil = ResourceUtil.getInstance(context);
+		if (mHadInit) {
+			return;
+		} else {
+			init(context);
+		}
+	}
+
+	public static SplashResource getInstance(Context context) {
+		if (mInstance == null) {
+			synchronized (SplashResource.class) {
+				if (mInstance == null) {
+					mInstance = new SplashResource(context);
+				}
+			}
+		}
+		return mInstance;
+	}
+
+	// 2.0
+	// layout
+	public int mgp_sdk_2_0_init_splash;
+	// id
+	public int mgp_splash_iv;
+	// string
+
+	// drawable
+	public int mgp_sdk_2_0_splash_horizontal_01;
+	public int mgp_sdk_2_0_splash_horizontal_02;
+	public int mgp_sdk_2_0_splash_horizontal_03;
+	public int mgp_sdk_2_0_splash_vertical_01;
+	public int mgp_sdk_2_0_splash_vertical_02;
+	public int mgp_sdk_2_0_splash_vertical_03;
+
+	// 2.0end
+
+	private void init(Context context) {
+		// 2.0
+		// layout
+		mgp_sdk_2_0_init_splash = mResourceUtil
+				.getLayoutId("mgp_sdk_2_0_init_splash");
+		// id
+		mgp_splash_iv = mResourceUtil.getId("mgp_splash_iv");
+		// drawable
+		mgp_sdk_2_0_splash_horizontal_01 = mResourceUtil
+				.getDrawableId("mgp_sdk_2_0_splash_horizontal_01");
+		mgp_sdk_2_0_splash_horizontal_02 = mResourceUtil
+				.getDrawableId("mgp_sdk_2_0_splash_horizontal_02");
+		mgp_sdk_2_0_splash_horizontal_03 = mResourceUtil
+				.getDrawableId("mgp_sdk_2_0_splash_horizontal_03");
+		mgp_sdk_2_0_splash_vertical_01 = mResourceUtil
+				.getDrawableId("mgp_sdk_2_0_splash_vertical_01");
+		mgp_sdk_2_0_splash_vertical_02 = mResourceUtil
+				.getDrawableId("mgp_sdk_2_0_splash_vertical_02");
+		mgp_sdk_2_0_splash_vertical_03 = mResourceUtil
+				.getDrawableId("mgp_sdk_2_0_splash_vertical_03");
+
+		mHadInit = true;
+	}
+}

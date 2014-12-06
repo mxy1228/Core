@@ -1,0 +1,295 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.changyou.mgp.sdk.mbi"
+    android:versionCode="108001"
+    android:versionName="1.08.001" >
+    
+    <supports-screens 
+           android:largeScreens="true"  
+            android:normalScreens="true" 
+            android:smallScreens="true"  
+            android:anyDensity="true"/> 
+
+    <uses-sdk
+        android:minSdkVersion="10"
+        android:targetSdkVersion="17" />
+
+    <application
+        android:allowBackup="true"
+        android:theme="@android:style/Theme.NoTitleBar" >
+        
+        <activity android:name=".ui.MGPMainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        
+        <activity
+            android:name="com.changyou.mgp.sdk.mbi.ui.MGPLoginActivity"
+            android:launchMode="singleTop">
+            
+        </activity>
+        
+		<activity 
+		    android:name="com.changyou.mgp.sdk.mbi.ui.MGPRegistActivity">
+		</activity>
+		
+		<activity 
+		    android:name="com.changyou.mgp.sdk.mbi.ui.MGPPaymentActivity">
+		</activity>
+		
+		<activity 
+		    android:name="com.changyou.mgp.sdk.mbi.ui.MGPOnlineServerActivity"
+		    android:windowSoftInputMode="stateUnspecified">
+		</activity>
+		
+		<!-- QQ第三方登陆  -->
+		 <activity android:name="com.tencent.connect.common.AssistActivity"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" 
+            android:screenOrientation="portrait"/>
+		 <activity       
+		     android:name="com.tencent.tauth.AuthActivity"       
+		     android:noHistory="true"       
+		     android:launchMode="singleTask" >    
+		     <intent-filter>           
+		         <action android:name="android.intent.action.VIEW" />          
+		         <category android:name="android.intent.category.DEFAULT" />           
+		         <category android:name="android.intent.category.BROWSABLE" />           
+		         <data android:scheme="tencent101005256" />    
+		     </intent-filter> 
+		  </activity>
+		<!-- QQ第三方登陆  -->
+		
+		<!-- 支付宝SDK -->
+		<!--  <activity android:name="com.alipay.android.mini.window.sdk.MiniLaucherActivity"
+            android:configChanges="orientation"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTop"
+            android:theme="@style/MspAppTheme" />
+		<activity
+			android:name="com.alipay.android.mini.window.sdk.TransContainer"
+            android:configChanges="orientation"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTop"
+            android:theme="@style/MspAppTheme" />
+		<activity             
+		    android:name="com.alipay.android.mini.window.sdk.MiniPayActivity"
+            android:configChanges="orientation"
+            android:excludeFromRecents="true"
+            android:label="@string/msp_app_name"
+            android:launchMode="singleTop"
+            android:theme="@style/MspAppTheme"
+            android:windowSoftInputMode="adjustResize" >
+            <intent-filter android:priority="800" >
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+		<activity
+			android:name="com.alipay.android.mini.window.sdk.MiniWebActivity"
+            android:configChanges="orientation|keyboardHidden|navigation"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTop"
+            android:theme="@style/MspAppTheme" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+		<service android:name="com.alipay.android.app.MspService" />
+		<receiver
+            android:name="com.ut.device.BQueryWhoHasOne"
+            android:exported="true"
+            android:permission="com.ut.permission.DEVICE_STATE" >
+            <intent-filter>
+                <action android:name="UT.QueryWhoHasOne" />
+            </intent-filter>
+		</receiver>
+		<receiver
+            android:name="com.ut.device.BFoundIt"
+            android:exported="true"
+            android:permission="com.ut.permission.DEVICE_STATE" >
+            <intent-filter>
+                <action android:name="UT.FoundIT" />
+            </intent-filter>
+		</receiver>-->
+		<!-- 支付宝SDK -->
+		        
+        <!-- 360SDK所需 -->
+        <activity android:name="com.qihoopay.insdk.activity.ContainerActivity" 
+            android:configChanges="fontScale|orientation|keyboardHidden|locale|navigation" 
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" > </activity>
+        <activity android:name="com.qihoopp.qcoinpay.QcoinActivity" 
+            android:configChanges="fontScale|orientation|keyboardHidden|locale|navigation" 
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" 
+            android:windowSoftInputMode="stateAlwaysHidden" > </activity>
+        <meta-data android:name="QHOPENSDK_APPID" android:value="201250166" > </meta-data>
+        <meta-data android:name="QHOPENSDK_APPKEY" android:value="a1a3833c407b4d2be35004bc13ac6940" > </meta-data>
+        <meta-data android:name="QHOPENSDK_PRIVATEKEY" android:value="4B1A5FA0D20E4E62F19CA62322CC47C1" > </meta-data>
+        <meta-data android:name="QHOPENSDK_CHANNEL" android:value="default" > </meta-data>
+        <!-- 360SDK所需 -->
+        
+         <!-- 91所需 -->
+        <activity
+            android:name="com.nd.commplatform.activity.SNSControlCenterActivity"
+            android:configChanges="orientation|keyboardHidden|navigation"
+            android:launchMode="singleTask"
+            android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
+            android:windowBackground="@null"
+            android:windowSoftInputMode="adjustPan" />
+        <activity
+            android:name="com.nd.commplatform.activity.SNSLoginActivity"
+            android:configChanges="orientation|keyboardHidden|navigation"
+            android:launchMode="singleTask"
+            android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
+            android:windowBackground="@null"
+            android:windowSoftInputMode="adjustPan" />
+        <activity
+            android:name="com.nd.commplatform.gc.activity.ForumActivity"
+            android:configChanges="orientation|keyboardHidden|navigation"
+            android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
+            android:windowSoftInputMode="adjustPan" />
+
+        <service
+            android:name="com.nd.commplatform.service.NdDownloadService"
+            android:enabled="true"
+            android:exported="false"
+            android:process=":com.nd.commplatform.download" />
+
+        <receiver
+            android:name="com.nd.commplatform.versionupdate.ND2VersionUpdateNotify"
+            android:exported="false"
+            android:process="android.intent.nd.sns.commplatform.versionupdate" />
+
+        <service
+            android:name="com.nd.commplatform.versionupdate.ND2VersionUpdateService"
+            android:exported="false"
+            android:process="android.intent.nd.sns.commplatform.versionupdate" />
+        <service
+            android:name="com.nd.commplatform.service.NdNewMessageNotification"
+            android:enabled="true"
+            android:exported="false" />
+        <!-- 91所需 END-->
+        
+        <!-- 豌豆荚所需 -->
+        <activity
+            android:name="com.changyou.mgp.sdk.mbi.wdj.MGPWdjActivity" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <!-- 豌豆荚所需 -->
+        
+        <!-- 百度多酷SDK所需 BEGIN-->
+		 <!--  <activity
+            android:name="com.duoku.platform.ui.DKPaymentCenterActivity"
+            android:configChanges="orientation|keyboardHidden|navigation"
+            android:theme="@style/DK.Theme.NoBackGround" >
+        </activity>
+        <activity
+            android:name="com.duoku.platform.ui.DKLoginActivity"
+            android:configChanges="orientation|keyboardHidden|navigation"
+            android:theme="@style/DK.Theme.NoBackGround.NoAnimation" >
+        </activity>
+        <activity
+            android:name="com.duoku.platform.ui.DKAccountManagerActivity"
+            android:configChanges="orientation|keyboardHidden|navigation"
+            android:launchMode="singleTask"
+            android:theme="@style/DK.Theme.NoBackGround.NoAnimation" >
+        </activity>
+        <activity
+            android:name="com.duoku.platform.ui.DKLoginBdActivity"
+            android:configChanges="orientation|keyboardHidden|navigation"
+            android:theme="@style/DK.Theme.NoBackGround.NoAnimation" >
+        </activity>
+        <activity
+            android:name="com.duoku.platform.ui.DKRegisterActivity"
+            android:configChanges="orientation|keyboardHidden|navigation"
+            android:theme="@style/DK.Theme.NoBackGround.NoAnimation" >
+        </activity>
+        <activity
+            android:name="com.duoku.platform.ui.DKFindPwdHintActivity"
+            android:configChanges="orientation|keyboardHidden|navigation"
+            android:excludeFromRecents="true"
+            android:theme="@style/DK.Theme.NoBackGround.NoAnimation" >
+        </activity>
+        <activity
+            android:name="com.duoku.platform.ui.DKLicenceActivity"
+            android:configChanges="orientation|keyboardHidden|navigation"
+            android:excludeFromRecents="true"
+            android:theme="@style/DK.Theme.NoBackGround.NoAnimation" >
+        </activity>
+        <activity
+            android:name="com.duoku.platform.ui.DKReqBindPhoneActivity"
+            android:configChanges="orientation|keyboardHidden|navigation"
+            android:excludeFromRecents="true"
+            android:theme="@style/DK.Theme.NoBackGround.NoAnimation" >
+        </activity>
+        <activity
+            android:name="com.duoku.platform.ui.DKFindPwdActivity"
+            android:configChanges="orientation|keyboardHidden|navigation"
+            android:theme="@style/DK.Theme.NoBackGround.NoAnimation" >
+        </activity>
+        <activity
+            android:name="com.duoku.platform.ui.DKPrefectureActivity"
+            android:configChanges="orientation|keyboardHidden|navigation"
+            android:launchMode="singleTask"
+            android:theme="@style/DK.Theme.NoBackGround.NoAnimation" >
+        </activity>-->
+
+        <service android:name="com.duoku.platform.service.DKSuspensionService" />
+
+        <!-- push service client -->
+        <receiver android:name="com.duoku.platform.push.PushMessageReceiver" >
+            <intent-filter>
+                <action android:name="com.baidu.android.pushservice.action.MESSAGE" />
+                <action android:name="com.baidu.android.pushservice.action.RECEIVE" />
+                <action android:name="com.baidu.android.pushservice.action.notification.CLICK" />
+            </intent-filter>
+        </receiver>
+
+        <!-- push service -->
+        <receiver
+            android:name="com.baidu.android.pushservice.PushServiceReceiver"
+            android:process=":bdservice_v1" >
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.net.conn.CONNECTIVITY_CHANGE" />
+                <action android:name="com.baidu.android.pushservice.action.notification.SHOW" />
+                <action android:name="com.baidu.android.pushservice.action.media.CLICK" />
+            </intent-filter>
+        </receiver>
+        <receiver
+            android:name="com.baidu.android.pushservice.RegistrationReceiver"
+            android:process=":bdservice_v1" >
+            <intent-filter>
+                <action android:name="com.baidu.android.pushservice.action.METHOD" />
+                <action android:name="com.baidu.android.pushservice.action.BIND_SYNC" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.PACKAGE_REMOVED" />
+
+                <data android:scheme="package" />
+            </intent-filter>
+        </receiver>
+
+        <service
+            android:name="com.baidu.android.pushservice.PushService"
+            android:exported="true"
+            android:process=":bdservice_v1" />
+        <meta-data 
+            android:name="APP_ID_DUOKU"
+            android:value="100000"/>
+        <meta-data 
+            android:name="APP_KEY_DUOKU"
+            android:value="100000"/>
+		<!-- 百度多酷SDK所需 END-->
+    </application>
+
+</manifest>

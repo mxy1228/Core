@@ -1,0 +1,47 @@
+package com.changyou.mgp.sdk.mbi.pay.viewcache;
+
+import android.view.View;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+
+import com.changyou.mgp.sdk.mbi.pay.id.Resource;
+
+public class PaymentViewCache {
+
+	private Resource mResource=Resource.getInstance();
+	private View mView;
+	private TextView mTitleTV;
+	private ImageView mLogoIV;
+	private TextView mNameTV;
+	private TextView mDescribeTV;
+	private LinearLayout mTitleLL;
+	
+	public PaymentViewCache(View view){
+		this.mView = view;
+	}
+
+
+	public ImageView getmLogoIV() {
+		if(mLogoIV == null){
+			mLogoIV = (ImageView)mView.findViewById(mResource.mgp_payment_item_way_logo_iv);
+		}
+		return mLogoIV;
+	}
+
+	public TextView getmNameTV() {
+		if(mNameTV == null){
+			mNameTV = (TextView)mView.findViewById(mResource.mgp_payment_item_way_name_tv);
+		}
+		return mNameTV;
+	}
+	
+	public TextView getmDescribeTV() {
+		if(mDescribeTV == null){
+			mDescribeTV = (TextView)mView.findViewById(mResource.mgp_payment_item_way_describe_tv);
+		}
+		return mDescribeTV;
+	}
+
+	
+}

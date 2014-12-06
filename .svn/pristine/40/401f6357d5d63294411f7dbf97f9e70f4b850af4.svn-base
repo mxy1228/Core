@@ -1,0 +1,478 @@
+package com.changyou.mgp.sdk.mbi.pay.ui;
+
+import org.codehaus.jackson.type.TypeReference;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import android.app.Activity;
+import android.content.Intent;
+import android.net.Uri;
+import android.os.Bundle;
+import android.text.TextUtils;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemClickListener;
+import android.widget.Button;
+import android.widget.ImageButton;
+import android.widget.ListView;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import com.changyou.mgp.sdk.mbi.config.Contants;
+import com.changyou.mgp.sdk.mbi.config.HttpContants;
+import com.changyou.mgp.sdk.mbi.config.Params;
+import com.changyou.mgp.sdk.mbi.config.SDKConfig;
+import com.changyou.mgp.sdk.mbi.entity.GoodsItem;
+import com.changyou.mgp.sdk.mbi.entity.MDOEntity;
+import com.changyou.mgp.sdk.mbi.http.MyAsyncResponseHandler;
+import com.changyou.mgp.sdk.mbi.http.MyHttpClient;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.mbi.manager.CMBILogManager;
+import com.changyou.mgp.sdk.mbi.pay.adapter.PaymentAdapter;
+import com.changyou.mgp.sdk.mbi.pay.alipay.MGPAlipay;
+import com.changyou.mgp.sdk.mbi.pay.id.PayResource;
+import com.changyou.mgp.sdk.mbi.ui.base.BaseFragment;
+import com.changyou.mgp.sdk.mbi.ui.widget.WaitingDialog;
+import com.changyou.mgp.sdk.mbi.utils.JSONUtil;
+import com.changyou.mgp.sdk.mbi.utils.MyToast;
+import com.changyou.mgp.sdk.mbi.utils.NetWorkUtils;
+import com.loopj.android.http.RequestParams;
+import com.mokredit.payment.MktPayment;
+import com.mokredit.payment.MktPluginSetting;
+import com.unionpay.UPPayAssistEx;
+import com.unionpay.uppay.PayActivity;
+
+/**
+ * 
+ * 功能描述：支付方式页�?
+ *
+ * @author 徐萌�?xumengyang)
+ *
+ * @date 2014-1-15
+ */
+public class CYMGPaymentWayFragment extends BaseFragment implements OnItemClickListener,OnClickListener{
+
+	private CYLog log = CYLog.getInstance();
+	
+	private static final int MOD_PRICE = 2;
+	private static final int RESULT_FOR_ALIPAY_CODE = 3;//支付宝极简收银台回调code
+	private static final int MO9_CODE = 100;//MO9回调code
+	
+	private Activity mActivity;
+	private GoodsItem mGoodsItem;
+	private String mUID;
+	private WaitingDialog mWaitingDialog;
+	private String mCurrentOrderID;//本次生成的订单号
+	private PaymentAdapter mAdapter;
+	private String mPackageName;
+	
+	private ListView mListView;
+	private ImageButton mServiceImgBtn;
+	private Button mRightBtn;
+	private TextView mTitleTv;
+	private ImageButton mBackIBtn;
+	private View mTitle;
+	
+	private Bundle mBundle;
+	
+	@Override
+	public void onAttach(Activity activity) {
+		super.onAttach(activity);
+		this.mActivity = activity;
+	}
+	
+	@Override
+	public View onCreateView(LayoutInflater inflater, ViewGroup container,
+			Bundle savedInstanceState) {
+		this.mPackageName = mActivity.getPackageName();
+		View view = inflater.inflate(PayResource.getInstance(mActivity).mgp_payment_way, container,false);
+		initView(view);
+		initTitle(view);
+		initWaitingDialog();
+		initData();
+		initEvent();
+		return view;
+	}
+	
+	@Override
+	public void onResume() {
+		super.onResume();
+		CMBILogManager.page_B_Payway1(mActivity);
+	}
+	
+	private void initView(View view){
+		this.mListView = (ListView)view.findViewById(PayResource.getInstance(mActivity).mgp_payment_lv);
+	}
+	
+	private void initTitle(View view){
+		this.mTitle = view.findViewById(PayResource.getInstance(mActivity).payment_title);
+		this.mBackIBtn = (ImageButton)mTitle.findViewById(PayResource.getInstance(mActivity).mgp_title_left_ibtn);
+		this.mServiceImgBtn = (ImageButton)mTitle.findViewById(PayResource.getInstance(mActivity).mgp_title_right_imgbtn);
+		this.mTitleTv = (TextView)mTitle.findViewById(PayResource.getInstance(mActivity).mgp_title_tv);
+		this.mRightBtn = (Button)mTitle.findViewById(PayResource.getInstance(mActivity).mgp_title_right_btn);
+		this.mRightBtn.setVisibility(View.GONE);
+		this.mServiceImgBtn.setVisibility(View.GONE);
+	}
+	
+	private void initWaitingDialog(){
+		this.mWaitingDialog = new WaitingDialog(mActivity);
+		this.mWaitingDialog.setMessage(mActivity.getString(PayResource.getInstance(mActivity).mgp_loading));
+	}
+	
+	@Override
+	public void onDestroy() {
+		super.onDestroy();
+		if(mWaitingDialog != null){
+			mWaitingDialog.dismiss();
+		}
+		mWaitingDialog = null;
+	}
+	
+	@Override
+	protected void initData() {
+		mBundle = getArguments();
+		this.mGoodsItem = (GoodsItem)mBundle.getSerializable(Params.GOODSITEM);
+		this.mUID = mBundle.getString(Params.UID);
+		if (this.mGoodsItem == null) {
+			log.e("mGoodsItem is null");
+			return;
+		}
+		if(this.mUID == null){
+			throw new IllegalAccessError("uid is null");
+		}
+		this.mCurrentOrderID = mBundle.getString(Params.ORDER_ID);
+		if(this.mCurrentOrderID == null){
+			throw new IllegalAccessError("order_id is null");
+		}
+		String[] ways = null;
+		if(Double.valueOf(mGoodsItem.getGoods_price()) == MOD_PRICE){
+			ways = getResources().getStringArray(PayResource.getInstance(mActivity).mgp_payment_way_with_mdo);
+		}else{
+			ways = getResources().getStringArray(PayResource.getInstance(mActivity).mgp_payment_way_without_mdo);
+		}
+		//若有两元商品则显示手机短信支�?
+		mAdapter = new PaymentAdapter(mActivity, ways);
+		mListView.setAdapter(mAdapter);
+		this.mTitleTv.setText(PayResource.getInstance(mActivity).mgp_title_tv_payment_way);
+		this.mServiceImgBtn.setVisibility(View.GONE);
+	}
+
+	@Override
+	protected void initEvent() {
+		this.mListView.setOnItemClickListener(this);
+		this.mBackIBtn.setOnClickListener(this);
+	}
+
+	@Override
+	public void onItemClick(AdapterView<?> parent, View view, int position,
+			long id) {
+		if(mAdapter.isHadMDO()){
+			switch (position) {
+			case 0:
+				CMBILogManager.action_B_Payway1_MDO(mActivity);
+				mdo(mCurrentOrderID);
+				break;
+			case 1:
+				CMBILogManager.action_B_Payway1_AlipayWap(mActivity);
+				CYMGAlipayWrapFragment f = new CYMGAlipayWrapFragment();
+				Bundle b = new Bundle();
+				b.putSerializable(Params.GOODSITEM, mGoodsItem);
+				b.putString(Params.ALIPAY_WRAP.TRADE_NO, mCurrentOrderID);
+				b.putString(Params.ALIPAY_WRAP.UID, mUID);
+				f.setArguments(b);
+				getFragmentManager().beginTransaction().replace(PayResource.getInstance(mActivity).payment_root_layout, f, Contants.FragmentTag.ALIPAY_WRAP_FRAGMENT)
+				.addToBackStack(Contants.FragmentTag.ALIPAY_WRAP_FRAGMENT).commit();
+				break;
+			case 2:
+				//打开支付宝极简收银台
+				CMBILogManager.action_B_Payway1_AlipaySY(mActivity);
+				startAlipay();
+//				MGPAlipay.getInstance(mActivity).pay(mUID,mGoodsItem,mCurrentOrderID);
+				break;
+			case 3:
+				CMBILogManager.action_B_Payway1_UPPay(mActivity);
+				UPPay();
+				break;
+			case 4:
+				CMBILogManager.action_B_Payway1_CFTPay(mActivity);
+				CYMGTenPayFragment tenpayF = new CYMGTenPayFragment();
+				Bundle tenpayB = new Bundle();
+				tenpayB.putSerializable(Params.GOODSITEM, mGoodsItem);
+				tenpayB.putString(Params.ALIPAY_WRAP.TRADE_NO, mCurrentOrderID);
+				tenpayB.putString(Params.ALIPAY_WRAP.UID, mUID);
+				tenpayF.setArguments(tenpayB);
+				getFragmentManager().beginTransaction().replace(PayResource.getInstance(mActivity).payment_root_layout, tenpayF, Contants.FragmentTag.ALIPAY_WRAP_FRAGMENT)
+				.addToBackStack(Contants.FragmentTag.ALIPAY_WRAP_FRAGMENT).commit();
+				break;
+			case 5:
+				MO9();
+				CMBILogManager.action_B_Payway1_MO9(mActivity);
+				break;
+			}
+		}else{
+			switch (position) {
+			case 0:
+				CMBILogManager.action_B_Payway1_AlipayWap(mActivity);
+				CYMGAlipayWrapFragment f = new CYMGAlipayWrapFragment();
+				Bundle b = new Bundle();
+				b.putSerializable(Params.GOODSITEM, mGoodsItem);
+				b.putString(Params.ALIPAY_WRAP.TRADE_NO, mCurrentOrderID);
+				b.putString(Params.ALIPAY_WRAP.UID, mUID);
+				f.setArguments(b);
+				getFragmentManager().beginTransaction().replace(PayResource.getInstance(mActivity).payment_root_layout, f, Contants.FragmentTag.ALIPAY_WRAP_FRAGMENT)
+				.addToBackStack(Contants.FragmentTag.ALIPAY_WRAP_FRAGMENT).commit();
+				break;
+			case 1:
+				CMBILogManager.action_B_Payway1_AlipaySY(mActivity);
+//				MGPAlipay.getInstance(mActivity).pay(mUID,mGoodsItem,mCurrentOrderID);
+				startAlipay();
+				break;
+			case 2:
+				CMBILogManager.action_B_Payway1_UPPay(mActivity);
+				UPPay();
+				break;
+			case 3:
+				CMBILogManager.action_B_Payway1_CFTPay(mActivity);
+				CYMGTenPayFragment tenpayF = new CYMGTenPayFragment();
+				Bundle tenpayB = new Bundle();
+				tenpayB.putSerializable(Params.GOODSITEM, mGoodsItem);
+				tenpayB.putString(Params.ALIPAY_WRAP.TRADE_NO, mCurrentOrderID);
+				tenpayB.putString(Params.ALIPAY_WRAP.UID, mUID);
+				tenpayF.setArguments(tenpayB);
+				getFragmentManager().beginTransaction().replace(PayResource.getInstance(mActivity).payment_root_layout, tenpayF, Contants.FragmentTag.ALIPAY_WRAP_FRAGMENT)
+				.addToBackStack(Contants.FragmentTag.ALIPAY_WRAP_FRAGMENT).commit();
+				break;
+			case 4:
+				MO9();
+				CMBILogManager.action_B_Payway1_MO9(mActivity);
+				break;
+			}
+		}
+	}
+	
+
+	@Override
+	public void onClick(View v) {
+		if(v.getId()==PayResource.getInstance(mActivity).mgp_title_left_ibtn){
+			((CYMGPaymentActivity)mActivity).goback();
+		}
+	}
+	
+	private void showWaitingDialog(){
+		if(mWaitingDialog!=null){
+			mWaitingDialog.show();
+		}
+	}
+	
+	private void dismissWaitingDialog(){
+		if(mWaitingDialog.isShowing()){
+			mWaitingDialog.dismiss();
+		}
+	}
+
+	/**
+	 * 
+	 * 功能描述：向服务器请求手机短信支付数�?
+	 *
+	 * @author 徐萌�?xumengyang)
+	 * @param 
+	 * @return void
+	 * @date 2014-3-15 下午3:12:32
+	 *
+	 */
+	private void mdo(String orderID){
+		RequestParams params = new RequestParams();
+		params.put("order_id", orderID);
+		new MyHttpClient(mActivity).get(HttpContants.getURL(HttpContants.MDO), params, new MyAsyncResponseHandler(){
+			
+			@Override
+			public void onStart() {
+				showWaitingDialog();
+			}
+			
+			@Override
+			public void onSuccess(int statusCode, String content) {
+				log.d("mdo result = "+content);
+				dismissWaitingDialog();
+				try {
+					MDOEntity e = JSONUtil.getMapper().readValue(content, new TypeReference<MDOEntity>() {
+					});
+					if(e != null){
+						Uri uri = Uri.parse("smsto:"+e.getMsgphone());
+						Intent intent = new Intent(Intent.ACTION_SENDTO,uri);
+						intent.putExtra("sms_body", e.getMsgcontent());
+						mActivity.startActivity(intent);
+					}else{
+						log.e("e is null");
+					}
+				} catch (Exception e) {
+					log.e(e);
+				}
+			}
+			
+			@Override
+			public void onFailure(Throwable error, String content) {
+				log.e("mdo result = "+content);
+				dismissWaitingDialog();
+				try {
+					MDOEntity e = JSONUtil.getMapper().readValue(content, new TypeReference<MDOEntity>() {
+					});
+					Toast.makeText(mActivity, e.getClient_message(), Toast.LENGTH_LONG).show();
+				} catch (Exception e) {
+					log.e(e);
+				}
+			}
+			
+		});
+	}
+	
+	/**
+	 * 
+	 * 功能描述：银联支付
+	 *
+	 * @author 严峥(yanzheng)
+	 * @param @param b
+	 * @return void
+	 * @date 2014-4-28 下午3:05:32
+	 *
+	 * 修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public void UPPay(){
+		if(NetWorkUtils.isNetworkConnected(mActivity)){
+			log.d("UPPay");
+			GoodsItem goodsItem=(GoodsItem) mBundle.getSerializable(Params.GOODSITEM);
+			MyHttpClient mHttpClient = new MyHttpClient(mActivity);
+			RequestParams map = new RequestParams();
+			map.put("order_id", mBundle.getString(Params.ORDER_ID));
+			map.put("goods_price", goodsItem.getGoods_price());
+			mHttpClient.get(HttpContants.getURL(HttpContants.UPPAY_TN), map, new MyAsyncResponseHandler(){
+				
+				@Override
+				public void onStart() {
+					showWaitingDialog();
+				}
+				
+				@Override
+				public void onSuccess(int statusCode, String content) {
+					log.d("onSuccess,content:"+content);
+					dismissWaitingDialog();
+					if(!TextUtils.isEmpty(content)){
+						try {
+							JSONObject jsonObject=new JSONObject(content);
+							int status=jsonObject.getInt("status");
+							switch (status) {
+							case 1:
+								String tn=jsonObject.getString("tn");
+								String mode="00";//正式
+								if(SDKConfig.DEBUG){
+//									mode="01";//测试
+								}
+								UPPayAssistEx.startPayByJAR(mActivity, PayActivity.class, null, null, tn, mode);
+								break;
+							default:
+								log.d("UPPay获取TN流水号失败，status："+status);
+								MyToast.showToast(mActivity,mActivity.getString(PayResource.getInstance(mActivity).mgp_net_error_hint));
+								break;
+							}
+						} catch (JSONException e) {
+							log.e(e);
+						}
+					}
+				}
+				
+				@Override
+				public void onFailure(int statusCode, Throwable error,
+						String content) {
+					log.d("onFailure,content:"+content);
+					dismissWaitingDialog();
+					MyToast.showToast(mActivity,mActivity.getString(PayResource.getInstance(mActivity).mgp_net_error_hint));
+				}
+			});
+		}else{
+			MyToast.showToast(mActivity,mActivity.getString(PayResource.getInstance(mActivity).mgp_net_error_hint));
+		}
+	}
+	
+	/**
+	 * 
+	 * 功能描述：MO9现玩后付
+	 *
+	 * @author 严峥(yanzheng)
+	 * @param 
+	 * @return void
+	 * @date 2014-5-9 上午9:56:29
+	 *
+	 * 修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void MO9(){
+		if(NetWorkUtils.isNetworkConnected(mActivity)){
+			log.d("MO9Pay");
+			GoodsItem goodsItem=(GoodsItem) mBundle.getSerializable(Params.GOODSITEM);
+			MyHttpClient mHttpClient = new MyHttpClient(mActivity);
+			RequestParams map = new RequestParams();
+			map.put("lc", "CN");
+			map.put("amount", goodsItem.getGoods_price());
+			map.put("currency", "RMB");
+			map.put("item_name", goodsItem.getGoods_name());
+			map.put("notify_url", HttpContants.getOneCardPayNotifyUrl());
+			mHttpClient.get(HttpContants.getURL(HttpContants.MO9_PAY), map, new MyAsyncResponseHandler(){
+				
+				@Override
+				public void onStart() {
+					showWaitingDialog();
+				}
+				
+				@Override
+				public void onSuccess(int statusCode, String content) {
+					log.d("onSuccess,content:"+content);
+					dismissWaitingDialog();
+					if(!TextUtils.isEmpty(content)){
+						MktPluginSetting pluginSetting= new MktPluginSetting (content);
+						Intent intent=new Intent();
+						intent.setClass(mActivity, MktPayment.class);
+						intent.putExtra("mokredit_android", pluginSetting);
+						mActivity.startActivityForResult(intent, MO9_CODE);
+					}
+				}
+				
+				@Override
+				public void onFailure(int statusCode, Throwable error,
+						String content) {
+					log.d("onFailure,content:"+content);
+					dismissWaitingDialog();
+					MyToast.showToast(mActivity,mActivity.getString(PayResource.getInstance(mActivity).mgp_net_error_hint));
+				}
+			});
+		}else{
+			MyToast.showToast(mActivity,mActivity.getString(PayResource.getInstance(mActivity).mgp_net_error_hint));
+		}
+	}
+	
+	/**
+	 * 启动支付宝极简收银台
+	 */
+	private void startAlipay(){
+		MGPAlipay.getInstance(mActivity).pay(mUID, mGoodsItem, mCurrentOrderID);
+//		Intent iAlipay = new Intent();
+//		iAlipay.setPackage(mActivity.getPackageName());
+//		iAlipay.setAction("com.alipay.mobilepay.android");
+//		iAlipay.putExtra("order_info", MGPAlipay.getInstance(mActivity).getOrderInfo(mUID
+//				, mGoodsItem, mCurrentOrderID));
+//		startActivityForResult(iAlipay, RESULT_FOR_ALIPAY_CODE);
+	}
+	
+	@Override
+	public void onActivityResult(int requestCode, int resultCode, Intent data) {
+		switch (requestCode) {
+		case RESULT_FOR_ALIPAY_CODE:
+			
+			break;
+		case MO9_CODE:
+			
+			break;
+		}
+	}
+}

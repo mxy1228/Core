@@ -1,0 +1,220 @@
+package com.changyou.mgp.sdk.mbi.channel.impl;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import android.app.Activity;
+import android.content.Context;
+import android.content.Intent;
+import android.os.Bundle;
+import android.text.TextUtils;
+
+import com.anzhi.usercenter.sdk.AnzhiUserCenter;
+import com.anzhi.usercenter.sdk.inter.AnzhiCallback;
+import com.anzhi.usercenter.sdk.inter.KeybackCall;
+import com.anzhi.usercenter.sdk.item.CPInfo;
+import com.changyou.mgp.sdk.mbi.R;
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannel;
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannelEntity;
+import com.changyou.mgp.sdk.mbi.config.CYMGPrompt;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolKeys;
+import com.changyou.mgp.sdk.mbi.config.Params;
+import com.changyou.mgp.sdk.mbi.entity.GoodsItem;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.platform.CYMGInitHelper;
+import com.changyou.mgp.sdk.mbi.platform.CYMGLoginHelper;
+import com.changyou.mgp.sdk.mbi.platform.CYMGLoginOutHelpr;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPayHelper;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPlatformConfiguration;
+import com.changyou.mgp.sdk.mbi.utils.MetaDataValueUtils;
+import com.changyou.mgp.sdk.mbi.utils.NetWorkUtils;
+import com.changyou.mgp.sdk.mbi.utils.SystemUtils;
+import com.lthj.unipay.plugin.en;
+
+public class CYMGAnZhiImpl implements CYMGChannel {
+	
+	private final CYLog log = CYLog.getInstance();
+
+	@Override
+	public void init(CYMGPlatformConfiguration config) {
+		log.d("MGPAnZhiImpl:init");
+		final Context context = config.getmContext();
+		serverCallback(null,context);
+		String app_key=MetaDataValueUtils.getAnZhiAppKey(context);
+		String app_secret=MetaDataValueUtils.getAnZhiAppSecret(context);
+		if(TextUtils.isEmpty(app_key)||TextUtils.isEmpty(app_secret)){
+			CYMGInitHelper.getInstance().onInitResult(CYMGPrompt.CODE_INIT_FAILED, null);
+			return;
+		}
+		String app_name=SystemUtils.getPackageInfo(context).applicationInfo.loadLabel(context.getPackageManager()).toString();
+		CPInfo info = new CPInfo();
+		info.setAppKey(app_key);
+		info.setSecret(app_secret);
+		info.setChannel("AnZhi");
+		info.setGameName(app_name);
+		// info.setOpenOfficialLogin(true); //是否开启游戏官方账号登录功能，默认为关闭
+		AnzhiUserCenter.getInstance().setCPInfo(info);
+		AnzhiUserCenter.getInstance().createFloatView((Activity)context);//SDK 初始化之后调用
+		AnzhiUserCenter.getInstance().showFloaticon();//在悬浮串口启动后调用
+		CYMGInitHelper.getInstance().onInitResult(CYMGPrompt.CODE_INIT_SUCCESS, null);
+	}
+
+	@Override
+	public void doLogin(CYMGChannelEntity entity) {
+		log.d("MGPAnZhiImpl:doLogin");
+		Context context = entity.getmContext();
+		serverCallback(entity,context);
+		AnzhiUserCenter.getInstance().login(context,true);
+	}
+
+	@Override
+	public void doPay(CYMGChannelEntity entity) {
+		log.d("MGPAnZhiImpl:doPay");
+		Context context = entity.getmContext();
+		serverCallback(entity,context);
+		Bundle bundle=entity.getBundle();
+		GoodsItem goodsItem = (GoodsItem)bundle.getSerializable(Params.GOODSITEM);
+		float price=Float.valueOf(goodsItem.getGoods_price());
+		String currentOrderID = bundle.getString(Params.ORDER_ID);
+		AnzhiUserCenter.getInstance().pay(context,0, price, goodsItem.getGoods_name(), currentOrderID+"_"+MetaDataValueUtils.getAnZhiAppKey(context));
+	}
+
+	@Override
+	public void doLogout(CYMGChannelEntity entity) {
+		log.d("MGPAnZhiImpl:doLogout");
+		Context context = entity.getmContext();
+//		Intent intent = new Intent(AnzhiUserCenter.ANZHI_ACTION_USER_LOGOUT);
+//		intent.putExtra(AnzhiUserCenter.PKG_NAME,context.getPackageName());
+//		context.sendBroadcast(intent);
+		CYMGLoginOutHelpr.getInstance().logoutResult(CYMGPrompt.CODE_LOGOUT_SUCCESS);
+	}
+
+	@Override
+	public void doDestroy(CYMGChannelEntity entity) {
+		log.d("MGPAnZhiImpl:doDestroy");
+		Context context = entity.getmContext();
+		AnzhiUserCenter.getInstance().dismissFloaticon();
+		AnzhiUserCenter.getInstance().gameOver((Activity)context);//在游戏结束时调用
+	}
+
+	@Override
+	public void doCustomerService(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+
+	}
+	
+	private void serverCallback(final CYMGChannelEntity entity,final Context context){
+		final String userIp = NetWorkUtils.getLocalIpAddress(context);
+		final String deviceid = SystemUtils.getDeviceId(context);
+		final String app_key_anzhi = MetaDataValueUtils.getAnZhiAppKey(context);
+		final String app_secret_anzhi = MetaDataValueUtils.getAnZhiAppSecret(context);
+		final String channelId = context.getString(R.string.mgp_channel_anzhi);
+		
+		AnzhiUserCenter.getInstance().setCallback(new AnzhiCallback() {
+
+			@Override
+			public void onCallback(CPInfo cpInfo, String result) {
+				JSONObject json;
+				try {
+					json = new JSONObject(result);
+					String key = json.getString("callback_key");
+					if ("key_login".equals(key)) {
+						int code = json.getInt("code");
+						switch (code) {
+						case 200:
+							String uid = json.getString("uid");
+							String sid = json.getString("sid");
+							Bundle b = new Bundle();
+							b.putString(CYMGProtocolKeys.APP_ACCOUNT_ANZHI, uid);
+							b.putString(CYMGProtocolKeys.APP_SID_ANZHI, sid);
+							b.putString(CYMGProtocolKeys.USERIP, userIp);
+							b.putString(CYMGProtocolKeys.DEVICEID, deviceid);
+							b.putString(CYMGProtocolKeys.APP_KEY_ANZHI, app_key_anzhi);
+							b.putString(CYMGProtocolKeys.APP_SECRET_ANZHI, app_secret_anzhi);
+							b.putString(CYMGProtocolKeys.CHANNEL_ID, channelId);
+							b.putString(CYMGProtocolKeys.OPCODE, "10001");
+							CYMGLoginHelper.getInstance().loginResult(CYMGPrompt.CODE_LOGIN_SUCCESS,b);
+							break;
+						default:
+							CYMGLoginHelper.getInstance().loginResult(CYMGPrompt.CODE_LOGIN_FAILED, null);
+							break;
+						}
+					} else if ("key_pay".equals(key)) {
+						int code = json.getInt("code");
+						Bundle bundle=entity.getBundle();
+						GoodsItem goodsItem = (GoodsItem)bundle.getSerializable(Params.GOODSITEM);
+						String uid = bundle.getString(Params.UID);
+						String currentOrderID = bundle.getString(Params.ORDER_ID);
+						switch (code) {
+						case 200://200 支付成功，201 等待支付完成，其它值为失败
+							log.d("MGPAnZhiImpl:paySuccess,code:"+code);
+							CYMGPayHelper.getInstance().paySuccess(uid,goodsItem, currentOrderID);
+							break;
+						case 201:
+							log.d("MGPAnZhiImpl:paySuccess,code:"+code);
+							CYMGPayHelper.getInstance().paySuccess(uid,goodsItem, currentOrderID);
+							break;
+						default:
+							log.d("MGPAnZhiImpl:payException,code:"+code);
+							CYMGPayHelper.getInstance().payException(CYMGPrompt.CODE_PAY_FAILED);
+							break;
+						}
+					} else if ("key_logout".equals(key)) {
+						restartApplication(context);
+					}
+				} catch (JSONException e) {
+					log.e(e);
+				}
+			}
+		});
+		
+		AnzhiUserCenter.getInstance().setKeybackCall(new KeybackCall() {
+
+			@Override
+			public void KeybackCall(String result) {
+				if(result.equals("Login")){
+					CYMGLoginHelper.getInstance().loginResult(CYMGPrompt.CODE_LOGIN_FAILED, null);
+				} else if(result.equals("gamePay")){
+					CYMGPayHelper.getInstance().payException(CYMGPrompt.CODE_PAY_CANCEL);
+				} else if(result.equals("UserCenter")){
+					
+				} else if(result.equals("GameGift")){
+					
+				} else if(result.equals("anzhiBbs")){
+					
+				} else if(result.equals("Message")){
+					
+				} else if(result.equals("Feedback")){
+					
+				} else if(result.equals("AnzhiCurrent")){
+					CYMGPayHelper.getInstance().payException(CYMGPrompt.CODE_PAY_CANCEL);
+				}
+			}
+			
+		});
+	}
+	
+	/**
+	 * 
+	 * 功能描述：应用重启
+	 *
+	 * @author 严峥(yanzheng)
+	 * @param @param context
+	 * @return void
+	 * @date 2014-3-26 下午4:12:19
+	 *
+	 * 修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void restartApplication(Context context) {  
+        final Intent intent = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());  
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);  
+        context.startActivity(intent); 
+	}
+
+	@Override
+	public void doShowUserCenter(CYMGChannelEntity entity) {
+		Context context = entity.getmContext();
+		AnzhiUserCenter.getInstance().viewUserInfo(context);
+	} 
+
+}

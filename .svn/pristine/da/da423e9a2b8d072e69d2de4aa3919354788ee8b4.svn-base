@@ -1,0 +1,192 @@
+package com.changyou.mgp.sdk.mbi.ui.widget;
+
+import org.dom4j.IllegalAddException;
+
+import android.content.Context;
+import android.content.res.ColorStateList;
+import android.util.AttributeSet;
+import android.util.TypedValue;
+import android.view.Gravity;
+import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.ImageView.ScaleType;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+
+import com.changyou.mgp.sdk.mbi.R;
+
+/**
+ * 
+ * 功能描述：网络异常时显示的页面
+ *
+ * @author 徐萌阳(xumengyang)
+ *
+ * <p>修改历史：(修改人，修改时间，修改原因/内容)</p>
+ */
+public class NetErrorView extends LinearLayout {
+
+	private static final int MAX_FONT_SIZE = 24;
+	private static final int SMALL_FONT_SIZE = 18;
+	
+	private Button mRefreshBtn;
+	
+	public NetErrorView(Context context) {
+		super(context);
+		init(context);
+	}
+	
+	public NetErrorView(Context context, AttributeSet attrs) {
+		super(context, attrs);
+		init(context);
+	}
+	
+	/**
+	 * 
+	 * 功能描述：初始化页面
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param @param context
+	 * @return void
+	 * @date 2013-12-27 下午1:35:45
+	 *
+	 * 修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void init(Context context){
+		this.setGravity(Gravity.CENTER);
+		this.setOrientation(LinearLayout.VERTICAL);
+		initImageView(context);
+		initFirstTV(context);
+		initSecondTV(context);
+		initRefreshBtn(context);
+	}
+	
+	/**
+	 * 
+	 * 功能描述：初始化ImageView
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param @param context
+	 * @return void
+	 * @date 2013-12-27 下午1:49:31
+	 *
+	 * 修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void initImageView(Context context){
+		ImageView iv = new ImageView(context);
+		LayoutParams params = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+		iv.setLayoutParams(params);
+		iv.setScaleType(ScaleType.FIT_CENTER);
+		iv.setAdjustViewBounds(true);
+		iv.setImageResource(R.drawable.mgp_net_error_pic);
+		addView(iv);
+	}
+	
+	/**
+	 * 
+	 * 功能描述：初始化第一个TextView，显示文案“出错啦！页面加载失败”
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param 
+	 * @return void
+	 * @date 2013-12-27 下午1:36:59
+	 *
+	 * 修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void initFirstTV(Context context){
+		TextView tv = new TextView(context);
+		tv.setTextColor(getResources().getColor(R.color.mgp_net_error_tv_color1));
+		tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, getResources().getDimension(R.dimen.mgp_text_max));
+		tv.setSingleLine(true);
+		tv.setText(R.string.mgp_net_error_hint1);
+		LayoutParams params = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+		params.topMargin = getResources().getDimensionPixelOffset(R.dimen.mgp_net_error_tv1_margin_top);
+		tv.setLayoutParams(params);
+		addView(tv);
+	}
+	
+	/**
+	 * 
+	 * 功能描述：初始化第二个TextView，显示文案“请检查您的网络是否正常 点击按钮重新加载”
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param 
+	 * @return void
+	 * @date 2013-12-27 下午1:53:38
+	 *
+	 * 修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void initSecondTV(Context context){
+		TextView tv = new TextView(context);
+		LayoutParams params = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+		params.topMargin = getResources().getDimensionPixelOffset(R.dimen.mgp_net_error_tv2_margin_top);
+		tv.setLayoutParams(params);
+		tv.setTextColor(getResources().getColor(R.color.mgp_net_error_tv_color1));
+		tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, getResources().getDimension(R.dimen.mgp_text_small));
+		tv.setSingleLine(true);
+		tv.setText(R.string.mgp_net_error_hint2);
+		addView(tv);
+	}
+
+	/**
+	 * 
+	 * 功能描述：初始化刷新Btn
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param @param context
+	 * @return void
+	 * @date 2013-12-27 下午1:59:54
+	 *
+	 * 修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void initRefreshBtn(Context context){
+		mRefreshBtn = new Button(context);
+		mRefreshBtn.setId(R.id.mgp_net_error_refresh_btn_id);
+		LayoutParams params = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+		params.topMargin = getResources().getDimensionPixelOffset(R.dimen.mgp_net_error_btn_margin_top);
+		mRefreshBtn.setLayoutParams(params);
+		mRefreshBtn.setPadding(getResources().getDimensionPixelOffset(R.dimen.mgp_net_error_btn_padding_left_right)
+				, getResources().getDimensionPixelOffset(R.dimen.mgp_net_error_btn_padding_top_bottom)
+				, getResources().getDimensionPixelOffset(R.dimen.mgp_net_error_btn_padding_left_right)
+				, getResources().getDimensionPixelOffset(R.dimen.mgp_net_error_btn_padding_top_bottom));
+		mRefreshBtn.setBackgroundResource(R.drawable.mgp_confirm_btn_xbg);
+		mRefreshBtn.setTextSize(TypedValue.COMPLEX_UNIT_PX, getResources().getDimension(R.dimen.mgp_text_max));
+		ColorStateList csl = getResources().getColorStateList(R.color.mgp_refresh_btn_text_xbg);
+		mRefreshBtn.setTextColor(csl);
+		mRefreshBtn.setText(R.string.mgp_refresh);
+		addView(mRefreshBtn);
+	}
+	
+	/**
+	 * 
+	 * 功能描述：获取刷新按钮,按钮ID=R.id.net_error_refresh_btn_id
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param @return
+	 * @return Button
+	 * @date 2013-12-27 下午2:09:55
+	 *
+	 * 修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public Button getRefreshBtn(){
+		if(mRefreshBtn == null){
+			throw new IllegalAddException("mRefreshBtn is null");
+		}else{
+			return mRefreshBtn;
+		}
+	}
+	
+	/**
+	 * 
+	 * 功能描述：获取刷新按钮ID
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param @return
+	 * @return int
+	 * @date 2013-12-30 下午1:07:50
+	 *
+	 * 修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public int getRefreshBtnId(){
+		return this.mRefreshBtn.getId();
+	}
+}

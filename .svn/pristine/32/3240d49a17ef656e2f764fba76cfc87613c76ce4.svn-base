@@ -1,0 +1,138 @@
+package com.changyou.mgp.sdk.mbi.account.utils;
+
+import android.app.Activity;
+import android.content.Context;
+import android.os.Bundle;
+
+import com.changyou.mgp.sdk.mbi.account.id.AccResource;
+import com.changyou.mgp.sdk.mbi.common.CYMGCallback;
+import com.changyou.mgp.sdk.mbi.common.CYMGCallbackHelper;
+import com.changyou.mgp.sdk.mbi.config.CYMGPrompt;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolKeys;
+import com.changyou.mgp.sdk.mbi.config.Contants;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPlatform;
+import com.changyou.mgp.sdk.mbi.utils.MetaDataValueUtils;
+import com.changyou.mgp.sdk.mbi.utils.NetWorkUtils;
+import com.changyou.mgp.sdk.mbi.utils.SystemUtils;
+import com.changyou.mgp.sdk.mbi.utils.UserInfoSPUtil;
+import com.tencent.tauth.IUiListener;
+import com.tencent.tauth.Tencent;
+
+/**
+ * 
+ * 功能描述：QQ第三方登陆
+ * 
+ * @author 王明君(wangmingjun)
+ * 
+ * @date 2014-1-14
+ */
+public class QQLoginUtil {
+
+	private CYLog log = CYLog.getInstance();
+
+	private Context mContext;
+	private Tencent mTencent;
+
+	public QQLoginUtil(Context context) {
+		this.mContext = context;
+		initTencent();
+	}
+
+	/**
+	 * 
+	 * 功能描述：初始化qq实例
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param
+	 * @return void
+	 * @date 2014-3-25 上午10:37:45
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public void initTencent() {
+		String appid = MetaDataValueUtils.getQQAppId(mContext);
+		mTencent = Tencent.createInstance(appid, mContext);
+	}
+
+	/**
+	 * 
+	 * 功能描述：QQ登录
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param @param activity
+	 * @param @param isFinish
+	 * @param @param mgpLoginListener
+	 * @return void
+	 * @date 2014-1-16 下午5:12:59
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public void qqLogin(IUiListener listener) {
+		final CYMGCallback callback = CYMGPlatform.getInstance().getCYMGCallback();
+		if(callback==null){
+			log.d("CYMGCallback is null");
+			return;
+		}
+		if (!mTencent.isSessionValid()) {
+			mTencent.login((Activity) mContext, Contants.QQLoginParams.SCOPE,
+					listener);
+		} else {
+			String uid = mTencent.getOpenId();
+			String token = mTencent.getAccessToken();
+			callback.onFinished(CYMGCallbackHelper.getLoginResult(CYMGPrompt.CODE_LOGIN_SUCCESS, creatBundle(uid, token, Contants.LoginParams.TYPE_QQ),mContext));
+			listener.onComplete(null);
+		}
+	}
+
+	/**
+	 * 
+	 * 功能描述：创建回调数据
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param @param uid
+	 * @param @param token
+	 * @param @return
+	 * @return Bundle
+	 * @date 2014-3-25 上午10:33:58
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public Bundle creatBundle(String uid, String token, String type) {
+
+		String userIp = NetWorkUtils.getLocalIpAddress(mContext);
+		String deviceid = SystemUtils.getDeviceId(mContext);
+		String qq_appid = MetaDataValueUtils.getQQAppId(mContext);
+		Bundle bundle = new Bundle();
+		bundle.putString(CYMGProtocolKeys.UID, uid);
+		bundle.putString(CYMGProtocolKeys.TOKEN, token);
+		bundle.putString(CYMGProtocolKeys.TYPE, type);
+		bundle.putString(CYMGProtocolKeys.USERIP, userIp);
+		bundle.putString(CYMGProtocolKeys.DEVICEID, deviceid);
+		bundle.putString(CYMGProtocolKeys.CY_QQ_APPID, qq_appid);
+		bundle.putString(
+				CYMGProtocolKeys.CHANNEL_ID,
+				mContext.getString(AccResource.getInstance(mContext).mgp_channel_cy));
+		bundle.putString(CYMGProtocolKeys.OPCODE, "10001");
+
+		UserInfoSPUtil.setUid(mContext, uid);
+		UserInfoSPUtil.setToken(mContext, token);
+		UserInfoSPUtil.setType(mContext, type);
+		return bundle;
+	}
+
+	/**
+	 * 
+	 * 功能描述：qq注销
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param
+	 * @return void
+	 * @date 2014-3-25 上午10:38:12
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public void qqLogout() {
+		mTencent.logout((Activity) mContext);
+	}
+}

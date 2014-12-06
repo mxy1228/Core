@@ -1,0 +1,62 @@
+package com.changyou.mgp.sdk.mbi.account.ui;
+
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.os.Bundle;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.ImageButton;
+import android.widget.ImageView;
+
+import com.changyou.mgp.sdk.mbi.account.id.AccResource;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.ui.base.BaseFragment;
+
+public class CYMGFlowWinCaptureFragment extends BaseFragment implements OnClickListener{
+
+	private CYLog log = CYLog.getInstance();
+	
+	private AccResource mRes;
+	
+	private Button mShareBtn;
+	private ImageView mIV;
+	private ImageButton mCloseIBtn;
+	@Override
+	public View onCreateView(LayoutInflater inflater, ViewGroup container,
+			Bundle savedInstanceState) {
+		mRes = AccResource.getInstance(getActivity());
+		View view = inflater.inflate(mRes.cymg_flow_win_capture, null);
+		mShareBtn = (Button)view.findViewById(mRes.cymg_flow_win_share_btn);
+		mIV = (ImageView)view.findViewById(mRes.cymg_flow_win_capture_iv);
+		mCloseIBtn = (ImageButton)view.findViewById(mRes.cymg_flow_win_capture_close_ibtn);
+		initData();
+		initEvent();
+		return view;
+	}
+	
+	@Override
+	protected void initData() {
+		byte[] b = getArguments().getByteArray("capture");
+		Bitmap bitmap = BitmapFactory.decodeByteArray(b, 0, b.length);
+		this.mIV.setImageBitmap(bitmap);
+	}
+
+	@Override
+	protected void initEvent() {
+		this.mCloseIBtn.setOnClickListener(this);
+		this.mShareBtn.setOnClickListener(this);
+	}
+
+	@Override
+	public void onClick(View v) {
+		if(v.getId() == mRes.cymg_flow_win_capture_close_ibtn){
+			getActivity().finish();
+		}else if(v.getId() == mRes.cymg_flow_win_share_btn){
+			
+		}
+	}
+
+}

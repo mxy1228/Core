@@ -1,0 +1,105 @@
+package com.changyou.mgp.sdk.mbi.http;
+
+import org.codehaus.jackson.type.TypeReference;
+
+import android.content.Context;
+
+import com.changyou.mgp.sdk.mbi.config.HttpContants;
+import com.changyou.mgp.sdk.mbi.entity.GoodsList;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.mbi.manager.CMBILogManager;
+import com.changyou.mgp.sdk.mbi.utils.JSONUtil;
+import com.changyou.mgp.sdk.mbi.utils.NetWorkUtils;
+import com.changyou.mgp.sdk.mbi.utils.StringUtils;
+import com.loopj.android.http.RequestParams;
+
+public class CYMGHttpRequest {
+
+	private MyHttpClient mClient;
+	
+	private static CYMGHttpRequest mInstance;
+	private Context mContext;
+	private CYLog log = CYLog.getInstance();
+	
+	private CYMGHttpRequest(Context context){
+		this.mClient = new MyHttpClient(context);
+		this.mContext = context;
+	}
+	
+	public static CYMGHttpRequest getInstance(Context context){
+		if(mInstance == null){
+			synchronized (CYMGHttpRequest.class) {
+				if(mInstance == null){
+					mInstance = new CYMGHttpRequest(context);
+				}
+			}
+		}
+		return mInstance;
+	}
+	
+	public interface OnRequestListener<T>{
+		
+		public void onStart();
+		
+		public void onSuccess(int statCode,T result);
+		
+		public void onFailed(int statCode,String content);
+	}
+	
+	private void netError(OnRequestListener listener){
+		listener.onFailed(-1, "net error");
+	}
+	
+	/**
+	 * 
+	 * 功能描述：获取商品列表
+	 *
+	 * @author 徐萌阳
+	 * @param @param context
+	 * @return void
+	 * @date 2014-2-25 下午3:22:40
+	 *
+	 */
+	public void getPaymentGoodsRequest(final OnRequestListener<GoodsList> listener){
+		if(NetWorkUtils.isNetworkConnected(mContext)){
+			mClient = new MyHttpClient(mContext);
+			mClient.cancelRequests(mContext, true);
+			RequestParams map = new RequestParams();
+			mClient.get(
+					HttpContants.getURL(HttpContants.PAYMENT_GOODS)
+					, map, new MyAsyncResponseHandler(){
+				@Override
+				public void onStart() {
+					listener.onStart();
+				}
+		
+				@Override
+				public void onSuccess(int statusCode, String content) {
+					CMBILogManager.printEventLog(mContext, "0", "120050", "");
+					log.d("getPaymentGoodsRequest:onSuccess,content:"+content);
+					try {
+						if(!StringUtils.isEmpty(content)){
+							GoodsList mList=JSONUtil.getMapper().readValue(JSONUtil.initJsonArrayStr(content), new TypeReference<GoodsList>() {
+							});
+							listener.onSuccess(statusCode, mList);
+						}else{
+							netError(listener);
+						}
+					} catch (Exception e) {
+						log.e(e);
+					}
+				}
+				
+				@Override
+				public void onFailure(int statusCode, Throwable error,
+						String content) {
+					CMBILogManager.printEventLog(mContext, "0", "120050", "");
+					listener.onFailed(statusCode, content);
+				}
+				
+			});
+		}else{
+			netError(listener);
+		}
+	}
+}

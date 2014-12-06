@@ -1,0 +1,257 @@
+package com.changyou.mgp.sdk.mbi.channel.impl;
+
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import android.app.Activity;
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.ActivityInfo;
+import android.os.Bundle;
+
+import com.changyou.mgp.sdk.mbi.R;
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannel;
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannelEntity;
+import com.changyou.mgp.sdk.mbi.config.CYMGPrompt;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolKeys;
+import com.changyou.mgp.sdk.mbi.config.Params;
+import com.changyou.mgp.sdk.mbi.entity.GoodsItem;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.platform.CYMGInitHelper;
+import com.changyou.mgp.sdk.mbi.platform.CYMGLoginHelper;
+import com.changyou.mgp.sdk.mbi.platform.CYMGLoginOutHelpr;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPayHelper;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPlatformConfiguration;
+import com.changyou.mgp.sdk.mbi.utils.MetaDataValueUtils;
+import com.changyou.mgp.sdk.mbi.utils.NetWorkUtils;
+import com.changyou.mgp.sdk.mbi.utils.StringUtils;
+import com.changyou.mgp.sdk.mbi.utils.SystemUtils;
+import com.duoku.platform.DkErrorCode;
+import com.duoku.platform.DkPlatform;
+import com.duoku.platform.DkPlatformSettings;
+import com.duoku.platform.DkPlatformSettings.GameCategory;
+import com.duoku.platform.DkProCallbackListener.OnExitChargeCenterListener;
+import com.duoku.platform.DkProCallbackListener.OnLoginProcessListener;
+import com.duoku.platform.DkProCallbackListener.OnUserLogoutLister;
+import com.duoku.platform.entry.DkBaseUserInfo;
+
+public class CYMGDuokuImpl implements CYMGChannel {
+	
+    private CYLog mLog = CYLog.getInstance();
+
+	@Override
+	public void init(CYMGPlatformConfiguration config) {
+		Context context = config.getmContext();
+		// 特别注意：请在onCreate中进行初始化，在游戏主activity中的onDestory中进行资源释放，详情请参照本activity的onDestory方法，如不释放会出现crash等问题。
+		DkPlatformSettings appInfo = new DkPlatformSettings();
+		appInfo.setGameCategory(GameCategory.ONLINE_Game);
+		appInfo.setmAppid(MetaDataValueUtils.getDuokuAppId(context));// 应用ID，由多酷分配
+		appInfo.setmAppkey(MetaDataValueUtils.getDuokuAppKey(context));// 应用Key，由多酷分配
+		DkPlatform.getInstance().init(context, appInfo); // 初始化多酷SDK
+		
+		// 设置SDK的横竖屏显示
+		int screenOrientation = config.getmScreenOrientation();
+		if (screenOrientation == ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT) {
+			DkPlatform.getInstance().dkSetScreenOrientation(
+					DkPlatformSettings.SCREEN_ORIENTATION_PORTRAIT);
+		}else {
+			DkPlatform.getInstance().dkSetScreenOrientation(
+					DkPlatformSettings.SCREEN_ORIENTATION_LANDSCAPE);
+		}
+		// 回调给接入方，告知初始化成功
+		CYMGInitHelper.getInstance().onInitResult(CYMGPrompt.CODE_INIT_SUCCESS,null);
+	}
+	
+	
+	@Override
+	public void doLogin(CYMGChannelEntity entity) {
+		final Context context = entity.getmContext();
+		if (entity == null) {
+			mLog.e("MGPDuokuImpl#doPay#doLogin---->>entity is null");
+			return;
+		}
+		if (context == null) {
+			mLog.e("MGPDuokuImpl#doPay#doLogin---->>context is null");
+			return;
+		}
+		final String userIp = NetWorkUtils.getLocalIpAddress(context);
+		final String deviceid = SystemUtils.getInstance(context).getDeviceId();
+		final String appid = MetaDataValueUtils.getDuokuAppId(context);
+		final String appkey = MetaDataValueUtils.getDuokuAppKey(context);
+		final String appSceret = MetaDataValueUtils.getDuokuAppSceret(context);
+		final String channelId = context.getString(R.string.mgp_channel_duoku);
+		
+		setLoginoutCallback(context);
+		Activity activity = (Activity) context;
+		DkPlatform.getInstance().dkLogin(activity,
+				new OnLoginProcessListener() {
+
+					@Override
+					public void onLoginProcess(int paramInt) {
+						switch (paramInt) {
+						case DkErrorCode.DK_LOGIN_SUCCESS: {
+							//Caution：此处请勿使用username去标识用户，一定要使用uid去标识用户
+							// 获取用户信息
+							DkBaseUserInfo baseInfo = DkPlatform.getInstance()
+									.dkGetMyBaseInfo(context);
+							String uid = baseInfo.getUid();
+							String token = baseInfo.getSessionId();
+							Bundle bundle = new Bundle();
+							bundle.putString(CYMGProtocolKeys.UID, uid);
+							bundle.putString(CYMGProtocolKeys.APP_SESSIONID_DUOKU, token);
+							bundle.putString(CYMGProtocolKeys.USERIP, userIp);
+							bundle.putString(CYMGProtocolKeys.DEVICEID, deviceid);
+							bundle.putString(CYMGProtocolKeys.APP_ID_DUOKU, appid);
+							bundle.putString(CYMGProtocolKeys.APP_KEY_DUOKU, appkey);
+							bundle.putString(CYMGProtocolKeys.APP_SCERET_DUOKU, appSceret);
+							bundle.putString(CYMGProtocolKeys.CHANNEL_ID, channelId);
+							bundle.putString(CYMGProtocolKeys.OPCODE, "10001");
+							CYMGLoginHelper.getInstance().loginResult(
+									CYMGPrompt.CODE_LOGIN_SUCCESS, bundle);
+							break;
+						}
+						case DkErrorCode.DK_LOGIN_CANCELED: {
+							CYMGLoginHelper.getInstance().loginResult(
+									CYMGPrompt.CODE_LOGIN_FAILED, null);
+							break;
+						}
+						default:
+							break;
+						}
+					}
+				});
+	}
+
+
+	/**
+	 * 
+	 * 功能描述: 设置多酷账号管理界面切换账号回调
+	 * @param @param context  
+	 * @return void    返回类型 
+	 * @author 欧阳海冰(OuyangHaibing)
+	 * @date 2014-4-27 下午2:51:52
+	 */
+	private void setLoginoutCallback(final Context context) {
+		DkPlatform.getInstance().dkSetOnUserLogoutListener(new OnUserLogoutLister() {
+			@Override
+			public void onUserLogout() {
+				//重启应用
+				final Intent intent = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());  
+		        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);  
+		        context.startActivity(intent); 
+			}
+		});
+	}
+
+
+	@Override
+	public void doPay(CYMGChannelEntity entity) {
+		final Context context = entity.getmContext();
+		setLoginoutCallback(context);
+		if (context == null) {
+			mLog.e("MGPDuokuImpl#doPay---->>context is null");
+			return;
+		}
+		Bundle bundle = entity.getBundle();
+		final String uid = bundle.getString(Params.UID);
+		String orderId = bundle.getString(Params.ORDER_ID);
+		final GoodsItem item = (GoodsItem)bundle.getSerializable(Params.GOODSITEM);
+		String amount = item.getGoods_price();
+		int amountInt=(int) Double.parseDouble(amount);
+		int exchangeRatio = 1;
+		
+		Map<String, String> map = new HashMap<String, String>();
+		map.put("uid", uid);
+		map.put("goodsRegisterId", item.getGoods_register_id());
+		map.put("appid", MetaDataValueUtils.getDuokuAppKey(context));
+		
+		JSONObject jsonObject = new JSONObject();
+		if (!StringUtils.isEmpty(map.toString())) {
+			try {
+				Iterator it = map.entrySet().iterator();
+				while (it.hasNext()) {
+					Map.Entry pairs = (Map.Entry) it.next();
+					jsonObject.put(pairs.getKey().toString(),
+							pairs.getValue());
+				}
+			} catch (JSONException e) {
+				e.printStackTrace();
+			}
+		}
+		/**
+		 * 退出支付中心回调接口，cp收到该通知后可根据参数四去自家服务器查询订单是否成功。
+		 * Listener中会有doOrderCheck的回调方法，当参数为true时进行订单查询
+		 */
+		OnExitChargeCenterListener mOnExitChargeCenterListener = new OnExitChargeCenterListener() {
+			
+			@Override
+			public void doOrderCheck(boolean needcheck, String orderid) {
+				// 参数中的orderid是调用充值接口时开发者传入的，原样返回
+				mLog.d("MGPDuokuImpl#doPay#doOrderCheck----->>SUCCESS,orderid == " + orderid);
+				CYMGPayHelper cymgPayHelper = CYMGPayHelper.getInstance();
+				cymgPayHelper.setContext((Activity)context);
+				if (needcheck) {
+					//退出充值中心,此时应去查询订单
+					mLog.d("MGPDuokuImpl#doPay#doOrderCheck---->>orderid:" + orderid);
+					cymgPayHelper.paySuccess(uid,
+							 item, orderid);
+				} else {
+					//此时无需查询订单状态
+					mLog.e("MGPDuokuImpl#doPay#doOrderCheck----->>FAILED!!");
+					cymgPayHelper.payException(CYMGPrompt.CODE_PAY_FAILED);
+				}
+			}
+		};
+		
+		/**
+		 *  参数说明
+		 *	参数一：进入支付中心的当前activity
+		 *	参数二：兑换比例，如1酷币兑换100游戏币，则兑换比例为100
+		 *	参数三：游戏币名称，如金币、符石
+		 *	参数四：cp生成的订单号，充值结束后，多酷服务器会通知业务服务器该订单号及充值结果
+		 *	参数五：定额支付消费金额（人民币），如购买1元的物品或者游戏币，则amount为1；若不需要定额支付则传入0
+		 *	参数六：支付描述，cp可以在此处自定义字段完成自己的需求，若不需要传入空串，请勿传null
+		 *	参数七：退出支付中心回调接口，cp收到该通知后可根据参数四去自家服务器查询订单是否成功
+		 */
+		DkPlatform.getInstance().dkUniPayForCoin((Activity)context, exchangeRatio, item.getGoods_name(), orderId, amountInt, 
+				jsonObject.toString(), mOnExitChargeCenterListener);
+	}
+
+	
+
+	@Override
+	public void doLogout(CYMGChannelEntity entity) {
+		DkPlatform.getInstance().dkWipeUserLoginInfo();
+		//告知接入方注销成功
+		CYMGLoginOutHelpr.getInstance().logoutResult(CYMGPrompt.CODE_LOGOUT_SUCCESS);
+	}
+
+	@Override
+	public void doDestroy(CYMGChannelEntity entity) {
+		Context context = entity.getmContext();
+		if (context == null) {
+			mLog.e("MGPDuokuImpl#doDestroy---->>context is null");
+			return;
+		}
+		//释放资源
+		DkPlatform.getInstance().dkReleaseResource((Activity) context);
+	}
+
+	@Override
+	public void doCustomerService(CYMGChannelEntity entity) {
+		// TODO Auto-generated method stub
+		
+	}
+
+
+	@Override
+	public void doShowUserCenter(CYMGChannelEntity entity) {
+		Context context = entity.getmContext();
+		DkPlatform.getInstance().dkAccountManager((Activity) context);
+	}
+
+}

@@ -1,0 +1,26 @@
+package com.changyou.mgp.sdk.mbi.config;
+
+/**
+ * 
+ * 功能描述：记录配置相关
+ *
+ * @author 徐萌阳(xumengyang)
+ * @date 2013-12-20下午6:04:13
+ */
+public class SDKConfig {
+
+	//Debug开关
+	public static boolean DEBUG=true;
+	//DBName
+	public static final String DB_NAME = "mgpsdk.db";
+	//DBVersion
+	public static final int DB_VERSION = 2;
+	//ImageLoader加载线程池的线程数量
+	public static final int IMAGE_LOADER_THREAD_COUNT = 5;
+	//加载网络图片的连接超时时间
+	public static final int LOAD_IMAGE_CONNECT_TIMEOUT = 10 * 1000;
+	//加载网络图片的读取超时时间
+	public static final int LOAD_IMAGE_READ_TIMEOUT = 10 * 1000;
+	//版本号，该值不需要每次打包手工修改，Ant脚本会读取Manifest.xml中的版本号，然后自动替换该值
+	public static String VERSION="";
+}

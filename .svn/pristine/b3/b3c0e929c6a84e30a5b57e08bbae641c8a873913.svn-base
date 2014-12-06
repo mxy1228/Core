@@ -1,0 +1,301 @@
+package com.changyou.mgp.sdk.mbi.account.ui;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import android.app.Activity;
+import android.graphics.BitmapFactory;
+import android.graphics.Color;
+import android.graphics.Matrix;
+import android.os.Bundle;
+import android.support.v4.app.Fragment;
+import android.support.v4.view.ViewPager.OnPageChangeListener;
+import android.view.Gravity;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.ViewGroup;
+import android.view.animation.Animation;
+import android.view.animation.TranslateAnimation;
+import android.widget.Button;
+import android.widget.FrameLayout;
+import android.widget.ImageButton;
+import android.widget.ImageView;
+import android.widget.TextView;
+
+import com.changyou.mgp.sdk.mbi.account.adapter.RegisterViewPagerAdapter;
+import com.changyou.mgp.sdk.mbi.account.id.AccResource;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.mbi.manager.CMBILogManager;
+import com.changyou.mgp.sdk.mbi.ui.base.BaseFragment;
+import com.changyou.mgp.sdk.mbi.ui.widget.CustomViewPager;
+import com.changyou.mgp.sdk.mbi.ui.widget.NetErrorView;
+import com.changyou.mgp.sdk.mbi.utils.ResourceUtil;
+import com.changyou.mgp.sdk.mbi.utils.SystemUtils;
+
+public class CYMGRegistContainerFragment extends BaseFragment implements
+		OnClickListener {
+
+	private CYLog log = CYLog.getInstance();
+
+	private Activity mActivity;
+
+	/** titlebar 动画的ImageView **/
+	private ImageView mIvCursor;
+	/** titlebar 动画图片的宽度 **/
+	private int bmpW;
+	/** titlebar 动画图片的偏移量 **/
+	private int offset = 0;
+	/** titlebar 当前页卡编号 **/
+	private int currIndex = 0;
+
+	/** 标题Textview的集合 **/
+	private List<TextView> tabTVList;
+
+	/** 电话注册的Fragment */
+	private CYMGRegistForTelFragment mTelFragment;
+	/** 邮箱注册的Fragment */
+	private CYMGRegistOnekeyFragment mOnekeyFragment;
+
+	/** 自定义的ViewPager */
+	private CustomViewPager mViewPager;
+
+	/** tab上的文字控件 */
+	private TextView mTvTelRegister;
+	private TextView mTvOnekeyRegister;
+	private NetErrorView mNetErrorView;
+	private Button mRefreshBtn;
+	private ImageButton mBackIBtn;
+	private Button mLoginBtn;
+	private TextView mTitleTV;
+	private RegisterViewPagerAdapter mAdapter;
+
+	@Override
+	public void onAttach(Activity activity) {
+		log.i("onAttach");
+		super.onAttach(activity);
+		this.mActivity = activity;
+	}
+
+	@Override
+	public View onCreateView(LayoutInflater inflater, ViewGroup container,
+			Bundle savedInstanceState) {
+		log.i("onCreateView");
+		View view = inflater.inflate(AccResource.getInstance(mActivity).mgp_regist_container,
+				null);
+		initTitle(view);
+		initIvCursor(view);
+		initViewPager(view);
+		initNetErrorView(view);
+		initEvent();
+		initData();
+		return view;
+	}
+
+	@Override
+	public void onResume() {
+		log.i("onResume");
+		super.onResume();
+		CMBILogManager.page_A_Register(mActivity);
+	}
+
+	@Override
+	protected void initData() {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	protected void initEvent() {
+		this.mRefreshBtn.setOnClickListener(this);
+		this.mBackIBtn.setOnClickListener(this);
+		this.mLoginBtn.setOnClickListener(this);
+	}
+
+	private void initTitle(View view) {
+		View title = view.findViewById(AccResource.getInstance(mActivity).mgp_regist_container_title);
+		this.mBackIBtn = (ImageButton) title.findViewById(AccResource.getInstance(mActivity).mgp_title_left_ibtn);
+		this.mLoginBtn = (Button) title.findViewById(AccResource.getInstance(mActivity).mgp_title_right_btn);
+		this.mTitleTV = (TextView) title.findViewById(AccResource.getInstance(mActivity).mgp_title_tv);
+		this.mTitleTV.setText(mActivity.getString(AccResource.getInstance(mActivity).mgp_title_tv_regist));
+	}
+
+	/**
+	 * 功能描述: 初始化tab上的紫色横条
+	 * 
+	 * @author 欧阳海冰(OuyangHaibing)
+	 * @param
+	 * @return void
+	 * @throws
+	 */
+	private void initIvCursor(View view) {
+		this.mIvCursor = (ImageView) view.findViewById(AccResource.getInstance(mActivity).mgp_register_moving_cursor);
+		bmpW = BitmapFactory.decodeResource(
+				getResources(),
+				AccResource.getInstance(mActivity).mgp_moving_cursor).getWidth();// 获取图片宽度
+
+		int screenW = SystemUtils.getScreenWidthSize(mActivity);// 获取分辨率宽度
+		FrameLayout.LayoutParams params = new android.widget.FrameLayout.LayoutParams(
+				screenW / 2, 8);
+		params.gravity = Gravity.BOTTOM;
+		params.bottomMargin = 11;
+		mIvCursor.setLayoutParams(params);
+		offset = (screenW / 2 - bmpW) / 2;// 计算偏移量
+		Matrix matrix = new Matrix();
+		matrix.postTranslate(offset, 0);
+		mIvCursor.setImageMatrix(matrix);// 设置动画初始位置
+	}
+
+	/**
+	 * 功能描述: 初始化ViewPager，设置页面切换监听，设置Adapter及设置tab上文字的点击事件监听
+	 * 
+	 * @author 欧阳海冰(OuyangHaibing)
+	 * @param
+	 * @return void
+	 * @throws
+	 */
+	private void initViewPager(View view) {
+		this.mAdapter = new RegisterViewPagerAdapter(getChildFragmentManager());
+		// 初始化ViewPager控件
+		this.mViewPager = (CustomViewPager) view.findViewById(AccResource.getInstance(mActivity).mgp_register_viewpager);
+
+		// 初始化两个界面的Fragment
+		mTelFragment = new CYMGRegistForTelFragment();
+		mOnekeyFragment = new CYMGRegistOnekeyFragment();
+
+		// 将Fragments放入集合中
+		ArrayList<Fragment> mFragmentList = new ArrayList<Fragment>();
+		mFragmentList.add(mOnekeyFragment);
+		mFragmentList.add(mTelFragment);
+
+		// 为ViewPager设置页面切换监听
+		this.mViewPager.setOnPageChangeListener(new ViewPagerChangeListener());
+		// 为ViewPager设置适配器
+		this.mViewPager.setAdapter(mAdapter);
+		// 默认为第一页
+		this.mViewPager.setCurrentItem(0);
+		this.mViewPager.setOffscreenPageLimit(2);
+
+		// 存储TAB上TextView的集合
+		tabTVList = new ArrayList<TextView>();
+		// 初始化TextView
+		mTvTelRegister = (TextView) view.findViewById(AccResource.getInstance(mActivity).mgp_register_tel_tv);
+		mTvOnekeyRegister = (TextView) view.findViewById(AccResource.getInstance(mActivity).mgp_register_onekey_tv);
+		// 为TextView设置点击监听
+		mTvTelRegister.setOnClickListener(titleTextClick);
+		mTvOnekeyRegister.setOnClickListener(titleTextClick);
+
+		tabTVList.add(mTvTelRegister);
+		tabTVList.add(mTvOnekeyRegister);
+	}
+
+	private void initNetErrorView(View view) {
+		this.mNetErrorView = (NetErrorView) view.findViewById(AccResource.getInstance(mActivity).mgp_regist_for_tel_error_ll);
+		this.mRefreshBtn = mNetErrorView.getRefreshBtn();
+	}
+
+	/**
+	 * Tab上文字的点击事件监听
+	 */
+	OnClickListener titleTextClick = new OnClickListener() {
+
+		@Override
+		public void onClick(View v) {
+			if (v.getId() == AccResource.getInstance(mActivity).mgp_register_onekey_tv) {
+				mViewPager.setCurrentItem(0);
+			} else if (v.getId() == AccResource.getInstance(mActivity).mgp_register_tel_tv) {
+				mViewPager.setCurrentItem(1);
+			}
+		}
+	};
+
+	@Override
+	public void onClick(View v) {
+		if (v.getId() == AccResource.getInstance(mActivity).mgp_net_error_refresh_btn_id) {// 网络异常刷新按钮
+		// if(mCurrentF == REGIST){
+		// //TODO
+		// }else if(mCurrentF == PROTOCOL){
+		// getSupportFragmentManager().beginTransaction()
+		// .replace(mgp_regist_container, new
+		// MGPCyouProtocolFragment(),Contants.FragmentTag.CYOUPROTOCOL_FRAGMENT_TAG)
+		// .commit();
+		// }
+		} else if (v.getId() == AccResource.getInstance(mActivity).mgp_title_left_ibtn) {
+			CMBILogManager.action_A_Register_Back(mActivity);
+			((CYMGRegistActivity) mActivity).goback();
+		} else if (v.getId() == AccResource.getInstance(mActivity).mgp_title_right_btn) {
+			CMBILogManager.action_A_Register_Login(mActivity);
+			mActivity.finish();
+		}
+	}
+
+	/**
+	 * 功能描述: ViewPager的页面切换监听
+	 * 
+	 * @author 欧阳海冰(OuyangHaibing)
+	 * @date 2014-2-17 上午11:57:09
+	 * 
+	 */
+	class ViewPagerChangeListener implements OnPageChangeListener {
+		private int oldPosition = 0;
+
+		@Override
+		public void onPageScrollStateChanged(int arg0) {
+			// TODO Auto-generated method stub
+
+		}
+
+		@Override
+		public void onPageScrolled(int arg0, float arg1, int arg2) {
+			// TODO Auto-generated method stub
+
+		}
+
+		@Override
+		public void onPageSelected(int position) {
+			movingCursor(position);
+			currIndex = position;
+			tabTVList.get(oldPosition)
+					.setTextColor(Color.parseColor("#EF7357"));
+			tabTVList.get(position).setTextColor(Color.parseColor("#b5b6b7"));
+			oldPosition = position;
+			switch (position) {
+			// 切换到手机注册页
+			case 1:
+				// 若切换到手机注册页，则手工去除各个EditText的焦点，否则PasswordET在点击切换时会自动获取焦点，目前
+				// 为什么单单这个ET会自动获取焦点还没找到原因，所以需要在Fragment切换时手工控制焦点
+				CMBILogManager.action_A_Register_PhoneRegister(mActivity);
+				if (mAdapter != null) {
+					((CYMGRegistForTelFragment) mAdapter.getItem(1))
+							.clearFocus();
+				}
+				break;
+
+			default:
+				CMBILogManager.action_A_Register_UserRegister(mActivity);
+				break;
+			}
+		}
+
+	}
+
+	/**
+	 * 功能描述: 紫色横条动画的触发函数
+	 * 
+	 * @author 欧阳海冰(OuyangHaibing)
+	 * @param @param position
+	 * @return void
+	 * @throws
+	 */
+	private void movingCursor(int position) {
+		int p = position;
+		if (p == -1) {
+			p = currIndex;
+		}
+		Animation animation = new TranslateAnimation((offset * 2 + bmpW)
+				* currIndex, (offset * 2 + bmpW) * p, 0, 0);
+		animation.setFillAfter(true);// True:图片停在动画结束位置
+		animation.setDuration(300);
+		mIvCursor.startAnimation(animation);
+	}
+}

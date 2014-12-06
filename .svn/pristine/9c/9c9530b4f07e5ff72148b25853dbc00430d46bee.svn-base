@@ -1,0 +1,179 @@
+package com.changyou.mgp.sdk.mbi.pay.ui;
+
+import java.net.URLEncoder;
+
+import android.app.Activity;
+import android.os.Bundle;
+import android.text.TextUtils;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.ViewGroup;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import android.widget.Button;
+import android.widget.ImageButton;
+import android.widget.TextView;
+
+import com.changyou.mgp.sdk.mbi.config.Contants;
+import com.changyou.mgp.sdk.mbi.config.HttpContants;
+import com.changyou.mgp.sdk.mbi.config.Params;
+import com.changyou.mgp.sdk.mbi.entity.GoodsItem;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.pay.id.PayResource;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPayHelper;
+import com.changyou.mgp.sdk.mbi.ui.base.BaseFragment;
+import com.changyou.mgp.sdk.mbi.ui.widget.NetErrorView;
+import com.changyou.mgp.sdk.mbi.ui.widget.WaitingDialog;
+
+public class CYMGTenPayFragment extends BaseFragment implements OnClickListener{
+
+	private CYLog log = CYLog.getInstance();
+	
+	private WebView mWebView;
+	private NetErrorView mErrorView;
+	private PayResource mPayResource;
+	private View mTitle;
+	private ImageButton mServiceImgBtn;
+	private TextView mTitleTv;
+	private ImageButton mBackIBtn;
+	private Button mRetryBtn;
+	private Button mServiceBtn;
+	private WaitingDialog mWaitingDialog;
+	
+	private Activity mActivity;
+	private String mOrderID;
+	private String mUID;
+	private GoodsItem mGoodsItem;
+	private String mURL;
+	
+	@Override
+	public void onAttach(Activity activity) {
+		super.onAttach(activity);
+		this.mActivity = activity;
+		this.mPayResource = PayResource.getInstance(activity);
+	}
+	
+	@Override
+	public View onCreateView(LayoutInflater inflater, ViewGroup container,
+			Bundle savedInstanceState) {
+		View view = inflater.inflate(mPayResource.mgp_tenpay, container, false);
+		this.mWebView = (WebView)view.findViewById(mPayResource.mgp_tenpay_wv);
+		this.mErrorView = (NetErrorView)view.findViewById(mPayResource.mgp_tenpay_error_ll);
+		this.mTitle = view.findViewById(mPayResource.mgp_tenpay_title);
+		this.mBackIBtn = (ImageButton)mTitle.findViewById(mPayResource.mgp_title_left_ibtn);
+		this.mServiceBtn = (Button)mTitle.findViewById(mPayResource.mgp_title_right_btn);
+		this.mServiceBtn.setVisibility(View.GONE);
+		this.mTitleTv = (TextView)mTitle.findViewById(mPayResource.mgp_title_tv);
+		this.mTitleTv.setText(mPayResource.mgp_title_tv_payment_way);
+		this.mRetryBtn = mErrorView.getRefreshBtn();
+		this.mServiceImgBtn = (ImageButton)mTitle.findViewById(mPayResource.mgp_title_right_imgbtn);
+		this.mServiceImgBtn.setVisibility(View.GONE);
+		this.mWaitingDialog = new WaitingDialog(mActivity);
+		initEvent();
+		initData();
+		return view;
+	}
+	
+	@Override
+	protected void initData() {
+		this.mWebView.getSettings().setJavaScriptEnabled(true);
+		this.mWebView.getSettings().setLoadsImagesAutomatically(true);
+		this.mWebView.setWebViewClient(new WebViewClient(){
+			
+			@Override
+			public void onPageFinished(WebView view, String url) {
+				WaitingDialog.DismissWaitingDialog(mWaitingDialog);
+			}
+			
+			@Override
+			public void onReceivedError(WebView view, int errorCode,
+					String description, String failingUrl) {
+				if(!mErrorView.isShown()){
+					mErrorView.setVisibility(View.VISIBLE);
+					mWebView.setVisibility(View.GONE);
+				}
+				WaitingDialog.DismissWaitingDialog(mWaitingDialog);
+			}
+			
+			@Override
+			public boolean shouldOverrideUrlLoading(WebView view, String url) {
+				if(url.startsWith(HttpContants.getTenpayCallBackUrl())){
+					//支付完成
+					paySuccess(url);
+					return true;
+				}
+				return super.shouldOverrideUrlLoading(view, url);
+			}
+			
+		});
+		Bundle b = getArguments();
+		if(b == null){
+			log.e("Bundle is null");
+			return;
+		}
+		mOrderID = b.getString(Params.ALIPAY_WRAP.TRADE_NO);
+		mUID = b.getString(Params.ALIPAY_WRAP.UID);
+		if(mUID == null){
+			throw new IllegalAccessError("uid is null");
+		}
+		mGoodsItem = (GoodsItem)b.getSerializable(Params.GOODSITEM);
+		if(mOrderID == null){
+			log.e("mOrderID is null");
+			return;
+		}
+		if(mGoodsItem == null){
+			log.e("mGoodsItem is null");
+			return;
+		}
+		String goodsName = null;
+		try {
+			goodsName = URLEncoder.encode(mGoodsItem.getGoods_name(), "UTF-8");
+		} catch (Exception e) {
+			log.e(e);
+		}
+		mURL = 
+				HttpContants.getURL(HttpContants.TENPAY)
+//				"http://t.changyou.com:9099/pay/tenpay/payRequest.jsp"
+				+"?sp_billno="+mOrderID.substring(0, 31)//订单号，因财付通规定订单号最长为32位，裁剪前32位
+				+"&total_fee="+String.valueOf((int)(Double.valueOf(mGoodsItem.getGoods_price()) * 100))//价格，以分为单位
+				+"&desc="+goodsName//商品名称
+				+"&notify_url="+HttpContants.getTenpayNotifyUrl()//支付回调Url
+				+"&callback_url="+HttpContants.getTenpayCallBackUrl();//支付完成回调
+		log.d("tenpay url = "+mURL);
+		mWebView.loadUrl(mURL);
+		WaitingDialog.showWaitingDialog(mWaitingDialog);
+	}
+
+	@Override
+	protected void initEvent() {
+		this.mRetryBtn.setOnClickListener(this);
+		this.mBackIBtn.setOnClickListener(this);
+	}
+
+	@Override
+	public void onClick(View arg0) {
+		if(arg0.getId() == mPayResource.mgp_title_left_ibtn){
+			((CYMGPaymentActivity)mActivity).goback();
+		}else if(arg0.getId() == mPayResource.mgp_net_error_refresh_btn_id){
+			mErrorView.setVisibility(View.GONE);
+			mWebView.setVisibility(View.VISIBLE);
+			mWebView.reload();
+		}
+	}
+
+	
+	/**
+	 * 支付成功后解析财付通信息
+	 * @param backInfo
+	 */
+	private void paySuccess(String backInfo){
+		if(backInfo != null && !TextUtils.isEmpty(backInfo)){
+			log.d("Tenpay result = "+backInfo);
+			Bundle b = new Bundle();
+			b.putInt("type", CYMGPaymentSuccessFragment.SUCCESS);
+			((CYMGPaymentActivity)mActivity).changeFragment(Contants.FragmentTag.PAYMENT_SUCCESS_FRAGMENT_TAG, b);
+			CYMGPayHelper.getInstance().paySuccess(mUID, mGoodsItem, mOrderID);
+		}
+	}
+}

@@ -1,0 +1,415 @@
+package com.changyou.mgp.sdk.mbi.platform;
+
+import java.io.InputStream;
+import java.util.Properties;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import android.app.Activity;
+import android.content.Context;
+import android.content.DialogInterface;
+import android.content.DialogInterface.OnKeyListener;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.os.Bundle;
+import android.os.Handler;
+import android.text.TextUtils;
+import android.view.KeyEvent;
+import android.widget.Toast;
+
+import com.changyou.mgp.sdk.mbi.account.id.AccResource;
+import com.changyou.mgp.sdk.mbi.common.CYMGCallbackHelper;
+import com.changyou.mgp.sdk.mbi.config.CYMGPrompt;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolConfig;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolKeys;
+import com.changyou.mgp.sdk.mbi.entity.GoodsItem;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.mbi.manager.MBILogManager;
+import com.changyou.mgp.sdk.mbi.pay.id.PayResource;
+import com.changyou.mgp.sdk.mbi.pay.ui.CYMGPaymentActivity;
+import com.changyou.mgp.sdk.mbi.ui.widget.WaitingDialog;
+import com.changyou.mgp.sdk.mbi.utils.MetaDataValueUtils;
+import com.changyou.mgp.sdk.mbi.utils.SettingSPUtil;
+
+public class CYMGPayHelper{
+
+	private static CYMGPayHelper mInstance;
+	private static final int VALIDATE_SUCCESS = 1;
+	private static final int VALIDATE_FAILED = 2;
+	public static final String IMG_PRO = "payment_theme.properties";
+	
+	public static class PARAM{
+		public static final String UID = "uid";
+		public static final String GOODS_REGIST_ID = "goodsRegistID";
+		public static final String PRICE = "price";
+		public static final String ORDER_ID = "orderID";
+	}
+	
+//	private static final int RETRY = 2;//验证订单请求最多重复请求次数
+//	private static final int TIME_OUT = 1000 * 10;//请求超时时间
+//	private static final int RETRY_INTERVAL = 5 * 1000;
+	
+	private CYLog log = CYLog.getInstance();
+//	private int mRetryCount;
+//	private Timer mTimer;
+//	private boolean mValidated;//订单验证是否成功
+//	private boolean mValidating;
+	private Activity mActivity;
+	private WaitingDialog mWaitingDialog;
+	
+	private CYMGPayHelper(){
+//		this.mTimer = new Timer();
+	}
+	
+	public static CYMGPayHelper getInstance(){
+		if(mInstance == null){
+			mInstance = new CYMGPayHelper();
+		}
+		return mInstance;
+	}
+	
+	public void setContext(Activity activity){
+		this.mActivity = activity;
+		this.mWaitingDialog = new WaitingDialog(mActivity);
+		this.mWaitingDialog.setMessage(mActivity.getString(PayResource.getInstance(activity).mgp_dealing_with_order));
+		this.mWaitingDialog.setOnKeyListener(new OnKeyListener() {
+			
+			@Override
+			public boolean onKey(DialogInterface arg0, int arg1, KeyEvent arg2) {
+				return true;
+			}
+		});
+	}
+	
+	private Handler mHandler = new Handler(){
+		public void handleMessage(android.os.Message msg) {
+			switch (msg.what) {
+			case VALIDATE_FAILED:
+				Toast.makeText(mActivity, PayResource.getInstance(mActivity).mgp_validate_order_failed, Toast.LENGTH_SHORT).show();
+				break;
+			case VALIDATE_SUCCESS:
+				Toast.makeText(mActivity, PayResource.getInstance(mActivity).mgp_validate_order_success, Toast.LENGTH_SHORT).show();
+				break;
+			default:
+				break;
+			}
+			WaitingDialog.DismissWaitingDialog(mWaitingDialog);
+			goback();
+		};
+	};
+	
+	/**
+	 * 
+	 * 功能描述：支付成功
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param @param uid 
+	 * @param @param goodsRegistID
+	 * @param @param orderID
+	 * @return void
+	 * @throws JSONException 
+	 * @date 2014-2-19 下午7:32:55
+	 *
+	 */
+	public void paySuccess(final String uid,final GoodsItem item,final String orderID){
+//		this.mValidated = false;
+//		this.mRetryCount = 0;
+		log.d("orderID="+orderID);
+//		WaitingDialog.showWaitingDialog(mWaitingDialog);
+		CYMGCallbackHelper.callbackResult(CYMGCallbackHelper.getPayResult(CYMGPrompt.CODE_PAY_SUCCESS, uid, orderID, item,mActivity));
+//		mTimer = new Timer();
+//		mTimer.schedule(new TimerTask() {
+//			
+//			@Override
+//			public void run() {
+//				if(!mValidated && mRetryCount < RETRY){
+//					validateOrder(uid, item,orderID);
+//				}else{
+//					try {
+//						mTimer.cancel();
+//						
+//						Message msg = new Message();
+//						msg.obj = CYMGCallbackHelper.getPayResult(CYMGPrompt.CODE_PAYING, uid, orderID, item);
+//						msg.what = VALIDATE_FAILED;
+//						mHandler.sendMessage(msg);
+//					} catch (Exception e) {
+//						log.e(e);
+//					}
+//				}
+//			}
+//		}, 0, RETRY_INTERVAL);
+	}
+	
+	/**
+	 * 
+	 * 功能描述：支付异常，返回JSON格式 {"error_code":-1,"error_msg":"支付失败"}
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param @param errorCode
+	 * @return void
+	 * @date 2014-2-25 下午4:15:37
+	 *
+	 */
+	public void payException(int errorCode){
+		CYMGCallbackHelper.callbackResult(CYMGCallbackHelper.getCommonResult(errorCode, null));
+	}
+	
+	/**
+	 * 
+	 * 功能描述：从服务器验证订单支付结果，将支付结果回调给接入方。
+	 * 若成功支付则返回JSON格式 {"error_code":1,"error_msg":"支付成功","data":{"uid":"1"}}
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param @param uid
+	 * @param @param goodsRegistID
+	 * @param @param orderID
+	 * @param @param price
+	 * @return void
+	 * @date 2014-2-25 下午3:41:24
+	 *
+	 */
+//	private void validateOrder(final String uid,final GoodsItem item,final String orderId){
+//		log.d("validateOrder");
+//		if(mValidating){
+//			return;
+//		}
+//		final String price =  String.valueOf(item.getGoods_price());
+//		String receipt = getReceipt(item.getGoods_register_id(), orderId,price);
+//		MyHttpClient client = new MyHttpClient(mActivity);
+//		client.setMaxRetriesAndTimeout(RETRY, TIME_OUT);
+//		Map<String,String> params = new HashMap<String, String>();
+//		params.put("account_id", uid);
+//		params.put("user_id", uid);
+//		params.put("goods_register_id", item.getGoods_register_id());
+//		params.put("receipt", receipt);
+//		client.post(HttpContants.getURL(HttpContants.VERIFY_ORDER), params, new MyAsyncResponseHandler(){
+//			
+//			@Override
+//			public void onStart() {
+//				mValidating = true;
+//			}
+//			
+//			@Override
+//			public void onSuccess(int statusCode, String content) {
+//				log.d("validatePayment:content="+content);
+//				mRetryCount = 0;
+//				mValidating = false;
+//				if(!TextUtils.isEmpty(content)){
+//					try {
+//						JSONObject obj = new JSONObject(content);
+//						if(obj.has("message")){
+//							if(obj.getString("message").equals("success")){
+//								mValidated = true;
+//								mTimer.cancel();
+//								CYMGCallbackHelper.callbackResult(CYMGCallbackHelper.getPayResult(CYMGPrompt.CODE_PAY_SUCCESS, uid, orderId, item));
+//								Message msg = new Message();
+//								msg.what = VALIDATE_SUCCESS;
+//								msg.obj = CYMGCallbackHelper.getPayResult(CYMGPrompt.CODE_PAY_SUCCESS, uid, orderId, item);
+//								mHandler.sendMessage(msg);
+//							}
+//						}
+//					} catch (Exception e) {
+//						log.e(e);
+//					}
+//				}else{
+//					log.e("content is null");
+//				}
+//			}
+//			
+//			@Override
+//			public void onFailure(Throwable error, String content) {
+//				log.e("validatePayment:error="+content);
+//				mValidating = false;
+//				mRetryCount++;
+//			}
+//			
+//			@Override
+//			public void onRetry() {
+//				log.d("onRetry");
+//			}
+//		});
+//	}
+	
+	/**
+	 * 
+	 * 功能描述：将registID/orderID/price进行Base64加密生成Receipt
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param @param goodsRegistID
+	 * @param @param orderID
+	 * @param @param price
+	 * @param @return
+	 * @return String
+	 * @date 2014-2-20 上午11:25:19
+	 *
+	 */
+//	private String getReceipt(String goodsRegistID,String orderID,String price){
+//		try {
+//			JSONObject obj = new JSONObject();
+//			obj.put("orderId", orderID);
+//			obj.put("goodsPrice", price);
+//			obj.put("goodsRegisterId", goodsRegistID);
+//			return Base64.encode(obj.toString().getBytes());
+//		} catch (Exception e) {
+//			log.e(e);
+//		}
+//		return null;
+//	}
+//	
+	/**
+	 * 
+	 * 功能描述：检测必须参数，若全部合法则返回true，否则返回false并调用callback告知接入者
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param 
+	 * @return void
+	 * @date 2014-3-3 下午4:33:23
+	 *
+	 */
+	public boolean checkNesessaryParam(Bundle b,Context context){
+		String uid = b.getString(CYMGProtocolKeys.UID);
+		String token = b.getString(CYMGProtocolKeys.TOKEN);
+		String appName = b.getString(CYMGProtocolKeys.APP_NAME);
+		String pushInfo = b.getString(CYMGProtocolKeys.PUSH_INFO);
+		String lv = b.getString(CYMGProtocolKeys.LV);
+		String roleid = b.getString(CYMGProtocolKeys.ROLE_ID);
+		if(TextUtils.isEmpty(uid)){
+			log.e("payment,uid is null");
+			return false;
+		}
+		if(token == null && MetaDataValueUtils.getChannelID(context) == context.getString(AccResource.getInstance(mActivity).mgp_channel_360)){
+			log.e("payment,token is null");
+			return false;
+		}
+		if(appName == null && MetaDataValueUtils.getChannelID(context) == context.getString(AccResource.getInstance(mActivity).mgp_channel_360)){
+			log.e("payment,appName is null");
+			return false;
+		}
+		if(pushInfo == null){
+			log.e("payment,pushInfo is null");
+			return false;
+		}
+		if(!TextUtils.isEmpty(lv)){
+			MBILogManager.mAccount.setLevel(lv);
+		}
+		if(!TextUtils.isEmpty(roleid)){
+			MBILogManager.mAccount.setRoleid(roleid);
+		}
+		return true;
+	}
+	
+	/**
+	 * 检测商品列表皮肤所需资源
+	 * @return
+	 */
+	public boolean checkNesessaryImg(Activity activity){
+		boolean isLandScape = SettingSPUtil.getLandScape(activity) == CYMGProtocolConfig.LANDSCAPE;
+		Properties pro = new Properties();
+		try {
+			InputStream is = activity.getAssets().open(IMG_PRO);
+			pro.load(is);
+			if(isLandScape){
+				//检测横向显示所需资源
+				if(checkImg(pro, "payment_top_img_land", activity)
+						&&checkImg(pro, "payment_close_btn_img_land", activity)
+						&&checkImg(pro, "payment_record_btn_img_land", activity)){
+					return true;
+				}
+			}else{
+				//检测竖向显示所需资源
+				if(checkImg(pro, "payment_top_img", activity)
+						&&checkImg(pro, "payment_close_btn_img", activity)
+						&&checkImg(pro, "payment_record_btn_img", activity)){
+					return true;
+				}
+			}
+		} catch (Exception e) {
+			log.e(e);
+		}
+		return false;
+	}
+	
+	public boolean checkImg(Properties pro,String key,Activity a){
+		try {
+			String value = pro.getProperty(key,null);
+			if(value != null && !TextUtils.isEmpty(value)){
+				Bitmap b = BitmapFactory.decodeStream(a.getAssets().open(value));
+				if(b != null){
+					b.recycle();
+					return true;
+				}else{
+					CYMGCallbackHelper.callbackResult(getFileErrorJson(key, CYMGPrompt.CODE_EMPTY_FILE));
+				}
+			}else{
+				CYMGCallbackHelper.callbackResult(getFileErrorJson(key, CYMGPrompt.CODE_EMPTY_PRO_KEY));
+			}
+		} catch (Exception e) {
+			log.e(e);
+		}
+		return false;
+	}
+	
+	/**
+	 * 
+	 * 功能描述：以JSON格式返回错误信息，{“error_code”:-3,"msg":"uid is null"}
+	 * 
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param @param key
+	 * @param @return
+	 * @return String
+	 * @date 2014-3-3 下午4:44:43
+	 *
+	 */
+	private String getFileErrorJson(String key,int errorCode){
+		try {
+			JSONObject obj = new JSONObject();
+			obj.put("error_no", errorCode);
+			switch (errorCode) {
+			case CYMGPrompt.CODE_EMPTY_PRO_KEY:
+				obj.put("msg", "no value for "+key+" in payment_theme.properties");
+				break;
+			case CYMGPrompt.CODE_EMPTY_FILE:
+				obj.put("msg", "no file named "+key+" in assets");
+				break;
+			default:
+				break;
+			}
+			
+			return obj.toString();
+		} catch (Exception e) {
+			log.e(e);
+		}
+		return null;
+	}
+	
+	/**
+	 * 
+	 * 功能描述：以JSON格式返回错误信息，{“error_code”:-3,"msg":"uid is null"}
+	 * 
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param @param key
+	 * @param @return
+	 * @return String
+	 * @date 2014-3-3 下午4:44:43
+	 *
+	 */
+	private String getErrorJson(String key){
+		try {
+			JSONObject obj = new JSONObject();
+			obj.put("error_no", CYMGPrompt.CODE_EMPTY_PARAM);
+			obj.put("msg", key+" is null");
+			return obj.toString();
+		} catch (Exception e) {
+			log.e(e);
+		}
+		return null;
+	}
+	
+	private void goback(){
+		((CYMGPaymentActivity)mActivity).finish();
+	}
+	
+}

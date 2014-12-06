@@ -1,0 +1,196 @@
+package com.changyou.mgp.sdk.mbi.account.ui;
+
+import android.app.Activity;
+import android.os.Bundle;
+import android.support.v4.app.DialogFragment;
+import android.support.v4.app.FragmentActivity;
+import android.support.v4.app.FragmentTransaction;
+import android.text.Editable;
+import android.text.Selection;
+import android.text.TextUtils;
+import android.text.TextWatcher;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ImageButton;
+
+import com.changyou.mgp.sdk.mbi.R;
+import com.changyou.mgp.sdk.mbi.config.Contants;
+import com.changyou.mgp.sdk.mbi.utils.NetWorkUtils;
+
+public class CYMGFindPasswordDialogFragment extends BaseDialogFragment implements OnClickListener{
+	
+	private static final int NUM_MIN = 11;
+	
+	private static Activity mActivity;
+	
+	private ImageButton mBackBtn;
+	private ImageButton mCloseBtn;
+	private EditText mPhoneNumET;
+	private Button mCommitBtn;
+	
+	private String mPhoneNumStr;
+	
+	@Override
+	public View onCreateView(LayoutInflater inflater, ViewGroup container,
+			Bundle savedInstanceState) {
+		View view=inflater.inflate(R.layout.mgp_sdk_2_0_dialog_find_password, container,false);
+		initView(view);
+		initData();
+		initEvent();
+		return view;
+	}
+	
+
+	@Override
+	protected void initView(View view) {
+		mBackBtn=(ImageButton) view.findViewById(R.id.mgp_sdk_2_0_find_password_back_ImageButton);
+		mCloseBtn=(ImageButton) view.findViewById(R.id.mgp_sdk_2_0_find_password_close_ImageButton);
+		mPhoneNumET=(EditText) view.findViewById(R.id.mgp_sdk_2_0_find_password_num_EditText);
+		mCommitBtn=(Button) view.findViewById(R.id.mgp_sdk_2_0_find_password_commit_Button);
+	}
+
+	@Override
+	protected void initData() {
+		
+	}
+
+	@Override
+	protected void initEvent() {
+		mBackBtn.setOnClickListener(this);
+		mCloseBtn.setOnClickListener(this);
+		mCommitBtn.setOnClickListener(this);
+		setEditTextListener(mPhoneNumET,13);
+	}
+	
+	public static CYMGFindPasswordDialogFragment newInewInstance(Activity activity,Bundle bundle){
+		mActivity=activity;
+		CYMGFindPasswordDialogFragment cymgFindPasswordDialogFragment=new CYMGFindPasswordDialogFragment();
+		cymgFindPasswordDialogFragment.setArguments(bundle);
+		cymgFindPasswordDialogFragment.setStyle(DialogFragment.STYLE_NORMAL, R.style.mgp_sdk_2_0_mian_dialog);
+		return cymgFindPasswordDialogFragment;
+	}
+
+	@Override
+	public void onClick(View v) {
+		if(v.getId()==R.id.mgp_sdk_2_0_find_password_back_ImageButton){
+			dismiss();
+		}else if(v.getId()==R.id.mgp_sdk_2_0_find_password_close_ImageButton){
+			mActivity.finish();
+		}else if(v.getId()==R.id.mgp_sdk_2_0_find_password_commit_Button){
+			if(checkET()){
+				Bundle bundle=new Bundle();
+				bundle.putString("phone", mPhoneNumStr);
+				((CYMGMainDialogFragmentActivity)mActivity).changeDialogFragment(Contants.DialogFragmentTag.FIND_PASSWORD_SET_AUTH_CODE, bundle);
+			}
+			
+		}
+	}
+	
+	private boolean checkET(){
+		mPhoneNumStr=mPhoneNumET.getText().toString().trim().replace(" ","");
+		if(TextUtils.isEmpty(mPhoneNumStr)){
+			return false;
+		}else if(mPhoneNumStr.length()<NUM_MIN){
+			return false;
+		}else if(!NetWorkUtils.isNetworkConnected(mActivity)){
+			return false;
+		}
+		return true;
+	}
+	
+	public void showDialog() {
+		FragmentTransaction transaction=((FragmentActivity)mActivity).getSupportFragmentManager().beginTransaction();
+		show(transaction, Contants.DialogFragmentTag.FIND_PASSWORD);
+	}
+	
+	private void setEditTextListener(final EditText editText,final int a){
+		editText.addTextChangedListener(new TextWatcher() {  
+            int beforeTextLength = 0;  
+            int onTextLength = 0;  
+            boolean isChanged = false;  
+  
+            int location = 0;// 记录光标的位置  
+            private char[] tempChar;  
+            private StringBuffer buffer = new StringBuffer();  
+            int konggeNumberB = 0;  
+  
+            @Override  
+            public void onTextChanged(CharSequence s, int start, int before, int count) {  
+                // TODO Auto-generated method stub  
+                onTextLength = s.length();  
+                buffer.append(s.toString());  
+                if (onTextLength == beforeTextLength || onTextLength <= 2 || isChanged) {  
+                    isChanged = false;  
+                    return;  
+                }  
+                isChanged = true;  
+            }  
+  
+            @Override  
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {  
+                // TODO Auto-generated method stub  
+                beforeTextLength = s.length();  
+                if (buffer.length() > 0) {  
+                    buffer.delete(0, buffer.length());  
+                }  
+                konggeNumberB = 0;  
+                for (int i = 0; i < s.length(); i++) {  
+                    if (s.charAt(i) == ' ') {  
+                        konggeNumberB++;  
+                    }  
+                }  
+            }  
+  
+            @Override  
+            public void afterTextChanged(Editable s) {  
+                // TODO Auto-generated method stub  
+                if (isChanged) {  
+                    location = editText.getSelectionEnd();  
+                    int index = 0;  
+                    while (index < buffer.length()) {  
+                        if (buffer.charAt(index) == ' ') {  
+                            buffer.deleteCharAt(index);  
+                        } else {  
+                            index++;  
+                        }  
+                    }  
+  
+                    index = 0;  
+                    int konggeNumberC = 0;  
+                    while (index < buffer.length()) {  
+                        if ((index == 3 || index == 8)) {  
+                            buffer.insert(index, ' ');  
+                            konggeNumberC++;  
+                        }  
+                        index++;  
+                    }  
+  
+                    if (konggeNumberC > konggeNumberB) {  
+                        location += (konggeNumberC - konggeNumberB);
+                    }  
+  
+                    tempChar = new char[buffer.length()];  
+                    buffer.getChars(0, buffer.length(), tempChar, 0); 
+                    String str = buffer.toString();
+                    if (location > str.length()) {  
+                        location = str.length();
+                    } else if (location < 0) {  
+                        location = 0;  
+                    }  
+  
+                    editText.setText(str);  
+                    if(str.length()<=a){
+                    	Editable etable = editText.getText();  
+                    	Selection.setSelection(etable, location);  
+                    }
+                    isChanged = false;  
+                }  
+            }  
+        });
+	}
+	
+}

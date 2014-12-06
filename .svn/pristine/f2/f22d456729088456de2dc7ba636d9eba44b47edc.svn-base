@@ -1,0 +1,545 @@
+package com.changyou.mgp.sdk.mbi.account.ui;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import org.codehaus.jackson.type.TypeReference;
+import org.json.JSONObject;
+
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.ProgressDialog;
+import android.content.Context;
+import android.content.DialogInterface;
+import android.content.res.Configuration;
+import android.os.Bundle;
+import android.support.v4.app.FragmentManager;
+import android.text.TextPaint;
+import android.text.TextUtils;
+import android.text.method.LinkMovementMethod;
+import android.text.style.ClickableSpan;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import com.changyou.mgp.sdk.mbi.account.id.AccResource;
+import com.changyou.mgp.sdk.mbi.account.utils.CyouLoginUtils;
+import com.changyou.mgp.sdk.mbi.account.utils.CyouLoginUtils.CyouLoginListener;
+import com.changyou.mgp.sdk.mbi.config.HttpContants;
+import com.changyou.mgp.sdk.mbi.entity.ErrorInfo;
+import com.changyou.mgp.sdk.mbi.entity.QuickIntoInfo;
+import com.changyou.mgp.sdk.mbi.http.MyAsyncResponseHandler;
+import com.changyou.mgp.sdk.mbi.http.MyHttpClient;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.mbi.constant.MBIProtocolCodes;
+import com.changyou.mgp.sdk.mbi.mbi.manager.CMBILogManager;
+import com.changyou.mgp.sdk.mbi.mbi.manager.MBIServiceManager;
+import com.changyou.mgp.sdk.mbi.mbi.util.JsonUtils;
+import com.changyou.mgp.sdk.mbi.ui.base.BaseFragment;
+import com.changyou.mgp.sdk.mbi.utils.DesUtil;
+import com.changyou.mgp.sdk.mbi.utils.JSONUtil;
+import com.changyou.mgp.sdk.mbi.utils.MyToast;
+import com.changyou.mgp.sdk.mbi.utils.NetWorkUtils;
+import com.changyou.mgp.sdk.mbi.utils.ResourceUtil;
+import com.changyou.mgp.sdk.mbi.utils.StringUtils;
+import com.changyou.mgp.sdk.mbi.utils.SystemUtils;
+
+/**
+ * 
+ * 功能描述：一键注册提示界面
+ * 
+ * @author 严峥(yanzheng)
+ * @date 2014-1-20 上午10:24:40 修改历史：(修改人，修改时间，修改原因/内容)
+ */
+public class CYMGRegistOnekeyFragment extends BaseFragment implements
+		OnClickListener {
+
+	public static final int RESULT_CODE_ONEKEY_REGIST_SUCCESS = 2;
+
+	private CYLog log = CYLog.getInstance();
+
+	private Activity mContext;
+	private FragmentManager mFragmentManager;
+
+	private View mTitle;
+	// private ImageButton mBackIBtn;
+	// private Button mInfoIBtn;
+	// private TextView mTitleTV;
+	private Button mKnowBtn;
+	private EditText mAccountEt, mPasswordEt;
+	private ProgressDialog mWaitingDialog;
+	private AlertDialog.Builder mAlertDialog;
+
+	public EditText getAccountEt() {
+		return mAccountEt;
+	}
+
+	public EditText getPasswordEt() {
+		return mPasswordEt;
+	}
+
+	private String mUsername, mPassword;
+	private String mDecryptPassword;
+
+	public static CyouLoginUtils mCyouLoginUtils = null;
+
+	public Bundle mData;
+
+	private TextView mCyProtocalTv;
+
+	@Override
+	public void onCreate(Bundle savedInstanceState) {
+		// TODO Auto-generated method stub
+		super.onCreate(savedInstanceState);
+		this.mFragmentManager = getFragmentManager();
+		this.mData = getArguments();// 得到传来的参数bundle
+	}
+
+	@Override
+	public void onAttach(Activity activity) {
+		// TODO Auto-generated method stub
+		super.onAttach(activity);
+		this.mContext = activity;
+	}
+
+	@Override
+	public void onResume() {
+		// TODO Auto-generated method stub
+		super.onResume();
+	}
+
+	@Override
+	public void onDestroy() {
+		// TODO Auto-generated method stub
+		super.onDestroy();
+		if (this.mWaitingDialog.isShowing()) {
+			this.mWaitingDialog.dismiss();
+		}
+		if (this.mAlertDialog != null) {
+			this.mAlertDialog = null;
+		}
+	}
+
+	@Override
+	public View onCreateView(LayoutInflater inflater, ViewGroup container,
+			Bundle savedInstanceState) {
+		View view = inflater.inflate(AccResource.getInstance(mContext).mgp_quick_into,
+				container, false);
+		initView(view);
+		initDialog();
+		initData();
+		initEvent();
+		return view;
+	}
+
+	@Override
+	public void onConfigurationChanged(Configuration newConfig) {
+		super.onConfigurationChanged(newConfig);
+		ViewGroup parentView = (ViewGroup) getView();
+		parentView.removeAllViews();
+		LayoutInflater inflater = (LayoutInflater) mContext
+				.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+		View view = inflater.inflate(AccResource.getInstance(mContext).mgp_quick_into,
+				parentView, false);
+		initView(view);
+		initDialog();
+		initData();
+		initEvent();
+		parentView.addView(view);
+	}
+
+	private void initView(View view) {
+		this.mCyProtocalTv = (TextView) view.findViewById(AccResource.getInstance(mContext).mgp_regist_for_tel_protocal_tv);
+		this.mKnowBtn = (Button) view.findViewById(AccResource.getInstance(mContext).quick_into_btn_know);
+		this.mAccountEt = (EditText) view.findViewById(AccResource.getInstance(mContext).quick_into_account_et);
+		this.mPasswordEt = (EditText) view.findViewById(AccResource.getInstance(mContext).quick_into_password_et);
+	}
+
+	private void initDialog() {
+		this.mWaitingDialog = new ProgressDialog(mContext);
+		if (mAlertDialog != null) {
+			mAlertDialog = null;
+		}
+		this.mAlertDialog = new AlertDialog.Builder(mContext);
+		this.mAlertDialog.setTitle(mContext.getString(AccResource.getInstance(mContext).mgp_login_dialog_title));
+		this.mAlertDialog.setPositiveButton(mContext.getString(AccResource.getInstance(mContext).mgp_login_dialog_retry),
+				new DialogInterface.OnClickListener() {
+
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						mWaitingDialog.setMessage(mContext
+								.getString(AccResource.getInstance(mContext).mgp_login_dialog_login));
+						mWaitingDialog.show();
+						mCyouLoginUtils.userLoginRequest(mUsername, mPassword,
+								new CyouLoginListener() {
+
+									@Override
+									public void onLoginError(int error_code) {
+										showLoginDialog(error_code);
+									}
+
+									@Override
+									public void onLoginComplete() {
+										if (mWaitingDialog.isShowing()) {
+											mWaitingDialog.dismiss();
+										}
+										((CYMGLoginActivity) mContext).finish();
+									}
+
+									@Override
+									public void onLoginCancel(int error_code) {
+										showLoginDialog(error_code);
+									}
+								});
+					}
+				});
+		this.mAlertDialog.setNegativeButton(mContext.getString(AccResource.getInstance(mContext).mgp_login_dialog_cancel),
+				new DialogInterface.OnClickListener() {
+
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						// TODO Auto-generated method stub
+
+					}
+				});
+	}
+
+	@Override
+	protected void initData() {
+		this.mCyouLoginUtils = new CyouLoginUtils(mContext);
+		userOneKeyRegisterRequest(mContext);
+		// this.mTitleTV.setText(mgp_title_tv_quick_into);
+		this.mWaitingDialog.setCancelable(false);
+		this.mWaitingDialog.setMessage(mContext.getString(AccResource.getInstance(mContext).mgp_loading));
+
+		this.mCyProtocalTv.setMovementMethod(LinkMovementMethod.getInstance());
+		String str = this.mContext.getString(AccResource.getInstance(mContext).mgp_regist_protocal);
+		this.mCyProtocalTv.setText(StringUtils.getCYProtocol(str,
+				new ClickSpan()));
+	}
+
+	@Override
+	protected void initEvent() {
+		// this.mBackIBtn.setOnClickListener(this);
+		this.mKnowBtn.setOnClickListener(this);
+		this.mAccountEt.setOnClickListener(this);
+	}
+
+	private class ClickSpan extends ClickableSpan {
+
+		@Override
+		public void onClick(View widget) {
+			// 通知Activity跳转到畅游协议Fragment
+			if (mContext != null) {
+				((CYMGRegistActivity) mContext).changeFragment(
+						CYMGRegistActivity.REGIST, CYMGRegistActivity.PROTOCOL,
+						null);
+			}
+		}
+
+		@Override
+		public void updateDrawState(TextPaint ds) {
+		}
+
+	}
+
+	/**
+	 * 
+	 * 功能描述：一键注册请求
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param
+	 * @return void
+	 * @date 2013-12-31 下午3:18:32
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void userOneKeyRegisterRequest(Context context) {
+		if (NetWorkUtils.isNetworkConnected(context)) {
+			String deviceid = SystemUtils.getDeviceId(context);
+			Map map = new HashMap();
+			map.put("device_id", deviceid);
+			MyHttpClient mHttpClient = new MyHttpClient(context);
+			mHttpClient.post(
+					HttpContants.getURL(HttpContants.USER_AUTO_CREATE_CN_REGISTER),
+					map, new MyAsyncResponseHandler() {
+						@Override
+						public void onStart() {
+							mWaitingDialog.setMessage(getString(AccResource.getInstance(mContext).mgp_loading));
+							mWaitingDialog.show();
+						}
+
+						@Override
+						public void onSuccess(int statusCode, String content) {
+							log.d("userOneKeyRegisterRequest-----onSuccess,content:"
+									+ content);
+							if (!StringUtils.isEmpty(content)) {
+								try {
+									JSONObject obj = new JSONObject(content);
+									String auto_acc = obj.getString("cn");
+									if (!TextUtils.isEmpty(auto_acc)) {
+										if (MBIServiceManager.getInstance()
+												.getMBICallBack() != null) {
+//											MBIServiceManager
+//													.getInstance()
+//													.getMBICallBack()
+//													.onCallback(
+//															MBIProtocolCodes.REGISTER,
+//															JsonUtils
+//																	.getRegisterLogJson(""));
+										}
+										
+										mAccountEt.setText(auto_acc);
+										
+										if (mWaitingDialog.isShowing()) {
+											mWaitingDialog.dismiss();
+										}
+									} else {
+										showQuickIntoDialog(404);
+									}
+								} catch (Exception e) {
+									log.e(e);
+								}
+							} else {
+								showQuickIntoDialog(404);
+							}
+						}
+
+						@Override
+						public void onFailure(int statusCode, Throwable error,
+								String content) {
+							log.d("userOneKeyRegisterRequest-----onFailure,content:"
+									+ content);
+							if (!StringUtils.isEmpty(content)) {
+								try {
+									ErrorInfo info = JSONUtil
+											.getMapper()
+											.readValue(
+													content,
+													new TypeReference<ErrorInfo>() {
+													});
+									if (info != null) {
+										showQuickIntoDialog(info
+												.getError_code());
+										return;
+									} else {
+										showQuickIntoDialog(404);
+										return;
+									}
+								} catch (Exception e) {
+									log.e(e);
+								}
+							} else {
+								showQuickIntoDialog(404);
+								return;
+							}
+							if (statusCode == 404) {
+								showQuickIntoDialog(404);
+							} else {
+								showQuickIntoDialog(404);
+							}
+						}
+					});
+		} else {
+			showQuickIntoDialog(404);
+		}
+	}
+
+	/**
+	 * 
+	 * 功能描述：显示快速进入按钮弹出的dialog
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param @param error_code
+	 * @return void
+	 * @date 2014-3-7 下午7:34:42
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void showQuickIntoDialog(int error_code) {
+		dismissWaitingDialog();
+		if (error_code == 404) {
+			mAlertDialog
+					.setMessage(getString(AccResource.getInstance(mContext).mgp_net_error_hint));
+			mAlertDialog.show();
+		} else if (error_code == 22004) {
+			MyToast.showToast(mContext, getString(AccResource.getInstance(mContext).mgp_login_dialog_register_failure_22004));
+		} else if (error_code == 22005) {
+			MyToast.showToast(mContext, getString(AccResource.getInstance(mContext).mgp_login_dialog_register_failure_22005));
+		} else {
+			mAlertDialog.setMessage(getString(AccResource.getInstance(mContext).mgp_login_dialog_register_failure));
+			mAlertDialog.show();
+		}
+	}
+
+	private void dismissWaitingDialog() {
+		if (mWaitingDialog.isShowing()) {
+			mWaitingDialog.dismiss();
+		}
+	}
+
+	private void showWaitingDialog() {
+		mWaitingDialog
+				.setMessage(getString(AccResource.getInstance(mContext).mgp_login_dialog_login));
+		mWaitingDialog.show();
+	}
+
+	@Override
+	public void onClick(View view) {
+		if (view.getId() == AccResource.getInstance(mContext).quick_into_btn_know) {
+			CMBILogManager.action_A_Register_IntoGame(mContext);
+			this.mWaitingDialog.setMessage(mContext.getString(AccResource.getInstance(mContext).mgp_login_dialog_logining));
+			this.mWaitingDialog.show();
+			this.mUsername = mAccountEt.getText().toString();
+			this.mPassword = mPasswordEt.getText().toString();
+			if (verifyParams(mUsername, mPassword)) {
+				try {
+					String passwd = new DesUtil().encrypt(mPassword);
+					this.mCyouLoginUtils.userLoginRequest(mUsername, passwd,
+							new CyouLoginListener() {
+
+								@Override
+								public void onLoginError(int error_code) {
+									showLoginDialog(error_code);
+								}
+
+								@Override
+								public void onLoginComplete() {
+									if (mWaitingDialog.isShowing()) {
+										mWaitingDialog.dismiss();
+									}
+									Toast.makeText(
+											mContext,
+											getString(AccResource.getInstance(mContext).mgp_regist_success),
+											Toast.LENGTH_SHORT).show();
+									((CYMGRegistActivity) mContext)
+											.setResult(RESULT_CODE_ONEKEY_REGIST_SUCCESS);
+									((CYMGRegistActivity) mContext).finish();
+								}
+
+								@Override
+								public void onLoginCancel(int error_code) {
+									showLoginDialog(error_code);
+								}
+							});
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		} else if (view.getId() == AccResource.getInstance(mContext).quick_into_account_et) {
+			CMBILogManager.action_A_Register_UserEditText(mContext);
+		} 
+	}
+
+	/**
+	 * 
+	 * 功能描述: 注册前先判断条件是否成立
+	 * 
+	 * @param @param username
+	 * @param @param password
+	 * @param @return
+	 * @return boolean 返回类型
+	 * @author 欧阳海冰(OuyangHaibing)
+	 * @date 2014-5-8 下午8:22:02
+	 */
+	private boolean verifyParams(String username, String password) {
+		// 判断用户名是否为空
+		if (TextUtils.isEmpty(username)) {
+			Toast.makeText(
+					mContext,
+					getString(AccResource.getInstance(mContext).mgp_regist_please_enter_username),
+					Toast.LENGTH_LONG).show();
+			return false;
+		}
+		// 判断用户名长度是否在5～16位
+		if (username.length() < 5 || username.length() > 16) {
+			Toast.makeText(
+					mContext,
+					getString(AccResource.getInstance(mContext).mgp_regist_check_username_length),
+					Toast.LENGTH_LONG).show();
+			return false;
+		}
+		// 判断密码是否为空
+		if (TextUtils.isEmpty(password)) {
+			Toast.makeText(
+					mContext,
+					getString(AccResource.getInstance(mContext).mgp_regist_please_enter_password),
+					Toast.LENGTH_LONG).show();
+			return false;
+		}
+
+		// 判断密码长度是否在4～16位
+		if (password.length() < 4 || password.length() > 16) {
+			Toast.makeText(
+					mContext,
+					getString(AccResource.getInstance(mContext).mgp_regist_check_password_length),
+					Toast.LENGTH_LONG).show();
+			return false;
+		}
+		// 判断密码特殊字符
+		Pattern p = Pattern.compile("^[^\'“'\'”'\'‘'\'’'\"\\ ,，]+$");
+		Matcher m = p.matcher(password);
+		if (!m.matches()) {
+			Toast.makeText(
+					mContext,
+					getString(AccResource.getInstance(mContext).mgp_regist_password_not_valide),
+					Toast.LENGTH_LONG).show();
+			mPasswordEt.setText("");
+			return false;
+		}
+
+		// 判断网络是否连接
+		if (!NetWorkUtils.isNetworkConnected(mContext)) {
+			Toast.makeText(
+					mContext,
+					getString(AccResource.getInstance(mContext).mgp_regist_net_state_error), Toast.LENGTH_LONG)
+					.show();
+			return false;
+		}
+		return true;
+	}
+
+	/**
+	 * 
+	 * 功能描述：显示登录按钮弹出的dialog
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param @param error_code
+	 * @return void
+	 * @date 2014-3-7 下午7:36:52
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void showLoginDialog(int error_code) {
+		if (mWaitingDialog.isShowing()) {
+			mWaitingDialog.dismiss();
+		}
+		if (error_code == 404) {
+			mAlertDialog.setMessage(mContext.getString(AccResource.getInstance(mContext).mgp_net_error_hint));
+			mAlertDialog.show();
+		} else if (error_code == 21002) {
+			MyToast.showToast(mContext, mContext.getString(AccResource.getInstance(mContext).mgp_login_dialog_login_failure_21002));
+		} else if (error_code == 21003) {
+			MyToast.showToast(mContext, mContext.getString(AccResource.getInstance(mContext).mgp_login_dialog_login_failure_21003));
+		} else {
+			mAlertDialog.setMessage(mContext.getString(AccResource.getInstance(mContext).mgp_login_dialog_login_failure));
+			mAlertDialog.show();
+		}
+	}
+
+	@Override
+	public void onDestroyView() {
+		super.onDestroyView();
+		if (mWaitingDialog.isShowing()) {
+			mWaitingDialog.dismiss();
+		}
+		mAlertDialog = null;
+	}
+}

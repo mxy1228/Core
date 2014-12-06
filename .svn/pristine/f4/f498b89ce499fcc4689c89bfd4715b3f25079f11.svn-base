@@ -1,0 +1,265 @@
+package com.changyou.mgp.sdk.mbi.account.ui;
+
+import org.apache.http.util.EncodingUtils;
+
+import android.annotation.SuppressLint;
+import android.content.Intent;
+import android.os.Bundle;
+import android.view.KeyEvent;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.webkit.WebChromeClient;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import android.widget.Button;
+import android.widget.ImageButton;
+import android.widget.TextView;
+
+import com.changyou.mgp.sdk.mbi.account.id.AccResource;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolKeys;
+import com.changyou.mgp.sdk.mbi.db.CYMGAccBean;
+import com.changyou.mgp.sdk.mbi.db.CYMGDBMaster;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPlatform;
+import com.changyou.mgp.sdk.mbi.ui.base.BaseActivity;
+import com.changyou.mgp.sdk.mbi.ui.widget.NetErrorView;
+import com.changyou.mgp.sdk.mbi.ui.widget.WaitingDialog;
+import com.changyou.mgp.sdk.mbi.ui.widget.WaitingDialog.MyDialogDismissListener;
+import com.changyou.mgp.sdk.mbi.utils.UserInfoSPUtil;
+
+public class CYMGContainerActivity extends BaseActivity implements OnClickListener{
+
+	//打开个人中心
+	public static final int PERSONAL = 1;
+	//打开论坛
+	public static final int FORUM = 2;
+	private static final String HOST = 
+			"http://i.cy.com";
+//			"http://10.127.128.85:8081";
+//			"http://10.12.13.40:8080";
+	//个人中心地址
+	private static final String PERSONAL_URL = HOST + "/sdk/usercenter/entry";
+	//论坛地址
+	private static final String FORUM_URL = HOST + "/sdk/bbs/";
+	
+	private static final String FINAL_FORUM_URL = "http://bbs.cy.com/forum.php";
+	private static final String FINAL_PERSONAL_URL = "http://i.cy.com/sdk/usercenter/entry";
+	
+	
+	
+	private AccResource mRes;
+	private int mType;
+	private String mToken;
+	private CYLog log = CYLog.getInstance();
+	private boolean mReceiveError;
+	
+	private ImageButton mBackIBtn;
+	private ImageButton mCloseIBtn;
+	private TextView mTitleTV;
+	private WebView mWV;
+	private WaitingDialog mWaitingDialog;
+	private NetErrorView mNetErrorView;
+	private Button mRefreshBtn;
+	
+	@Override
+	protected void onCreate(Bundle arg0) {
+		super.onCreate(arg0);
+		mRes = AccResource.getInstance(this);
+		setContentView(mRes.cymg_flow_win_container_view);
+		initView();
+		initData();
+		initEvent();
+	}
+	
+	@SuppressLint("JavascriptInterface")
+	@Override
+	protected void initView() {
+		View title = findViewById(mRes.cymg_flow_win_container_title);
+		this.mBackIBtn = (ImageButton)title.findViewById(mRes.mgp_title_left_ibtn);
+		this.mBackIBtn.setVisibility(View.GONE);
+		this.mCloseIBtn = (ImageButton)title.findViewById(mRes.mgp_title_right_imgbtn);
+		this.mCloseIBtn.setVisibility(View.VISIBLE);
+		this.mCloseIBtn.setImageResource(mRes.cymg_flow_win_win_container_close_btn);
+		this.mWV = (WebView)findViewById(mRes.cymg_flow_win_container_wv);
+		this.mTitleTV = (TextView)findViewById(mRes.mgp_title_tv);
+		this.mNetErrorView = (NetErrorView)findViewById(mRes.cymg_flow_win_container_net_error);
+		this.mRefreshBtn = mNetErrorView.getRefreshBtn();
+		this.mWaitingDialog = new WaitingDialog(this);
+		this.mWaitingDialog.setDismissListenenr(new MyDialogDismissListener() {
+			
+			@Override
+			public void onTimeOutDismiss() {
+				showNetError();
+			}
+		});
+		mWV.getSettings().setJavaScriptEnabled(true);
+		WebViewClient client = new WebViewClient(){
+			
+			@Override
+			public boolean shouldOverrideUrlLoading(WebView view, String url) {
+				mWV.loadUrl(url);
+				return true;
+			}
+			
+			@Override
+			public void onPageFinished(WebView view, String url) {
+				log.d("onPageFinished:"+url);
+				mWaitingDialog.dismiss();
+				if(!mReceiveError){
+					showContent();
+				}
+			}
+			
+			@Override
+			public void onReceivedError(WebView view, int errorCode,
+					String description, String failingUrl) {
+				mReceiveError = true;
+				mWaitingDialog.dismiss();
+				showNetError();
+			}
+		};
+		WebChromeClient chromeClient = new WebChromeClient(){
+			@Override
+			public void onReceivedTitle(WebView view, String title) {
+				mTitleTV.setText(title);
+			}
+			
+		};
+		mWV.setWebChromeClient(chromeClient);
+		this.mWV.setWebViewClient(client);
+		this.mWV.addJavascriptInterface(new MyInterface(), "cyuc");
+	}
+	
+	public class MyInterface{
+		
+		/**
+		 * web通过JS调用关闭当前窗口
+		 */
+		public void closeview(){
+			log.d("closeview");
+			CYMGContainerActivity.this.finish();
+		}
+		
+		/**
+		 * 注销
+		 */
+		public void logout(){
+			log.d("logout");
+			Bundle loginOutBundle = new Bundle();
+			loginOutBundle.putString(CYMGProtocolKeys.TOKEN, mToken);//设置当前账户token
+			CYMGPlatform.getInstance().logout(CYMGContainerActivity.this, loginOutBundle);
+			CYMGContainerActivity.this.finish();
+		}
+		
+		/**
+		 * 更新Token
+		 */
+		public void update_cysid(String oToken,String nToken){
+			log.d("old token = "+oToken+" and new token = "+nToken);
+			//更新公共DB中的账号Token
+			String uid = UserInfoSPUtil.getUid(CYMGContainerActivity.this);
+			String acc = UserInfoSPUtil.getUsername(CYMGContainerActivity.this);
+			log.d("current uid = "+uid);
+			CYMGAccBean bean = new CYMGAccBean();
+			bean.setmAcc(acc);
+			bean.setmUID(uid);
+			bean.setmToken(nToken);
+			UserInfoSPUtil.setToken(CYMGContainerActivity.this, nToken);
+			new CYMGDBMaster(CYMGContainerActivity.this).login(bean);
+		}
+		
+	}
+	
+
+	@Override
+	protected void initData() {
+		try {
+			Intent intent = getIntent();
+			mType = intent.getIntExtra("type", 0);
+			mToken = UserInfoSPUtil.getToken(this);
+			if(mType == 0){
+				log.e("mType = 0");
+			}
+			showData();
+		} catch (Exception e) {
+			log.e(e);
+		}
+		
+	}
+
+	@Override
+	protected void initEvent() {
+		this.mBackIBtn.setOnClickListener(this);
+		this.mCloseIBtn.setOnClickListener(this);
+		this.mRefreshBtn.setOnClickListener(this);
+	}
+
+	@Override
+	public void onClick(View v) {
+		if(v.getId() == mRes.mgp_title_left_ibtn){
+			CYMGContainerActivity.this.finish();
+		}else if(v.getId() == mRes.mgp_title_right_imgbtn){
+			CYMGContainerActivity.this.finish();
+		}else if(v.getId() == mRes.mgp_net_error_refresh_btn_id){
+			//网络出错，刷新
+			showData();
+		}
+	}
+
+	@Override
+	public boolean onKeyDown(int keyCode, KeyEvent event) {
+		if((keyCode == KeyEvent.KEYCODE_BACK) && mWV.canGoBack()){
+			if(mWV.getUrl().equals(FINAL_FORUM_URL)
+					|| mWV.getUrl().equals(FINAL_PERSONAL_URL)){
+				CYMGContainerActivity.this.finish();
+			}
+			mWV.goBack();
+			return true;
+		}
+		return super.onKeyDown(keyCode, event);
+	}
+	
+	/**
+	 * 根据类型显示web内容
+	 */
+	private void showData(){
+		mReceiveError = false;
+		this.mWaitingDialog.show();
+		String url = null;
+		this.mWV.clearHistory();
+		switch (mType) {
+		case PERSONAL:
+			url = PERSONAL_URL ;
+			String post = "cysid="+mToken;
+			log.d("personal center url="+url+" and post = "+post);
+			mWV.postUrl(url, EncodingUtils.getBytes(post, "UTF-8"));
+			break;
+		case FORUM:
+			url = FORUM_URL 
+				+ "1394595910657"
+				+ "/"+mToken;
+//			MetaDataValueUtils.getAppKey(this);
+			log.d("forum url = "+url);
+			mWV.loadUrl(url);
+			break;
+		default:
+			break;
+		}
+	}
+	
+	/**
+	 * 显示内容，隐藏网络错误
+	 */
+	private void showContent(){
+		this.mWV.setVisibility(View.VISIBLE);
+		this.mNetErrorView.setVisibility(View.GONE);
+	}
+	
+	/**
+	 * 显示网络错误，隐藏内容
+	 */
+	private void showNetError(){
+		this.mWV.setVisibility(View.GONE);
+		this.mNetErrorView.setVisibility(View.VISIBLE);
+	}
+}

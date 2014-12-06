@@ -1,0 +1,33 @@
+package com.changyou.mgp.sdk.mbi.common;
+
+import android.content.Context;
+import android.os.Bundle;
+
+import com.changyou.mgp.sdk.mbi.config.CYMGPrompt;
+
+/**
+ * <PRE>
+ * 作用
+ *       XXXX
+ * 限制
+ *       无。
+ * 注意事项
+ *       无。
+ * 修改历史
+ * </PRE>
+ */
+
+public class CallbackInfoUtils {
+	/***
+	 * 
+	 * @param flag
+	 */
+	public static void callbackResult(int flag){
+		CYMGCallbackHelper.callbackResult(CYMGCallbackHelper.getCommonResult(flag, null));
+	}
+	
+	public static void callbackResult(Context context,int flag,Bundle bundle){
+		CYMGCallbackHelper.callbackResult(CYMGCallbackHelper.getLoginResult(flag, bundle,context));
+	}
+
+}

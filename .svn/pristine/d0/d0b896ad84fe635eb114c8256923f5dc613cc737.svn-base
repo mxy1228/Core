@@ -1,0 +1,48 @@
+package com.changyou.mgp.sdk.mbi.cts.impl;
+
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannel;
+import com.changyou.mgp.sdk.mbi.channel.CYMGChannelEntity;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPlatformConfiguration;
+
+public class CYMGCyouImpl implements CYMGChannel {
+
+	private CYLog log = CYLog.getInstance();
+
+	@Override
+	public void init(CYMGPlatformConfiguration config) {
+		
+	}
+
+	@Override
+	public void doLogin(CYMGChannelEntity entity) {
+		
+	}
+
+	@Override
+	public void doPay(CYMGChannelEntity entity) {
+
+	}
+
+	@Override
+	public void doLogout(CYMGChannelEntity entity) {
+
+	}
+	
+	@Override
+	public void doDestroy(CYMGChannelEntity entity) {
+		
+	}
+
+	@Override
+	public void doCustomerService(CYMGChannelEntity entity) {
+		
+	}
+
+
+	@Override
+	public void doShowUserCenter(CYMGChannelEntity entity) {
+		
+	}
+	
+}

@@ -1,0 +1,86 @@
+package com.changyou.mgp.sdk.mbi.account.widget;
+
+import android.app.Dialog;
+import android.content.Context;
+import android.os.Handler;
+import android.os.Message;
+import android.os.SystemClock;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.widget.TextView;
+
+import com.changyou.mgp.sdk.mbi.account.id.AccResource;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+
+/**
+ * 
+ * 功能描述:自动登录框控制类
+ * 
+ * @author 欧阳海冰(OuyangHaibing)
+ * @date 2014-5-12 上午11:12:48
+ */
+public class CYMGLoginSuccessDialog extends Dialog{
+	private CYLog log = CYLog.getInstance();
+	private static final int NOTIFY_DISMISS_DIALOG = 1;
+	private TextView mAccTv;
+	private Context mContext;
+	private LayoutInflater mInflater;
+
+	public void setAccount(String mAccount) {
+		mAccTv.setText(mAccount);
+	}
+
+	public CYMGLoginSuccessDialog(Context context) {
+		super(context);
+		this.mContext = context;
+		init();
+	}
+
+	public CYMGLoginSuccessDialog(Context context, int theme) {
+		super(context, theme);
+		this.mContext = context;
+		this.mInflater = LayoutInflater.from(mContext);
+		init();
+	}
+	
+	Handler mHandler = new Handler() {
+		@Override
+		public void dispatchMessage(Message msg) {
+			super.dispatchMessage(msg);
+			switch (msg.what) {
+			case NOTIFY_DISMISS_DIALOG:
+				dismiss();
+			break;
+			}
+		}
+	};
+
+	private void init() {
+		initView();
+	}
+	
+	private void initView() {
+		View view = mInflater.inflate(AccResource.getInstance(mContext).mgp_login_success_custom_dialog_109, null);
+		mAccTv = (TextView) view.findViewById(AccResource.getInstance(mContext).mgp_auto_login_success_account_tv);
+		this.setContentView(view);
+	}
+
+	private void startThread() {
+		new Thread(new Runnable() {
+			
+			@Override
+			public void run() {
+				SystemClock.sleep(1*1500);
+				mHandler.sendEmptyMessage(NOTIFY_DISMISS_DIALOG);
+			}
+		}).start();
+	}
+	
+	@Override
+	public void show() {
+		this.setCancelable(false);
+		startThread();
+		super.show();
+	}
+
+}

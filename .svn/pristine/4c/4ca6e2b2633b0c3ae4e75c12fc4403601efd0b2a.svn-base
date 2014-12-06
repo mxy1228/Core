@@ -1,0 +1,112 @@
+package com.changyou.mgp.sdk.mbi.platform;
+
+import java.util.Set;
+
+import org.json.JSONObject;
+
+import android.os.Bundle;
+
+import com.changyou.mgp.sdk.mbi.common.CYMGCallBackManager;
+import com.changyou.mgp.sdk.mbi.config.CYMGFunID;
+import com.changyou.mgp.sdk.mbi.config.CYMGPrompt;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolKeys;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.mbi.constant.MBIProtocolCodes;
+import com.changyou.mgp.sdk.mbi.mbi.manager.MBIServiceManager;
+import com.changyou.mgp.sdk.mbi.mbi.util.JsonUtils;
+import com.changyou.mgp.sdk.mbi.utils.MetaDataValueUtils;
+
+public class CYMGLoginHelper{
+
+	private CYLog log = CYLog.getInstance();
+	private static CYMGLoginHelper mInstance;
+	
+	private CYMGLoginHelper(){
+		
+	}
+	
+	public static CYMGLoginHelper getInstance(){
+		if(mInstance == null){
+			mInstance = new CYMGLoginHelper();
+		}
+		return mInstance;
+	}
+
+
+	/**
+	 * 
+	 * 功能描述：向�?��接口返回登录结果
+	 *
+	 * @author 徐萌�?xumengyang)
+	 * @param @param uid
+	 * @param @param token
+	 * @return void
+	 * @date 2014-2-28 下午2:28:46
+	 *
+	 */
+
+	public void loginResult(int error_code,Bundle b){
+		try {
+			JSONObject obj = new JSONObject();
+			obj.put(CYMGProtocolKeys.STATE_CODE, error_code);
+			obj.put(CYMGProtocolKeys.MSG, CYMGPrompt.getContentByCode(error_code));
+			JSONObject data = new JSONObject();
+			if(b != null){
+				Set<String> keys = b.keySet();
+				for(String key : keys){
+					if(CYMGProtocolKeys.CHANNEL_ID.equals(key) || CYMGProtocolKeys.OPCODE.equals(key)){
+						continue;
+					}
+					data.put(key, b.get(key));
+				}
+			}
+			obj.put(CYMGProtocolKeys.DATA, data);
+			obj.put(CYMGProtocolKeys.CHANNEL_ID,b.getString(CYMGProtocolKeys.CHANNEL_ID));
+			obj.put(CYMGProtocolKeys.OPCODE,b.getString(CYMGProtocolKeys.OPCODE));
+			CYMGCallBackManager.getAndRemoveCallBack(CYMGFunID.ACCOUNT).onFinished(obj.toString());
+			if(error_code == CYMGPrompt.CODE_LOGIN_SUCCESS){
+				if(MBIServiceManager.getInstance().getMBICallBack()!=null){
+					MBIServiceManager.getInstance().getMBICallBack().onCallback(MBIProtocolCodes.LOGIN, JsonUtils.getLoginLogJson(b.getString(CYMGProtocolKeys.UID)));
+				}
+			}
+		} catch (Exception e) {
+			log.e(e);
+		}
+	}
+
+	
+	/**
+	 * 
+	 * 功能描述：返回异常给接入�?
+	 *
+	 * @author 徐萌�?xumengyang)
+	 * @param @param stateCode
+	 * @return void
+	 * @date 2014-3-26 下午1:00:27
+	 *
+	 */
+	public void exeception(int stateCode){
+		try {
+			JSONObject obj = new JSONObject();
+			obj.put(CYMGProtocolKeys.STATE_CODE, stateCode);
+			obj.put(CYMGProtocolKeys.MSG, CYMGPrompt.getContentByCode(stateCode));
+			CYMGCallBackManager.getAndRemoveCallBack(CYMGFunID.ACCOUNT).onFinished(obj.toString());
+		} catch (Exception e) {
+			log.e(e);
+		}
+	}
+	
+	/**
+	 * 
+	 * 功能描述：返�?60渠道登录结果，主要内容为authorization_code，对360的登录结果不进行包装，直接返回给接入�?
+	 *
+	 * @author 徐萌�?xumengyang)
+	 * @param @param result
+	 * @return void
+	 * @date 2014-3-12 上午9:42:55
+	 *
+	 */
+//	public void QihooLoginResult(String result){
+//		getCallBack().onFinished(result);
+//	}
+}

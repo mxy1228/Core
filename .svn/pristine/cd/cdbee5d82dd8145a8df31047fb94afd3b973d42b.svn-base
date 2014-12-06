@@ -1,0 +1,69 @@
+package com.changyou.mgp.sdk.mbi.config;
+
+
+
+/**
+ * 
+ * 功能描述：存储接口URL地址
+ *
+ * @author 徐萌阳(xumengyang)
+ * @date 2013-12-20下午6:03:29
+ */
+public class HttpContants {
+	
+	public static class IP{
+//		public static final String HOST_IP ="http://111.206.12.99";//服务器接口IP
+//		public static final String HOST_IP ="http://t.changyou.com:8080";//服务器接口IP
+		public static String HOST_IP = 
+//				"http://t.changyou.com:9099";//外网测试服
+				SDKConfig.DEBUG ? "http://t.changyou.com:9099" : "http://gateway.changyou.com";
+//		public static final String HOST_IP ="http://10.6.152.141:8080";//服务器接口IP
+		public static final String CYOU_WRAP_IP = "http://member.changyou.com/";//WrapIP
+	}
+	
+	//用户登录
+	public static final String USER_LOGIN = IP.HOST_IP+ "/gateway/cyou/user/login.json";
+	//一键注册
+	public static final String USER_ONE_KEY_REGISTER = IP.HOST_IP+ "/gateway/cyou/user/register.json";
+	//商品列表
+	public static final String PAYMENT_GOODS = IP.HOST_IP+ "/gateway/cyou/goods/goodslist.json";
+	//订单核对
+	public static final String ORDER_CHECK = IP.HOST_IP + "/gateway/cyou/order/verify.json";
+	//订单生成
+	public static final String CREATE_ORDER = IP.HOST_IP + "/gateway/cyou/order/create.json";
+	//获取订单列表
+	public static final String ORDER_LIST = IP.HOST_IP + "/gateway/cyou/order/query.json";
+	//订单验证
+	public static final String VERIFY_ORDER = IP.HOST_IP + "/gateway/cyou/order/verify.json";
+	//工单类型
+	public static final String WORK_ORDER_TYPE = IP.HOST_IP + "/gateway/cyou/customers/workordertype/query.json";
+	//工单查询
+	public static final String WORK_ORDER_LIST = IP.HOST_IP + "/gateway/cyou/customers/workorder/query.json";
+	//工单录入
+	public static final String WORK_ORDER_IMPORT = IP.HOST_IP + "/gateway/cyou/customers/workorder/create.json";
+	//手机注册
+	public static final String TEL_REGIST = 
+			IP.HOST_IP + "/gateway/cyou/account/cellphone/register.json";
+	//邮箱注册
+	public static final String MAIL_REGIST = 
+			IP.HOST_IP + "/gateway/cyou/account/email/register.json";
+	//畅游用户协议
+	public static final String CYOU_PROTOCOL = "http://member.changyou.com/inc/useragreement.html";
+	// 忘记密码
+	public static final String FORGET_PASSWORD="http://member.changyou.com/common/codeAdmin.do";
+	//支付宝wrap支付
+	public static final String ALIPAY_WRAP = 
+//			"http://t.changyou.com:9099/pay/alipayapi.jsp";
+			IP.HOST_IP+"/pay/alipayapi.jsp";
+	//获取手机验证码
+	public static final String GET_VALIDATE_NUM = IP.HOST_IP + "/gateway/cyou/account/cellphone/verify.json";
+	//360登录验证
+	public static final String QIHOO_LOGIN = 
+			"http://10.12.16.240:8080"
+			//IP.HOST_IP 
+			+ "/gateway/cyou/sdk/qihoo/login.json";
+	//MDO
+	public static final String MDO = IP.HOST_IP + "/gateway/cyou/mdo/msgcontent/msgquery.json";
+	//全局参数
+	public static final String GLOBAL_PARAMS = IP.HOST_IP + "/gateway/cyou/sys/maintainmap/query.json";
+}

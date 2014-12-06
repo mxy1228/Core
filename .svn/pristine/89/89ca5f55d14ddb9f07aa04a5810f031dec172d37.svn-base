@@ -1,0 +1,42 @@
+package com.changyou.mgp.sdk.mbi.cts.viewcache;
+
+import android.view.View;
+import android.widget.TextView;
+
+import com.changyou.mgp.sdk.mbi.cts.id.CtsResource;
+
+public class AbnormalOrderListViewCache {
+	
+	private CtsResource mResource=CtsResource.getInstance(null);
+	private View mView;
+	private TextView mDateTV;
+	private TextView mAmountTV;
+	private TextView mStateTV;
+	
+	public AbnormalOrderListViewCache(){
+		
+	}
+	
+	public void setView(View view){
+		this.mView=view;
+	}
+
+	public TextView getDateTV() {
+		if(mDateTV==null){
+			mDateTV=(TextView) mView.findViewById(mResource.mgp_onlineserver_custom_dialog_list_item_date_TextView);
+		}
+		return mDateTV;
+	}
+	public TextView getAmountTV() {
+		if(mAmountTV==null){
+			mAmountTV=(TextView) mView.findViewById(mResource.mgp_onlineserver_custom_dialog_list_item_amount_TextView);
+		}
+		return mAmountTV;
+	}
+	public TextView getStateTV() {
+		if(mStateTV==null){
+			mStateTV=(TextView) mView.findViewById(mResource.mgp_onlineserver_custom_dialog_list_item_state_TextView);
+		}
+		return mStateTV;
+	}
+}

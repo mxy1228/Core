@@ -1,0 +1,183 @@
+package com.changyou.mgp.sdk.mbi.common;
+
+import java.util.Set;
+
+import org.json.JSONObject;
+
+import android.content.Context;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+
+import com.changyou.mgp.sdk.mbi.account.id.AccResource;
+import com.changyou.mgp.sdk.mbi.account.ui.CYMGLoginToast;
+import com.changyou.mgp.sdk.mbi.channel.impl.CYMGCyouImpl;
+import com.changyou.mgp.sdk.mbi.config.CYMGPrompt;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolKeys;
+import com.changyou.mgp.sdk.mbi.config.SDKConfig;
+import com.changyou.mgp.sdk.mbi.entity.GoodsItem;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.mbi.manager.CMBILogManager;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPlatform;
+import com.changyou.mgp.sdk.mbi.ui.widget.CYMGFlowWindow;
+import com.changyou.mgp.sdk.mbi.utils.DesUtil;
+import com.changyou.mgp.sdk.mbi.utils.MetaDataValueUtils;
+import com.changyou.mgp.sdk.mbi.utils.UserInfoSPUtil;
+
+public class CYMGCallbackHelper{
+
+	private static CYLog log = CYLog.getInstance();
+	
+	private static Context mContext;
+	
+	private static GoodsItem mGoodsItem;
+	
+	
+	/**
+	 * 
+	 * 功能描述：获取通用结果
+	 *
+	 * @author 严峥(yanzheng)
+	 * @param @param error_code
+	 * @param @param b
+	 * @param @return
+	 * @return String
+	 * @date 2014-5-15 下午6:50:24
+	 *
+	 * 修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public static String getCommonResult(int error_code,Bundle b){
+		JSONObject obj = null;
+		try {
+			obj = new JSONObject();
+			obj.put(CYMGProtocolKeys.STATE_CODE, error_code);
+			obj.put(CYMGProtocolKeys.MSG, CYMGPrompt.getContentByCode(error_code));
+			JSONObject data = new JSONObject();
+			if(b != null){
+				Set<String> keys = b.keySet();
+				for(String key : keys){
+					data.put(key, b.get(key));
+				}
+			}
+			obj.put(CYMGProtocolKeys.DATA, data);
+		} catch (Exception e) {
+			log.e(e);
+		}
+		return obj.toString();
+	}
+	
+	/**
+	 * 
+	 * 功能描述：获取支付结果
+	 *
+	 * @author 严峥(yanzheng)
+	 * @param @param error_code
+	 * @param @param uid
+	 * @param @param orderID
+	 * @param @param item
+	 * @param @return
+	 * @return String
+	 * @date 2014-5-15 下午6:50:41
+	 *
+	 * 修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public static String getPayResult(int error_code,String uid,String orderID,GoodsItem item){
+		mGoodsItem=item;
+		JSONObject obj = null;
+		try {
+			obj = new JSONObject();
+			obj.put(CYMGProtocolKeys.STATE_CODE, error_code);
+			obj.put(CYMGProtocolKeys.MSG, CYMGPrompt.getContentByCode(error_code));
+			JSONObject data = new JSONObject();
+			data.put(CYMGProtocolKeys.UID, uid);
+			data.put(CYMGProtocolKeys.ORDER_ID, orderID);
+			data.put(CYMGProtocolKeys.PRICE, String.valueOf(item.getGoods_price()));
+			obj.put(CYMGProtocolKeys.DATA, data);
+		} catch (Exception e) {
+			log.e(e);
+		}
+		return obj.toString();
+	}
+	
+	/**
+	 * 
+	 * 功能描述：获取登录
+	 *
+	 * @author 严峥(yanzheng)
+	 * @param @param error_code
+	 * @param @param b
+	 * @param @param context
+	 * @param @return
+	 * @return String
+	 * @date 2014-5-15 下午6:50:52
+	 *
+	 * 修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	public static String getLoginResult(int error_code,final Bundle b,final Context context){
+		JSONObject obj = null;
+		try { 
+			mContext=context;
+			CMBILogManager.printEventLog(mContext, "0", "110020", "");
+			obj = new JSONObject();
+			obj.put(CYMGProtocolKeys.STATE_CODE, error_code);
+			obj.put(CYMGProtocolKeys.MSG, CYMGPrompt.getContentByCode(error_code));
+			if(error_code==CYMGPrompt.CODE_LOGIN_SUCCESS){
+				JSONObject params = new JSONObject();
+				if(b != null){
+					Set<String> keys = b.keySet();
+					for(String key : keys){
+						if(CYMGProtocolKeys.CHANNEL_ID.equals(key) || CYMGProtocolKeys.OPCODE.equals(key)){
+							continue;
+						}
+						params.put(key, b.get(key));
+					}
+					params.put("sdkversion", SDKConfig.VERSION);
+					params.put("system", "android");
+					params.put("gamechannel", MetaDataValueUtils.getCMBIChannelID(mContext));
+					String valInfo = new DesUtil().encrypt(params.toString());
+					JSONObject data = new JSONObject();
+					data.put("validateInfo", valInfo);
+					obj.put(CYMGProtocolKeys.DATA, data.toString());
+					obj.put(CYMGProtocolKeys.CHANNEL_ID,b.getString(CYMGProtocolKeys.CHANNEL_ID));
+					obj.put(CYMGProtocolKeys.OPCODE,b.getString(CYMGProtocolKeys.OPCODE));
+				}
+				if(CYMGCyouImpl.getCYMGLoginCallback()!=null){
+					CYMGCyouImpl.getCYMGLoginCallback().onFinished();
+				}
+				//显示悬浮窗
+				try {
+					new Handler(Looper.getMainLooper()).post(new Runnable() {
+						
+						@Override
+						public void run() {
+							if(b.getString(CYMGProtocolKeys.CHANNEL_ID).equals(context.getString(AccResource.getInstance(context).mgp_channel_cy))){
+								SDKConfig.HAD_LOGIN = true;
+								CYMGFlowWindow win = CYMGFlowWindow.getInstance(context);
+								win.show();
+							}
+						}
+					});
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		} catch (Exception e) {
+			log.e(e);
+		}
+		return obj.toString();
+	}
+	
+	public static void callbackResult(final String result){
+		final CYMGCallback callback = CYMGPlatform.getInstance().getCYMGCallback();
+		if(callback==null){
+			log.d("CYMGCallback is null");
+			return;
+		}
+		new Handler(Looper.getMainLooper()).post(new Runnable() {
+			@Override
+			public void run() {
+				callback.onFinished(result);
+			}
+		});
+	}
+}

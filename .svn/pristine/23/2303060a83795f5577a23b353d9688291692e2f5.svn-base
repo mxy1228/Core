@@ -1,0 +1,206 @@
+package com.changyou.mgp.sdk.mbi.account.widget;
+
+import java.util.Timer;
+import java.util.TimerTask;
+
+import android.app.Dialog;
+import android.content.Context;
+import android.os.Handler;
+import android.os.Message;
+import android.os.SystemClock;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.widget.TextView;
+
+import com.changyou.mgp.sdk.mbi.account.id.AccResource;
+import com.changyou.mgp.sdk.mbi.account.inf.OnLoginDialogListener;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+
+/**
+ * 
+ * 功能描述:自动登录框控制类
+ * 
+ * @author 欧阳海冰(OuyangHaibing)
+ * @date 2014-5-12 上午11:12:48
+ */
+public class MGPAutoLoginDialog extends Dialog implements
+		android.view.View.OnClickListener{
+	private CYLog log = CYLog.getInstance();
+	protected static final int SHOW_ONE_POINT = 0;
+	protected static final int SHOW_TWO_POINT = 1;
+	protected static final int SHOW_THREE_POINT = 2;
+	protected static final int NOTIFY_DISMISS_DIALOG = 3;
+	private TextView mAccTv;
+	private TextView mIsLogingTv;
+	private TextView mSwitchAccTv;
+	private TextView mIsLogingEllipsisTv;
+	private Timer mEllipsisTimer;
+	private int mCount = 0;
+	private Context mContext;
+	private LayoutInflater mInflater;
+	private String mAccount;
+	private boolean mIsSwitchAcc = false;
+	private OnLoginDialogListener mLoginDialogListener;
+
+	public void setAccount(String mAccount) {
+		this.mAccount = mAccount;
+		if (mAccount.length() > 20) {
+			String subAccTv = mAccount.substring(0, 20);
+			mAccTv.setText(subAccTv+"...");
+		}else {
+			mAccTv.setText(mAccount);
+		}
+	}
+
+	public MGPAutoLoginDialog(Context context) {
+		super(context);
+		this.mContext = context;
+		init();
+	}
+	
+	
+
+	public MGPAutoLoginDialog(Context context, boolean cancelable,
+			OnCancelListener cancelListener) {
+		super(context, cancelable, cancelListener);
+	}
+
+	public MGPAutoLoginDialog(Context context, int theme,OnLoginDialogListener loginDialogListener) {
+		super(context, theme);
+		this.mLoginDialogListener = loginDialogListener;
+		this.mContext = context;
+		this.mInflater = LayoutInflater.from(mContext);
+		init();
+	}
+
+
+	private void init() {
+		initView();
+		startTimer();
+		startThread();
+	}
+
+	/**
+	 * 
+	 * 功能描述: 默认4秒后自动销毁（Thread+Handler）
+	 * @param   
+	 * @return void    返回类型 
+	 * @author 欧阳海冰(OuyangHaibing)
+	 * @date 2014-5-13 下午2:23:41
+	 */
+	private void startThread() {
+		new Thread(new Runnable() {
+			
+			@Override
+			public void run() {
+				SystemClock.sleep(4*1000);
+				Message msg = Message.obtain();
+				msg.what = NOTIFY_DISMISS_DIALOG;
+				boolean isSwitchAcc = false;
+				msg.obj = isSwitchAcc;
+				mHandler.sendMessage(msg);
+			}
+		}).start();
+	}
+
+
+
+
+	Handler mHandler = new Handler() {
+		@Override
+		public void dispatchMessage(Message msg) {
+			super.dispatchMessage(msg);
+			switch (msg.what) {
+			case SHOW_ONE_POINT:
+				mIsLogingEllipsisTv.setText(".");
+				mCount++;
+				break;
+			case SHOW_TWO_POINT:
+				mIsLogingEllipsisTv.setText("..");
+				mCount++;
+				break;
+			case SHOW_THREE_POINT:
+				mIsLogingEllipsisTv.setText("...");
+				mCount = 0;
+				break;
+			case NOTIFY_DISMISS_DIALOG:
+				boolean isSwitchAcc = (Boolean) msg.obj;
+				if (isSwitchAcc) {
+					log.d("mLoginDialogListener.onSwitchAcc()");
+					mLoginDialogListener.onSwitchAcc();
+				}else {
+					if (!mIsSwitchAcc) {
+						mLoginDialogListener.onDialogDismiss();
+						log.d("mLoginDialogListener.onDialogDismiss()");
+					}
+				}
+				dismiss();
+				break;
+			}
+		}
+	};
+
+
+	/**
+	 * 
+	 * 功能描述: 初始化Dialog
+	 * 
+	 * @param
+	 * @return void 返回类型
+	 * @author 欧阳海冰(OuyangHaibing)
+	 * @date 2014-5-9 下午6:43:34
+	 */
+	private void initView() {
+		View view = mInflater.inflate(AccResource.getInstance(mContext).mgp_auto_login_custom_dialog, null);
+		mAccTv = (TextView) view.findViewById(AccResource.getInstance(mContext).mgp_auto_login_acc_tv);
+		mIsLogingTv = (TextView) view.findViewById(AccResource.getInstance(mContext).mgp_auto_login_isloging_tv);
+		mIsLogingEllipsisTv = (TextView) view.findViewById(AccResource.getInstance(mContext).mgp_auto_login_isloging_ellipsis_tv);
+		mSwitchAccTv = (TextView) view.findViewById(AccResource.getInstance(mContext).mgp_auto_login_switch_acc_tv);
+		mSwitchAccTv.setOnClickListener(this);
+		this.setContentView(view);
+	}
+
+	/**
+	 * 
+	 * 功能描述: 实现动态点点点省略号闪烁效果
+	 * 
+	 * @param
+	 * @return void 返回类型
+	 * @author 欧阳海冰(OuyangHaibing)
+	 * @date 2014-5-12 上午11:58:11
+	 */
+	private void startTimer() {
+		mEllipsisTimer = new Timer();
+		mEllipsisTimer.schedule(new TimerTask() {
+
+			@Override
+			public void run() {
+				if (mCount == 0) {
+					mHandler.sendEmptyMessage(SHOW_ONE_POINT);
+				} else if (mCount == 1) {
+					mHandler.sendEmptyMessage(SHOW_TWO_POINT);
+				} else {
+					mHandler.sendEmptyMessage(SHOW_THREE_POINT);
+				}
+			}
+		}, 0, 500);
+	}
+
+
+	@Override
+	public void onClick(View view) {
+		if (view == mSwitchAccTv) {
+//			CMBILogManager.action_B_Login_Change(mContext);
+			// 取消定时器
+			mEllipsisTimer.cancel();
+			// 销毁dialog
+			Message msg = Message.obtain();
+			msg.what = NOTIFY_DISMISS_DIALOG;
+			mIsSwitchAcc = true;
+			msg.obj = mIsSwitchAcc;
+			mHandler.sendMessage(msg);
+		}
+	}
+
+
+}

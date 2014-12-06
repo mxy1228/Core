@@ -1,0 +1,389 @@
+package com.changyou.mgp.sdk.mbi.account.ui;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import org.codehaus.jackson.type.TypeReference;
+
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.os.Bundle;
+import android.os.Handler;
+import android.text.Editable;
+import android.text.InputFilter;
+import android.text.TextPaint;
+import android.text.TextWatcher;
+import android.text.method.LinkMovementMethod;
+import android.text.style.ClickableSpan;
+import android.view.KeyEvent;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.View.OnFocusChangeListener;
+import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
+import android.widget.AutoCompleteTextView;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.Filter;
+import android.widget.TextView;
+import android.widget.TextView.OnEditorActionListener;
+import android.widget.Toast;
+
+import com.changyou.mgp.sdk.mbi.R;
+import com.changyou.mgp.sdk.mbi.account.adapter.MyEmailDropListAdapter;
+import com.changyou.mgp.sdk.mbi.config.HttpContants;
+import com.changyou.mgp.sdk.mbi.config.Params;
+import com.changyou.mgp.sdk.mbi.entity.RegistInfo;
+import com.changyou.mgp.sdk.mbi.http.MyAsyncResponseHandler;
+import com.changyou.mgp.sdk.mbi.http.MyHttpClient;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.ui.base.BaseFragment;
+import com.changyou.mgp.sdk.mbi.ui.widget.WaitingDialog;
+import com.changyou.mgp.sdk.mbi.utils.DesUtil;
+import com.changyou.mgp.sdk.mbi.utils.JSONUtil;
+import com.changyou.mgp.sdk.mbi.utils.StringUtils;
+import com.changyou.mgp.sdk.mbi.utils.SystemUtils;
+
+/**
+ * 
+ * 功能描述：使用webview进行手机账号注册
+ *
+ * @author 徐萌阳(xumengyang)
+ *
+ * @date 2013-12-25上午11:31:10
+ */
+public class CYMGRegistForMailFragment extends BaseFragment implements OnClickListener,OnEditorActionListener{
+
+	private static final int DISMISS_DIALOG = 1;
+	private static final String SUCCESS = "success";
+	
+	private static final int MIN_PAS_LENGTH = 4;
+	private static final int MAX_PAS_LENGTH = 16;
+	private static final int MAX_ACC_LENGTH = 49;
+	
+	private CYLog log = CYLog.getInstance();
+	
+	private WaitingDialog mWaitingDialog;
+	private AutoCompleteTextView mAccET;
+	private EditText mPassET;
+	private Button mRegistBtn;
+//	private ImageButton mAccCancelIBtn;
+//	private ImageButton mPassCancelIBtn;
+	private TextView mProtocalTV;
+	private AlertDialog mNetErrorDialog;
+	
+	private Activity mActivity;
+	private MyEmailDropListAdapter mAdapter;
+	private boolean mLoadError = false;
+	private boolean mRegistSuccess = false;//注册成功之后置为true
+	public boolean mIsLoadSuccess = false;//标记是否加载成功
+	private View mView;
+	
+	@Override
+	public View onCreateView(LayoutInflater inflater, ViewGroup container,
+			Bundle savedInstanceState) {
+		mActivity=getActivity();
+		mView = inflater.inflate(R.layout.mgp_regist_for_mail, container,false);
+		mWaitingDialog = new WaitingDialog(mActivity);
+		this.mAccET = (AutoCompleteTextView)mView.findViewById(R.id.mgp_regist_for_mail_acc_et);
+		this.mAccET.setDropDownWidth(SystemUtils.getScreenWidthSize(mActivity));
+		this.mAccET.setDropDownBackgroundDrawable(null);
+		this.mAccET.setFilters(new InputFilter[]{new InputFilter.LengthFilter(MAX_ACC_LENGTH)});
+		this.mPassET = (EditText)mView.findViewById(R.id.mgp_regist_for_mail_pas_et);
+		this.mPassET.setFilters(new InputFilter[]{new InputFilter.LengthFilter(MAX_PAS_LENGTH)});
+		this.mRegistBtn = (Button)mView.findViewById(R.id.mgp_regist_for_mail_regist_btn);
+		this.mProtocalTV = (TextView)mView.findViewById(R.id.mgp_regist_for_mail_protocal_tv);
+		this.mAccET.setOnEditorActionListener(this);
+		this.mPassET.setOnEditorActionListener(this);
+		this.mNetErrorDialog = new AlertDialog.Builder(mActivity)
+		.setMessage(R.string.mgp_net_error_hint)
+		.setNegativeButton(R.string.mgp_login_dialog_cancel, new DialogInterface.OnClickListener() {
+			
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+				dialog.dismiss();
+			}
+		})
+		.setPositiveButton(R.string.mgp_login_dialog_retry, new DialogInterface.OnClickListener() {
+			
+			@Override
+			public void onClick(DialogInterface dialog, int which) {
+				regist2Server();
+			}
+		})
+		.create();
+		initData();
+		initEvent();
+		return mView;
+	}
+	
+	public View getMailRegisterView() {
+		return mView;
+	}
+	
+	@Override
+	public void onAttach(Activity activity) {
+		super.onAttach(activity);
+		this.mActivity = activity;
+	}
+	
+	@Override
+	protected void initData() {
+		this.mAdapter = new MyEmailDropListAdapter(mActivity,mAccET,true);
+		this.mAccET.setAdapter(mAdapter);
+		this.mAccET.setThreshold(1);
+		String str = mActivity.getString(R.string.mgp_regist_protocal);
+		this.mProtocalTV.setMovementMethod(LinkMovementMethod.getInstance());
+		this.mProtocalTV.setText(StringUtils.getCYProtocol(str,new ClickSpan()));
+	}	
+	
+	@Override
+	protected void initEvent() {
+		this.mAccET.setOnFocusChangeListener(new OnFocusChangeListener() {
+			
+			@Override
+			public void onFocusChange(View v, boolean hasFocus) {
+				if(!hasFocus && !mAccET.getText().toString().isEmpty()){
+					checkAcc();
+				}
+			}
+		});
+		this.mAccET.addTextChangedListener(new TextWatcher() {
+			
+			@Override
+			public void onTextChanged(CharSequence s, int start, int before, int count) {
+				
+			}
+			
+			@Override
+			public void beforeTextChanged(CharSequence s, int start, int count,
+					int after) {
+				
+			}
+			
+			@Override
+			public void afterTextChanged(Editable s) {
+				Filter filter = mAdapter.getFilter();
+				filter.filter(s.toString().subSequence(0, s.length()));
+				
+			}
+		});
+		this.mRegistBtn.setOnClickListener(this);
+	}
+	
+	@Override
+	public void onDestroy() {
+		super.onDestroy();
+		if(mWaitingDialog.isShowing()){
+			mWaitingDialog.dismiss();
+		}
+	}
+	
+	/**
+	 * 
+	 * 功能描述：判断当前页面显示的是否是注册成功页
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param @return
+	 * @return boolean
+	 * @date 2014-1-13 下午3:36:32
+	 *
+	 */
+	public boolean isRegistSuccess(){
+		return mRegistSuccess;
+	}
+	
+	private Handler mHandler = new Handler(){
+		public void handleMessage(android.os.Message msg) {
+			switch (msg.what) {
+			case DISMISS_DIALOG:
+				mWaitingDialog.dismiss();
+				Toast.makeText(mActivity, R.string.mgp_net_error_hint, Toast.LENGTH_SHORT).show();
+				break;
+			default:
+				break;
+			}
+		};
+	};
+	
+
+	@Override
+	public void onClick(View v) {
+		if(v.getId() == R.id.mgp_regist_for_mail_regist_btn){
+			regist2Server();
+		}
+	}
+	
+	
+	/**
+	 * 
+	 * 功能描述：检测账号合法性
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param @return
+	 * @return boolean
+	 * @date 2014-3-12 下午1:47:51
+	 *
+	 */
+	private boolean checkAcc(){
+		String content = mAccET.getText().toString().trim();
+		if(content.contains("@") && !content.isEmpty() && content != null ){
+			return true;
+		}else{
+			Toast.makeText(mActivity, R.string.mgp_regist_mail_error, Toast.LENGTH_LONG).show();
+		}
+		return false;
+	}
+	
+	/**
+	 * 
+	 * 功能描述：检测密码合法性
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param @return
+	 * @return boolean
+	 * @date 2014-3-12 下午1:48:07
+	 *
+	 */
+	private boolean checkPass(){
+		String password = mPassET.getText().toString();
+		Pattern p = Pattern.compile("^[^\'“'\'”'\'‘'\'’'\"\\ ,，]+$");
+		Matcher m = p.matcher(password);
+		if(password.length() == 0){
+			Toast.makeText(mActivity, R.string.mgp_regist_password_error2, Toast.LENGTH_LONG).show();
+		}else if(password.length() >= MIN_PAS_LENGTH && password.length() <= MAX_PAS_LENGTH){
+			if(m.matches()){
+				return true;
+			}else{
+				Toast.makeText(mActivity,R.string.mgp_regist_password_not_valide, Toast.LENGTH_LONG).show();
+				this.mPassET.setText("");
+			}
+		}else{
+			Toast.makeText(mActivity, R.string.mgp_regist_password_error, Toast.LENGTH_LONG).show();
+		}
+		return false;
+	}
+	
+	
+	/**
+	 * 
+	 * 功能描述：向服务器注册账号
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param 
+	 * @return void
+	 * @date 2014-3-6 下午7:37:16
+	 *
+	 */
+	private void regist2Server(){
+		if(!(checkAcc() && checkPass())){
+			return;
+		}
+		String password = null;
+		try {
+			password = new DesUtil().encrypt(mPassET.getText().toString());
+		} catch (Exception e) {
+			log.e(e);
+		}
+		Map<String,String> params = new HashMap<String, String>();
+		params.put("account", mAccET.getText().toString().toLowerCase());
+		params.put("password", password);
+		new MyHttpClient(mActivity).post(HttpContants.getURL(HttpContants.MAIL_REGIST), params, new MyAsyncResponseHandler(){
+			
+			@Override
+			public void onStart() {
+				mWaitingDialog.setMessage(mActivity.getString(R.string.mgp_regist_registing));
+				mWaitingDialog.show();
+			}
+			
+			@Override
+			public void onSuccess(int statusCode, String content) {
+				log.d("mail regist = "+content);
+				mWaitingDialog.dismiss();
+				try {
+					RegistInfo info = JSONUtil.getMapper().readValue(content, new TypeReference<RegistInfo>() {
+					});
+					if(info != null){
+						if(info.getMessage().equals(SUCCESS)){
+							if(mActivity != null){
+								Bundle b = new Bundle();
+								b.putString(Params.EMAIL, mAccET.getText().toString());
+								b.putString(Params.PASSWORD, mPassET.getText().toString());
+								((CYMGRegistActivity)mActivity).changeFragment(CYMGRegistActivity.REGIST,CYMGRegistActivity.REGIST_COMPLETER,b);
+							}else{
+								log.e("mActivity is null");
+							}
+						}else{
+							//TODO
+						}
+					}else{
+						log.e("info is null");
+					}
+				} catch (Exception e) {
+					log.e(e);
+				}
+			}
+			
+			@Override
+			public void onFailure(Throwable error, String content) {
+				log.e("mail regist = "+content);
+				mWaitingDialog.dismiss();
+				try {
+					RegistInfo info = JSONUtil.getMapper().readValue(content, new TypeReference<RegistInfo>() {
+					});
+					if(info != null){
+						if(info.getError_code() == 30002 || info.getError_code() == 30003){
+							Toast.makeText(mActivity,R.string.mgp_regist_mail_error , Toast.LENGTH_LONG).show();
+						}else if(info.getClient_message() != null){
+							Toast.makeText(mActivity, info.getClient_message(), Toast.LENGTH_LONG).show();
+						}
+					}else{
+						log.e("info is null");
+					}
+				} catch (Exception e) {
+					mNetErrorDialog.show();
+					log.e(e);
+				}
+			}
+			
+		});
+	}
+
+	
+	private class ClickSpan extends ClickableSpan{
+
+		@Override
+		public void onClick(View widget) {
+			//通知Activity跳转到畅游协议Fragment
+			if(mActivity != null){
+				((CYMGRegistActivity)mActivity).changeFragment(CYMGRegistActivity.REGIST, CYMGRegistActivity.PROTOCOL,null);
+			}
+		}
+		
+		@Override
+		public void updateDrawState(TextPaint ds) {
+		}
+		
+	}
+
+
+	@Override
+	public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+		switch (actionId) {
+		case EditorInfo.IME_ACTION_NEXT:
+			mPassET.requestFocus();
+			break;
+		case EditorInfo.IME_ACTION_SEND:
+			regist2Server();
+			break;
+		default:
+			break;
+		}
+		return false;
+	}
+	
+}

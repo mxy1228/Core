@@ -1,0 +1,661 @@
+package com.changyou.mgp.sdk.mbi.account.ui;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import org.json.JSONObject;
+
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.ProgressDialog;
+import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.res.Configuration;
+import android.net.Uri;
+import android.os.Bundle;
+import android.support.v4.app.FragmentManager;
+import android.text.Editable;
+import android.text.TextUtils;
+import android.text.TextWatcher;
+import android.view.KeyEvent;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
+import android.widget.AutoCompleteTextView;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.Filter;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+import android.widget.TextView.OnEditorActionListener;
+
+import com.changyou.mgp.sdk.mbi.account.adapter.MyEmailDropListAdapter;
+import com.changyou.mgp.sdk.mbi.account.id.AccResource;
+import com.changyou.mgp.sdk.mbi.account.utils.CyouLoginUtils;
+import com.changyou.mgp.sdk.mbi.account.utils.CyouLoginUtils.CyouLoginListener;
+import com.changyou.mgp.sdk.mbi.account.utils.QQLoginUtil;
+import com.changyou.mgp.sdk.mbi.account.utils.WeiboLoginUtil;
+import com.changyou.mgp.sdk.mbi.account.utils.WeiboLoginUtil.WeiboLoginListener;
+import com.changyou.mgp.sdk.mbi.common.CYMGCallback;
+import com.changyou.mgp.sdk.mbi.common.CYMGCallbackHelper;
+import com.changyou.mgp.sdk.mbi.config.CYMGPrompt;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolConfig;
+import com.changyou.mgp.sdk.mbi.config.CYMGProtocolKeys;
+import com.changyou.mgp.sdk.mbi.config.Contants;
+import com.changyou.mgp.sdk.mbi.config.HttpContants;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.mbi.manager.CMBILogManager;
+import com.changyou.mgp.sdk.mbi.platform.CYMGPlatform;
+import com.changyou.mgp.sdk.mbi.ui.base.BaseFragment;
+import com.changyou.mgp.sdk.mbi.utils.DesUtil;
+import com.changyou.mgp.sdk.mbi.utils.MetaDataValueUtils;
+import com.changyou.mgp.sdk.mbi.utils.MyToast;
+import com.changyou.mgp.sdk.mbi.utils.NetWorkUtils;
+import com.changyou.mgp.sdk.mbi.utils.SettingSPUtil;
+import com.changyou.mgp.sdk.mbi.utils.SystemUtils;
+import com.changyou.mgp.sdk.mbi.utils.UserInfoSPUtil;
+import com.tencent.tauth.IUiListener;
+import com.tencent.tauth.UiError;
+
+/**
+ * 
+ * 功能描述：登陆界面Fragment
+ * 
+ * @author 严峥(yanzheng)
+ * @date 2014-1-20 上午10:24:23 修改历史：(修改人，修改时间，修改原因/内容)
+ */
+public class CYMGLoginFragment extends BaseFragment implements OnClickListener,
+		OnEditorActionListener {
+
+	public static final int RESULT_CODE_REGIST = 1;
+
+	private CYLog log = CYLog.getInstance();
+
+	private Context mContext;
+	private FragmentManager mFragmentManager;
+
+	private ImageView mCloseBtn;
+	private Button mLoginBtn, mOneKeyRegisterBtn;
+	private AutoCompleteTextView mAccountEt;
+	private MyEmailDropListAdapter mAdapter;
+	private EditText mPasswordEt;
+	private TextView mForgetPasswordTv;
+	private ProgressDialog mWaitingDialog;
+	private AlertDialog.Builder mAlertDialog;
+
+	private LinearLayout mOtherLoginLayou;
+	private ImageView mQQLoginImg;
+	private ImageView mSinaLoginImg;
+	private ImageView mOtherLoginLine;
+
+	private CyouLoginUtils mCyouLoginUtils = null;
+	private QQLoginUtil mQQLoginUtil = null;
+	private WeiboLoginUtil mWeiboLoginUtil = null;
+
+	private String mUsername_lower = null;
+	private String mUsername = null;
+	private String mPassword = null;
+
+	private Bundle mBundle;
+
+	private boolean isConfigurationChanged = false;
+
+	@Override
+	public void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		log.d("onCreate");
+		this.mFragmentManager = getFragmentManager();
+	}
+
+	@Override
+	public void onAttach(Activity activity) {
+		super.onAttach(activity);
+		log.d("onAttach");
+		this.mContext = activity;
+	}
+
+	@Override
+	public View onCreateView(LayoutInflater inflater, ViewGroup container,
+			Bundle savedInstanceState) {
+		log.d("onCreateView");
+		View view = inflater.inflate(AccResource.getInstance(mContext).mgp_login_108,
+				container, false);
+		initView(view);
+		initDialog();
+		showOrHideQQAndSina();
+		initData();
+		initEvent();
+		return view;
+	}
+
+	@Override
+	public void onConfigurationChanged(Configuration newConfig) {
+		super.onConfigurationChanged(newConfig);
+		log.d("onConfigurationChanged");
+		if (isConfigurationChanged == false) {
+			ViewGroup parentView = (ViewGroup) getView();
+			parentView.removeAllViews();
+			LayoutInflater inflater = (LayoutInflater) mContext
+					.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+			View view = inflater.inflate(AccResource.getInstance(mContext).mgp_login_108,
+					parentView, false);
+			initView(view);
+			initDialog();
+			showOrHideQQAndSina();
+			initData();
+			initEvent();
+			parentView.addView(view);
+			isConfigurationChanged = true;
+		}
+	}
+
+	@Override
+	public void onResume() {
+		super.onResume();
+		log.d("onResume");
+		CMBILogManager.page_A_Login(mContext);
+	}
+
+	@Override
+	public void onDestroy() {
+		super.onDestroy();
+		if (Contants.LoginParams.TYPE_CYOU.equals(UserInfoSPUtil
+				.getType(mContext))) {
+			if (this.mAlertDialog != null) {
+				this.mAlertDialog = null;
+			}
+			if (this.mWaitingDialog.isShowing() && this.mAlertDialog != null) {
+				this.mWaitingDialog.dismiss();
+			}
+		}
+	}
+
+	/**
+	 * 
+	 * 功能描述：初始化控件
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param @param view
+	 * @return void
+	 * @date 2014-3-25 上午9:53:04
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void initView(View view) {
+		this.mCloseBtn = (ImageView) view.findViewById(AccResource.getInstance(mContext).login_close_ImageView);
+		this.mLoginBtn = (Button) view.findViewById(AccResource.getInstance(mContext).login_btn_login);
+		this.mOneKeyRegisterBtn = (Button) view.findViewById(AccResource.getInstance(mContext).login_btn_oneKeyRegister);
+		this.mOtherLoginLayou = (LinearLayout) view.findViewById(AccResource.getInstance(mContext).mgp_login_ll_qq_and_sina_LinearLayout);
+		this.mQQLoginImg = (ImageView) view.findViewById(AccResource.getInstance(mContext).mgp_login_img_qq_ImageView);
+		this.mSinaLoginImg = (ImageView) view.findViewById(AccResource.getInstance(mContext).mgp_login_img_sina_ImageView);
+		this.mOtherLoginLine = (ImageView) view.findViewById(AccResource.getInstance(mContext).mgp_login_line);
+		this.mAccountEt = (AutoCompleteTextView) view.findViewById(AccResource.getInstance(mContext).login_et_account);
+		this.mAccountEt.setDropDownBackgroundResource(AccResource.getInstance(mContext).mgp_white);
+		this.mPasswordEt = (EditText) view.findViewById(AccResource.getInstance(mContext).login_et_password);
+		this.mForgetPasswordTv = (TextView) view.findViewById(AccResource.getInstance(mContext).login_tv_forgetPassword);
+	}
+
+	/**
+	 * 
+	 * 功能描述：初始化dialog
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param
+	 * @return void
+	 * @date 2014-3-25 上午9:53:15
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void initDialog() {
+		this.mWaitingDialog = new ProgressDialog(mContext);
+		this.mWaitingDialog.setCancelable(false);
+		this.mWaitingDialog.setMessage(mContext.getString(AccResource.getInstance(mContext).mgp_loading));
+		this.mAlertDialog = new AlertDialog.Builder(mContext);
+		this.mAlertDialog.setTitle(mContext.getString(AccResource.getInstance(mContext).mgp_login_dialog_title));
+		this.mAlertDialog.setPositiveButton(mContext.getString(AccResource.getInstance(mContext).mgp_login_dialog_retry),
+				new DialogInterface.OnClickListener() {
+
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						showWaitingDialog();
+						cyouLogin();
+					}
+				});
+		this.mAlertDialog.setNegativeButton(mContext.getString(AccResource.getInstance(mContext).mgp_login_dialog_cancel),
+				new DialogInterface.OnClickListener() {
+
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+
+					}
+				});
+	}
+
+	@Override
+	protected void initData() {
+		this.mBundle = getArguments();
+		String username = UserInfoSPUtil.getUsername(mContext);
+		if (!TextUtils.isEmpty(username)) {
+			this.mAccountEt.setText(username);
+		}
+		this.mAdapter = new MyEmailDropListAdapter(mContext, mAccountEt, false);
+		this.mAccountEt.setAdapter(mAdapter);
+		this.mAccountEt.setThreshold(1);
+	}
+
+	@Override
+	protected void initEvent() {
+		this.mCloseBtn.setOnClickListener(this);
+		this.mLoginBtn.setOnClickListener(this);
+		this.mOneKeyRegisterBtn.setOnClickListener(this);
+		this.mQQLoginImg.setOnClickListener(this);
+		this.mSinaLoginImg.setOnClickListener(this);
+		this.mForgetPasswordTv.setOnClickListener(this);
+		this.mAccountEt.addTextChangedListener(new TextWatcher() {
+
+			@Override
+			public void onTextChanged(CharSequence charsequence, int i, int j,
+					int k) {
+
+			}
+
+			@Override
+			public void beforeTextChanged(CharSequence charsequence, int i,
+					int j, int k) {
+
+			}
+
+			@Override
+			public void afterTextChanged(Editable s) {
+				Filter filter = mAdapter.getFilter();
+				filter.filter(s.toString().subSequence(0, s.length()));
+			}
+		});
+		this.mAccountEt.setOnEditorActionListener(this);
+		this.mPasswordEt.setOnEditorActionListener(this);
+	}
+
+	@Override
+	public void onClick(View v) {
+		Intent intent = null;
+		if (v.getId() == AccResource.getInstance(mContext).login_close_ImageView) {
+			CMBILogManager.action_A_Login_Close(mContext);
+			((Activity) mContext).finish();
+		} else if (v.getId() == AccResource.getInstance(mContext).login_btn_login) {
+			CMBILogManager.action_A_Login_Login(mContext);
+			if (checkET()) {
+				showWaitingDialog();
+				cyouLogin();
+			}
+		} else if (v.getId() == AccResource.getInstance(mContext).login_btn_oneKeyRegister) {
+			CMBILogManager.action_A_Login_OneKeyRegister(mContext);
+			intent = new Intent(mContext, CYMGRegistActivity.class);
+			startActivityForResult(intent, RESULT_CODE_REGIST);
+		} else if (v.getId() == AccResource.getInstance(mContext).login_tv_forgetPassword) {
+			CMBILogManager.action_A_Login_ForgetPswd(mContext);
+			intent = new Intent();
+			intent.setAction("android.intent.action.VIEW");
+			Uri content_url = Uri.parse(HttpContants.FORGET_PASSWORD);
+			intent.setData(content_url);
+			startActivity(intent);
+		} else if (v.getId() == AccResource.getInstance(mContext).mgp_login_img_qq_ImageView) {
+			CMBILogManager.action_A_Login_QQ(mContext);
+			qqLogin();
+		} else if (v.getId() == AccResource.getInstance(mContext).mgp_login_img_sina_ImageView) {
+			CMBILogManager.action_A_Login_SINA(mContext);
+			weiboLogin();
+		}
+	}
+
+	@Override
+	public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+		switch (actionId) {
+		case EditorInfo.IME_ACTION_NEXT:
+			mPasswordEt.requestFocus();
+			break;
+		case EditorInfo.IME_ACTION_GO:
+			if (checkET()) {
+				showWaitingDialog();
+				cyouLogin();
+			}
+			break;
+		}
+		return true;
+	}
+
+	/**
+	 * 
+	 * 功能描述：畅游账号登录
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param
+	 * @return void
+	 * @date 2014-3-25 上午10:14:52
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void cyouLogin() {
+		this.mCyouLoginUtils = new CyouLoginUtils(mContext);
+		this.mCyouLoginUtils.userLoginRequest(mUsername_lower,
+				desPassword(mPassword), new CyouLoginListener() {
+
+					@Override
+					public void onLoginError(int error_code) {
+						log.d("cyouLoginError");
+						showLoginDialog(error_code);
+					}
+
+					@Override
+					public void onLoginComplete() {
+						log.d("cyouLoginComplete");
+						dismissWaitingDialog();
+						((CYMGLoginActivity) mContext).finish();
+					}
+
+					@Override
+					public void onLoginCancel(int error_code) {
+						log.d("cyouLoginCancel");
+						showLoginDialog(error_code);
+					}
+				});
+		this.mWeiboLoginUtil = null;
+		this.mQQLoginUtil = null;
+	}
+
+	/**
+	 * 
+	 * 功能描述：qq登录
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param
+	 * @return void
+	 * @date 2014-3-25 上午10:15:22
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void qqLogin() {
+		final CYMGCallback callback = CYMGPlatform.getInstance().getCYMGCallback();
+		if(callback==null){
+			log.d("CYMGCallback is null");
+			return;
+		}
+		this.mQQLoginUtil = new QQLoginUtil(mContext);
+		this.mQQLoginUtil.qqLogin(new IUiListener() {
+
+			@Override
+			public void onError(UiError values) {
+				log.d("QQLoginOnError = " + values);
+			}
+
+			@Override
+			public void onComplete(JSONObject values) {
+				log.d("QQLoginOnComplete = " + values);
+				if (!TextUtils.isEmpty(values.toString())) {
+					try {
+						String uid = values.getString(Contants.QQLoginParams.QQOPEN_ID);
+						String token = values.getString(Contants.QQLoginParams.QQACCESS_TOKEN);
+						UserInfoSPUtil.setUid(mContext, uid);
+						UserInfoSPUtil.setToken(mContext, token);
+						UserInfoSPUtil.setType(mContext, Contants.LoginParams.TYPE_QQ);
+						String userIp = NetWorkUtils.getLocalIpAddress(mContext);
+						String deviceid = SystemUtils.getDeviceId(mContext);
+						String qq_appid = MetaDataValueUtils.getQQAppId(mContext);
+						Bundle bundle = new Bundle();
+						bundle.putString(CYMGProtocolKeys.UID, uid);
+						bundle.putString(CYMGProtocolKeys.TOKEN, token);
+						bundle.putString(CYMGProtocolKeys.TYPE, Contants.LoginParams.TYPE_QQ);
+						bundle.putString(CYMGProtocolKeys.USERIP, userIp);
+						bundle.putString(CYMGProtocolKeys.DEVICEID, deviceid);
+						bundle.putString(CYMGProtocolKeys.CY_QQ_APPID, qq_appid);
+						bundle.putString(CYMGProtocolKeys.CHANNEL_ID,mContext.getString(AccResource.getInstance(mContext).mgp_channel_cy));
+						bundle.putString(CYMGProtocolKeys.OPCODE, "10001");
+						callback.onFinished(CYMGCallbackHelper.getLoginResult(CYMGPrompt.CODE_LOGIN_SUCCESS, bundle,mContext));
+					} catch (Exception e) {
+						log.e(e);
+					}
+				}
+				((CYMGLoginActivity) mContext).finish();
+			}
+
+			@Override
+			public void onCancel() {
+				log.d("QQLoginOnCancel");
+			}
+		});
+		this.mCyouLoginUtils = null;
+		this.mWeiboLoginUtil = null;
+	}
+
+	private void weiboLogin() {
+		this.mWeiboLoginUtil = new WeiboLoginUtil(mContext);
+		this.mWeiboLoginUtil.initWeiboAuth();
+		this.mWeiboLoginUtil.authCodeLogin(new WeiboLoginListener() {
+
+			@Override
+			public void onLoginError() {
+				log.d("weiboLoginError");
+			}
+
+			@Override
+			public void onLoginComplete() {
+				log.d("weiboLoginComplete");
+				((CYMGLoginActivity) mContext).finish();
+			}
+
+			@Override
+			public void onLoginCancel() {
+				log.d("weiboLoginCancel");
+			}
+		});
+		this.mCyouLoginUtils = null;
+		this.mQQLoginUtil = null;
+	}
+
+	private void showWaitingDialog() {
+		mWaitingDialog.setMessage(mContext.getString(AccResource.getInstance(mContext).mgp_login_dialog_logining));
+		mWaitingDialog.show();
+	}
+
+	private void dismissWaitingDialog() {
+		if (mWaitingDialog.isShowing()) {
+			mWaitingDialog.dismiss();
+		}
+	}
+
+	/**
+	 * 
+	 * 功能描述：显示登录按钮弹出的dialog
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param @param error_code
+	 * @return void
+	 * @date 2014-3-7 下午7:34:42
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void showLoginDialog(int error_code) {
+		dismissWaitingDialog();
+		if (error_code == 404) {
+			mAlertDialog.setMessage(mContext.getString(AccResource.getInstance(mContext).mgp_net_error_hint));
+			mAlertDialog.show();
+		} else if (error_code == 21011) {
+			MyToast.showToast(mContext, mContext.getString(AccResource.getInstance(mContext).mgp_login_toast_account_error));
+		} else if (error_code == 21002) {
+			MyToast.showToast(mContext, mContext.getString(AccResource.getInstance(mContext).mgp_login_dialog_login_failure_21002));
+		} else if (error_code == 21003) {
+			MyToast.showToast(mContext, mContext.getString(AccResource.getInstance(mContext).mgp_login_dialog_login_failure_21003));
+			mPasswordEt.setText("");
+		} else {
+			mAlertDialog.setMessage(mContext.getString(AccResource.getInstance(mContext).mgp_login_dialog_login_failure));
+			mAlertDialog.show();
+		}
+	}
+
+	private boolean checkET() {
+		this.mUsername = mAccountEt.getText().toString().trim();
+		this.mPassword = mPasswordEt.getText().toString().trim();
+		if (mUsername.length() == 0) {
+			MyToast.showToast(mContext, mContext.getString(AccResource.getInstance(mContext).mgp_login_toast_account_error));
+			return false;
+		}
+		if (TextUtils.isEmpty(mPassword)) {
+			MyToast.showToast(mContext, mContext.getString(AccResource.getInstance(mContext).mgp_login_toast_password_error));
+			return false;
+		}
+		if (mPassword.length() < 4) {
+			MyToast.showToast(mContext, mContext.getString(AccResource.getInstance(mContext).mgp_regist_password_error));
+			return false;
+		} else {
+			if (!checkPass(mPassword)) {
+				MyToast.showToast(mContext, mContext.getString(AccResource.getInstance(mContext).mgp_regist_password_not_valide));
+				return false;
+			}
+		}
+		this.mUsername_lower = mUsername.toLowerCase();
+		return true;
+	}
+
+	/**
+	 * 
+	 * 功能描述：账号&密码框显示用户注册信息
+	 * 
+	 * @author 徐萌阳(xumengyang)
+	 * @param @param acc
+	 * @param @param pas
+	 * @return void
+	 * @date 2014-3-10 下午4:28:28
+	 * 
+	 */
+	public void setAccAndPas(String acc, String pas) {
+		this.mAccountEt.setText(acc);
+		this.mPasswordEt.setText(pas);
+	}
+
+	/**
+	 * 
+	 * 功能描述：检测密码合法性
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param @param password
+	 * @param @return
+	 * @return boolean
+	 * @date 2014-3-15 下午2:30:50
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private boolean checkPass(String password) {
+		Pattern p = Pattern.compile("^[^\'“'\'”'\'‘'\'’'\"\\ ,，]+$");
+		Matcher m = p.matcher(password);
+		if (m.matches()) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	/**
+	 * 
+	 * 功能描述：加密明文密码
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param @param password
+	 * @param @return
+	 * @return String
+	 * @date 2014-3-4 下午7:24:31
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private String desPassword(String password) {
+		String result = null;
+		try {
+			result = new DesUtil().encrypt(password);
+		} catch (Exception e) {
+			log.e(e);
+		}
+		return result;
+	}
+
+	/**
+	 * 
+	 * 功能描述：显示或隐藏第三方登录布局
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param
+	 * @return void
+	 * @date 2014-3-25 上午9:55:13
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void showOrHideQQAndSina() {
+		String qq_appid = MetaDataValueUtils.getQQAppId(mContext);
+		String sina_appkey = MetaDataValueUtils.getSinaAppKey(mContext);
+		String sina_appSecret = MetaDataValueUtils.getSinaAppSecret(mContext);
+		if (TextUtils.isEmpty(qq_appid)
+				&& (TextUtils.isEmpty(sina_appkey) || TextUtils
+						.isEmpty(sina_appSecret))) {
+			hideQQAndSian();
+		}
+		if (TextUtils.isEmpty(qq_appid)) {
+			hideQQ();
+		}
+		if (TextUtils.isEmpty(sina_appkey) || TextUtils.isEmpty(sina_appSecret)) {
+			hideSian();
+		}
+	}
+
+	/**
+	 * 
+	 * 功能描述：隐藏其他登录方式
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param
+	 * @return void
+	 * @date 2014-3-15 上午11:45:28
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void hideQQAndSian() {
+		this.mOtherLoginLayou.setVisibility(View.GONE);
+	}
+
+	/**
+	 * 
+	 * 功能描述：仅隐藏QQ登录方式
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param
+	 * @return void
+	 * @date 2014-3-15 上午11:45:43
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void hideQQ() {
+		this.mQQLoginImg.setVisibility(View.GONE);
+		if (SettingSPUtil.getLandScape(mContext) == CYMGProtocolConfig.PORTRAIT) {
+			mOtherLoginLine.setVisibility(View.GONE);
+		}
+	}
+
+	/**
+	 * 
+	 * 功能描述：仅隐藏新浪微博登录方式
+	 * 
+	 * @author 严峥(yanzheng)
+	 * @param
+	 * @return void
+	 * @date 2014-3-15 上午11:46:02
+	 * 
+	 *       修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void hideSian() {
+		this.mSinaLoginImg.setVisibility(View.GONE);
+		if (SettingSPUtil.getLandScape(mContext) == CYMGProtocolConfig.PORTRAIT) {
+			mOtherLoginLine.setVisibility(View.GONE);
+		}
+	}
+
+}

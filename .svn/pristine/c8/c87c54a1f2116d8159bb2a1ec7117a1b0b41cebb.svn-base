@@ -1,0 +1,272 @@
+package com.changyou.mgp.sdk.mbi.pay.ui;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.codehaus.jackson.type.TypeReference;
+
+import android.app.Activity;
+import android.content.Intent;
+import android.net.Uri;
+import android.os.Bundle;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.ImageButton;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import com.changyou.mgp.sdk.mbi.R;
+import com.changyou.mgp.sdk.mbi.config.Contants;
+import com.changyou.mgp.sdk.mbi.config.HttpContants;
+import com.changyou.mgp.sdk.mbi.config.Params;
+import com.changyou.mgp.sdk.mbi.entity.OrderItem;
+import com.changyou.mgp.sdk.mbi.entity.OrderList;
+import com.changyou.mgp.sdk.mbi.http.MyAsyncResponseHandler;
+import com.changyou.mgp.sdk.mbi.http.MyHttpClient;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.mbi.manager.CMBILogManager;
+import com.changyou.mgp.sdk.mbi.pay.adapter.OrderAdapter;
+import com.changyou.mgp.sdk.mbi.ui.base.BaseFragment;
+import com.changyou.mgp.sdk.mbi.ui.widget.MGPDropDownListView;
+import com.changyou.mgp.sdk.mbi.ui.widget.MGPDropDownListView.OnBottomListener;
+import com.changyou.mgp.sdk.mbi.ui.widget.MGPDropDownListView.OnDropDownListener;
+import com.changyou.mgp.sdk.mbi.ui.widget.NetErrorView;
+import com.changyou.mgp.sdk.mbi.ui.widget.WaitingDialog;
+import com.changyou.mgp.sdk.mbi.utils.JSONUtil;
+import com.changyou.mgp.sdk.mbi.utils.ResourceUtil;
+import com.loopj.android.http.RequestParams;
+
+/**
+ * 
+ * 功能描述：充值记录页�?
+ *
+ * @author 徐萌�?xumengyang)
+ *
+ * @date 2014-1-14
+ */
+public class CYMGChargeRecorderFragment extends BaseFragment implements OnClickListener{
+
+	private CYLog log = CYLog.getInstance();
+	private Activity mActivity;
+	private List<OrderItem> mData;
+	private OrderAdapter mAdapter;
+	private String mUID;
+	private String mPackageName;
+	private int mPageNo=1;
+	private boolean mLoading;
+	
+	private MGPDropDownListView mListView;
+	private LinearLayout mEmptyLL;
+	private WaitingDialog mWaitingDialog;
+	private TextView mLineTV;
+	private TextView mEmptyTV;
+	private ImageView mEmptyIV;
+	private NetErrorView mNetErrorView;
+	private Button mRefreshBtn;
+	private Button mTestBtn;
+	private ImageButton mServiceImgBtn;
+	private Button mTitleRightBtn;
+	private TextView mTitleTv;
+	private ImageButton mBackIBtn;
+	private View mTitle;
+	private int mListSize;
+	
+	
+	@Override
+	public void onAttach(Activity activity) {
+		super.onAttach(activity);
+		this.mActivity = activity;
+	}
+	
+	@Override
+	public View onCreateView(LayoutInflater inflater, ViewGroup container,
+			Bundle savedInstanceState) {
+		this.mPackageName = mActivity.getPackageName();
+		View view = inflater.inflate(ResourceUtil.getResourceIDByName(mPackageName, "layout", "mgp_charge_recorder"), container,false);
+		this.mListView = (MGPDropDownListView)view.findViewById(ResourceUtil.getResourceIDByName(mPackageName, "id", "mgp_charge_recorder_lv"));
+		this.mEmptyLL = (LinearLayout)view.findViewById(ResourceUtil.getResourceIDByName(mPackageName, "id", "mgp_charge_empty_ll"));
+		this.mWaitingDialog = new WaitingDialog(mActivity);
+		this.mLineTV = (TextView)view.findViewById(ResourceUtil.getResourceIDByName(mPackageName, "id", "mgp_charge_recorder_line"));
+		this.mEmptyTV = (TextView)view.findViewById(ResourceUtil.getResourceIDByName(mPackageName, "id", "mgp_charge_recorder_empty_ll"));
+		this.mEmptyIV = (ImageView)view.findViewById(ResourceUtil.getResourceIDByName(mPackageName, "id", "mgp_charge_recorder_empty_iv"));
+		this.mNetErrorView = (NetErrorView)view.findViewById(ResourceUtil.getResourceIDByName(mPackageName, "id", "mgp_charge_recorder_net_error"));
+		this.mRefreshBtn = (Button)mNetErrorView.getRefreshBtn();
+		this.mTitle = view.findViewById(ResourceUtil.getResourceIDByName(mPackageName, "id", "payment_title"));
+		this.mBackIBtn = (ImageButton)mTitle.findViewById(ResourceUtil.getResourceIDByName(mPackageName, "id", "mgp_title_left_ibtn"));
+		this.mServiceImgBtn = (ImageButton)mTitle.findViewById(ResourceUtil.getResourceIDByName(mPackageName, "id", "mgp_title_right_imgbtn"));
+		this.mTitleTv = (TextView)mTitle.findViewById(ResourceUtil.getResourceIDByName(mPackageName, "id", "mgp_title_tv"));
+		this.mTitleRightBtn = (Button)mTitle.findViewById(ResourceUtil.getResourceIDByName(mPackageName, "id", "mgp_title_right_btn"));
+		this.mTitleRightBtn.setVisibility(View.GONE);
+		this.mServiceImgBtn.setVisibility(View.VISIBLE);
+		initData();
+		initEvent();
+		return view;
+	}
+
+	@Override
+	public void onResume() {
+		super.onResume();
+		CMBILogManager.page_B_RechargeRecord(mActivity);
+	}
+	
+	@Override
+	protected void initData() {
+		Bundle b = getArguments();
+		this.mUID = b.getString(Params.UID);
+		this.mData = new ArrayList<OrderItem>();
+		this.mAdapter = new OrderAdapter(mActivity, mData);
+		this.mListView.setAdapter(mAdapter);
+		this.mTitleTv.setText(ResourceUtil.getResourceIDByName(mPackageName, "string", "mgp_payment_tv_payrecord"));
+		requestOrderList(mPageNo,false);
+	}
+
+	@Override
+	protected void initEvent() {
+		this.mListView.setOnBottomListener(new OnBottomListener() {
+			
+			@Override
+			public void onBottomLoad() {
+				requestOrderList(mPageNo,false);
+			}
+		});
+		this.mListView.setOnDropDownListener(new OnDropDownListener() {
+			
+			@Override
+			public void onDropDown() {
+				mPageNo = 1;
+				requestOrderList(mPageNo,true);
+			}
+		});
+		this.mRefreshBtn.setOnClickListener(this);
+		this.mBackIBtn.setOnClickListener(this);
+		this.mServiceImgBtn.setOnClickListener(this);
+	}
+
+	@Override
+	public void onClick(View v) {
+		if(v.getId() == mNetErrorView.getRefreshBtnId()){
+			mPageNo = 1;
+			requestOrderList(mPageNo,true);
+		}else if(v.getId()==ResourceUtil.getResourceIDByName(mPackageName, "id", "mgp_title_left_ibtn")){
+			((CYMGPaymentActivity)mActivity).goback();
+		}else if(v.getId()==ResourceUtil.getResourceIDByName(mPackageName, "id", "mgp_title_right_imgbtn")){
+			try {
+				Intent intent = new Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + getString(ResourceUtil.getResourceIDByName(mPackageName, "string", "mgp_onlineserver_feedback_server_tel"))));
+				startActivity(intent);
+			} catch (Exception e) {
+				log.e(e);
+			}
+		}
+	}
+	
+	/**
+	 * 
+	 * 功能描述：请求订单列�?
+	 *
+	 * @author 徐萌�?xumengyang)
+	 * @param 
+	 * @return void
+	 * @date 2014-2-18 下午1:04:12
+	 *
+	 */
+	private void requestOrderList(int page_no,final boolean refresh){
+		if(mLoading){
+			log.e("requestOrderList ing");
+			return;
+		}
+		log.d("requestOrderList");
+		MyHttpClient client = new MyHttpClient(mActivity);
+		RequestParams params = new RequestParams();
+		params.put("user_id", mUID);
+		params.put("page_no", String.valueOf(page_no));
+		params.put("page_size", String.valueOf(Contants.PAGE_SIZE));
+		//status传空请求的是全部订单（这个参数设定的好奇怪o__O"…）
+		params.put("status", "");
+		client.get(HttpContants.getURL(HttpContants.ORDER_LIST), params, new MyAsyncResponseHandler(){
+			public void onStart() {
+				mLoading = true;
+				if(mData.size() == 0){
+					if(!mActivity.isFinishing()){
+						mWaitingDialog.show();
+					}
+				}
+			};
+			
+			@Override
+			public void onSuccess(int statusCode, String content) {
+				mLoading = false;
+				if(!mActivity.isFinishing()){
+					mWaitingDialog.dismiss();
+				}
+				log.d("onSuccess:content = "+content);
+				try {
+					mListView.setVisibility(View.VISIBLE);
+					mLineTV.setVisibility(View.VISIBLE);
+					mNetErrorView.setVisibility(View.GONE);
+					mEmptyLL.setVisibility(View.GONE);
+					OrderList list = JSONUtil.getMapper().readValue(JSONUtil.initJsonArrayStr(content), new TypeReference<OrderList>() {
+					});
+					if(list != null){
+						if(mData!=null){
+							mListSize = mData.size();
+							if(mPageNo == 1){
+								mData.clear();
+							}
+							mData.addAll(list.getData());
+							mAdapter.notifyDataSetChanged();
+							mPageNo++;
+							if(refresh){
+								mListView.onDropDownComplete();
+							}
+							mListView.onBottomComplete(list.getData());
+							if (list.getData().isEmpty() && !refresh && !mData.isEmpty()) {
+								Toast.makeText(mActivity, mActivity.getString(ResourceUtil.getResourceIDByName(mPackageName, "string", "mgp_feedback_refresh_nodata_text")), 
+										Toast.LENGTH_SHORT).show();
+							}
+						}else{
+							log.e("mData is null");
+						}
+					}else{
+						log.e("list is null");
+					}
+					if(mData.isEmpty()){
+						mListView.setVisibility(View.GONE);
+						mLineTV.setVisibility(View.GONE);
+						mEmptyLL.setVisibility(View.VISIBLE);
+						mNetErrorView.setVisibility(View.GONE);
+						mListView.onBottomComplete(list.getData());
+					}
+				} catch (Exception e) {
+					log.e(e);
+				}
+			}
+			
+			@Override
+			public void onFailure(Throwable error, String content) {
+				mLoading = false;
+				if(!mActivity.isFinishing()){
+					mWaitingDialog.dismiss();
+				}
+				log.e("onFailure:content="+content);
+				if(mData.isEmpty()){
+					mListView.setVisibility(View.GONE);
+					mEmptyLL.setVisibility(View.GONE);
+					mNetErrorView.setVisibility(View.VISIBLE);
+				}else{
+					Toast.makeText(mActivity, ResourceUtil.getResourceIDByName(mPackageName, "string", "mgp_net_error_hint"), Toast.LENGTH_LONG).show();
+				}
+				if(refresh){
+					mListView.onDropDownComplete();
+				}
+				mListView.setFooterBtnText(ResourceUtil.getResourceIDByName(mPackageName, "string", "mgp_drop_down_list_footer_default_text"));
+			}
+		});
+	}
+
+	
+}

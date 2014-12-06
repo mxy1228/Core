@@ -1,0 +1,85 @@
+package com.changyou.mgp.sdk.mbi.http;
+
+import org.apache.http.Header;
+
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.loopj.android.http.AsyncHttpResponseHandler;
+
+/**
+ * 
+ * 功能描述：网络请求回调接口
+ *
+ * @author 徐萌阳(xumengyang)
+ * @date 2013-12-22下午2:18:37
+ */
+public class MyAsyncResponseHandler extends AsyncHttpResponseHandler {
+
+	private CYLog log = CYLog.getInstance();
+	
+	@Override
+	public void onStart() {
+		// TODO Auto-generated method stub
+		super.onStart();
+	}
+	
+	@Override
+	public void onFinish() {
+		// TODO Auto-generated method stub
+		super.onFinish();
+	}
+	
+	
+	
+//	@Override
+//	public void onFailure(int statusCode, Throwable error, String content) {
+//		super.onFailure(statusCode, error, content);
+//	}
+	
+	@Override
+	public void onFailure(int arg0, Header[] arg1, byte[] arg2, Throwable arg3) {
+		// TODO Auto-generated method stub
+		super.onFailure(arg0, arg1, arg2, arg3);
+	}
+	
+//	@Override
+//	public void onFailure(int statusCode, Header[] headers, Throwable error,
+//			String content) {
+//		// TODO Auto-generated method stub
+//		super.onFailure(statusCode, headers, error, content);
+//	}
+	
+//	@Override
+//	public void onFailure(Throwable error, String content) {
+//		super.onFailure(error, content);
+//	}
+	
+	@Override
+	public void onProgress(int bytesWritten, int totalSize) {
+		// TODO Auto-generated method stub
+		super.onProgress(bytesWritten, totalSize);
+	}
+	
+	@Override
+	public void onRetry() {
+		super.onRetry();
+	}
+	
+//	@Override
+//	public void onFailure(Throwable error) {
+//		// TODO Auto-generated method stub
+//		super.onFailure(error);
+//	}
+	
+//	@Override
+//	public void onSuccess(int statusCode, String content) {
+////		super.onSuccess(statusCode, content);
+//	}
+	
+//	@Override
+//	public void onSuccess(String content) {
+//		super.onSuccess(content);
+//	}
+	
+}
+
+

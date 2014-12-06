@@ -1,0 +1,162 @@
+package com.changyou.mgp.sdk.mbi.account.ui;
+
+import android.app.Activity;
+import android.graphics.Bitmap;
+import android.os.Bundle;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.ViewGroup;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import android.widget.Button;
+import android.widget.ImageButton;
+import android.widget.TextView;
+
+import com.changyou.mgp.sdk.mbi.R;
+import com.changyou.mgp.sdk.mbi.config.HttpContants;
+import com.changyou.mgp.sdk.mbi.log.CYLog;
+import com.changyou.mgp.sdk.mbi.ui.base.BaseFragment;
+import com.changyou.mgp.sdk.mbi.ui.widget.NetErrorView;
+import com.changyou.mgp.sdk.mbi.ui.widget.WaitingDialog;
+
+public class CYMGCyouProtocolFragment extends BaseFragment implements OnClickListener{
+
+	private CYLog log = CYLog.getInstance();
+	
+	private WebView mWebView;
+	private WaitingDialog mWaitingDialog;
+	private TextView mTitleTV;
+	private ImageButton mBackIBtn;
+	private Button mLoginBtn;
+	private NetErrorView mNetErrorView;
+	private Button mRefreshBtn;
+	
+	private Activity mActivity;
+	
+	@Override
+	public View onCreateView(LayoutInflater inflater, ViewGroup container,
+			Bundle savedInstanceState) {
+		View view = inflater.inflate(R.layout.mgp_cyou_protocol, container,false);
+		TextView tvTitle = (TextView) view.findViewById(R.id.mgp_title_tv);
+		tvTitle.setText(R.string.mgp_protocol_title);
+		mWebView = (WebView)view.findViewById(R.id.cyou_protocal_wv);
+		mWaitingDialog = new WaitingDialog(mActivity);
+		mWaitingDialog.setMessage(mActivity.getString(R.string.mgp_loading));
+		View titleView = view.findViewById(R.id.cyou_protocal_title);
+		this.mTitleTV = (TextView)titleView.findViewById(R.id.mgp_title_tv);
+		this.mTitleTV.setText(R.string.mgp_protocol_title);
+		this.mBackIBtn = (ImageButton)titleView.findViewById(R.id.mgp_title_left_ibtn);
+		this.mLoginBtn = (Button)titleView.findViewById(R.id.mgp_title_right_btn);
+		this.mNetErrorView = (NetErrorView)view.findViewById(R.id.cyou_protocal_error_ll);
+		this.mRefreshBtn = mNetErrorView.getRefreshBtn();
+		initWebView();
+		initData();
+		initEvent();
+		return view;
+	}
+	
+	/**
+	 * 
+	 * 功能描述：初始化WebView
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param 
+	 * @return void
+	 * @date 2013-12-31 下午4:11:20
+	 *
+	 */
+	private void initWebView(){
+		mWebView.setWebViewClient(new WebViewClient(){
+			@Override
+			public boolean shouldOverrideUrlLoading(WebView view, String url) {
+				// TODO Auto-generated method stub
+				return super.shouldOverrideUrlLoading(view, url);
+			}
+			
+			@Override
+			public void onPageStarted(WebView view, String url, Bitmap favicon) {
+				mWaitingDialog.show();
+			}
+			
+			@Override
+			public void onReceivedError(WebView view, int errorCode,
+					String description, String failingUrl) {
+				log.d("onReceivedError");
+				mNetErrorView.setVisibility(View.VISIBLE);
+				mWebView.setVisibility(View.GONE);
+				mWaitingDialog.dismiss();
+			}
+			
+			@Override
+			public void onPageFinished(WebView view, String url) {
+				log.d("onPageFinished");
+				mWaitingDialog.dismiss();
+			}
+			
+		});
+		//开启JS支持
+		this.mWebView.getSettings().setJavaScriptEnabled(true);
+		this.mWebView.getSettings().setLoadsImagesAutomatically(true);
+	}
+	
+	@Override
+	public void onAttach(Activity activity) {
+		super.onAttach(activity);
+		this.mActivity = activity;
+	}
+	
+	@Override
+	protected void initData() {
+		refresh(HttpContants.CYOU_PROTOCOL);
+	}	
+
+	/**
+	 * 
+	 * 功能描述：清除WebView缓存，重新加载
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param 
+	 * @return void
+	 * @date 2013-12-27 下午3:20:47
+	 *
+	 * 修改历史 ：(修改人，修改时间，修改原因/内容)
+	 */
+	private void refresh(String url){
+		mNetErrorView.setVisibility(View.GONE);
+		mWebView.setVisibility(View.VISIBLE);
+		mWaitingDialog.show();
+		this.mWebView.clearCache(true);
+		this.mWebView.clearHistory();
+		this.mWebView.loadUrl(url);
+	}
+	@Override
+	protected void initEvent() {
+		this.mBackIBtn.setOnClickListener(this);
+		this.mLoginBtn.setOnClickListener(this);
+		this.mRefreshBtn.setOnClickListener(this);
+	}
+	
+	@Override
+	public void onDestroy() {
+		super.onDestroy();
+		if(mWaitingDialog.isShowing()){
+			mWaitingDialog.dismiss();
+		}
+		mWebView.destroy();
+	}
+
+	@Override
+	public void onClick(View v) {
+		if(v.getId() == R.id.mgp_title_left_ibtn){
+			((CYMGRegistActivity)mActivity).goback();
+		}else if(v.getId() == R.id.mgp_title_right_btn){
+			if(mActivity != null){
+				((CYMGRegistActivity)mActivity).finish();
+			}
+		}else if(v.getId() == mNetErrorView.getRefreshBtnId()){
+			initData();
+		}
+	}
+
+}

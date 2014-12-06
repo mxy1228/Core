@@ -1,0 +1,99 @@
+package com.changyou.mgp.sdk.mbi.account.ui;
+
+import android.os.Bundle;
+import android.support.v4.app.FragmentManager;
+import android.view.KeyEvent;
+
+import com.changyou.mgp.sdk.mbi.R;
+import com.changyou.mgp.sdk.mbi.config.Contants;
+import com.changyou.mgp.sdk.mbi.ui.base.BaseActivity;
+
+/**
+ * 
+ * 功能描述：使用webview进行手机账号注册
+ *
+ * @author 徐萌阳(xumengyang)
+ * @date 2013-12-25上午11:31:10
+ */
+public class CYMGRegistActivity extends BaseActivity{
+	
+	private FragmentManager mFragmentManager;
+
+	public static final int REGIST = 1;//手机号注册
+	public static final int PROTOCOL = 3;//用户协议
+	public static final int REGIST_COMPLETER = 4;//邮箱注册成功
+
+	@Override
+	protected void onCreate(Bundle arg0) {
+		super.onCreate(arg0);
+		setContentView(R.layout.mgp_regist);
+		initView();
+		initData();
+		initEvent();
+	}
+
+	@Override
+	protected void initView() {
+		
+	}
+
+	@Override
+	protected void initData() {
+		this.mFragmentManager=getSupportFragmentManager();
+		this.mFragmentManager.beginTransaction().replace(R.id.mgp_regist_container_ll
+				, new CYMGRegistContainerFragment()
+				, Contants.FragmentTag.REGISTER_CONTAINER_TAG).commit();
+	}
+	
+
+	@Override
+	protected void initEvent() {
+		
+	}
+	
+	public void goback(){
+		if(mFragmentManager.getBackStackEntryCount() == 0){
+			CYMGRegistActivity.this.finish();
+		}else{
+			mFragmentManager.popBackStack();
+		}
+	}
+	
+	/**
+	 * 
+	 * 功能描述：更换显示的Fragment
+	 *
+	 * @author 徐萌阳(xumengyang)
+	 * @param @param from 标记请求更换显示的来源（手机注册/邮箱注册/用户协议）
+	 * @param @param target 标记目标显示的页面（手机注册/邮箱注册/用户协议）
+	 * @return void
+	 * @date 2013-12-31 下午4:17:10
+	 *
+	 */
+	public void changeFragment(int from,int target,Bundle b){
+		if(target == REGIST){
+			
+		}else if(target == PROTOCOL){
+			getSupportFragmentManager().beginTransaction()
+			.replace(R.id.mgp_regist_container_ll, new CYMGCyouProtocolFragment(),Contants.FragmentTag.CYOUPROTOCOL_FRAGMENT_TAG)
+			.addToBackStack(Contants.FragmentTag.CYOUPROTOCOL_FRAGMENT_TAG).commit();
+		}else if(target == REGIST_COMPLETER){
+			getSupportFragmentManager().popBackStack();
+			CYMGRegistForMailCompleteFragment f = new CYMGRegistForMailCompleteFragment();
+			f.setArguments(b);
+			getSupportFragmentManager().beginTransaction()
+			.replace(R.id.mgp_regist_container_ll, f,Contants.FragmentTag.REGIST_FOR_MAIL_COMPLETE)
+			.addToBackStack(Contants.FragmentTag.REGIST_FOR_MAIL_COMPLETE).commit();
+		}
+	}
+	
+	@Override
+	public boolean onKeyDown(int keyCode, KeyEvent event) {
+		if(keyCode==KeyEvent.KEYCODE_BACK){//判断是否是后退键
+			goback();
+			return true;
+		}
+		return super.onKeyDown(keyCode, event);
+	}
+
+}

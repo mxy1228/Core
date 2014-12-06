@@ -1,0 +1,161 @@
+package com.changyou.mgp.sdk.mbi.ui.widget;
+
+import java.util.Timer;
+import java.util.TimerTask;
+
+import android.app.Activity;
+import android.app.ProgressDialog;
+import android.content.Context;
+import android.content.DialogInterface;
+import android.content.DialogInterface.OnKeyListener;
+import android.os.Handler;
+import android.support.v4.app.FragmentActivity;
+import android.support.v4.app.FragmentManager;
+import android.util.Log;
+import android.view.KeyEvent;
+
+import com.changyou.mgp.sdk.mbi.account.id.AccResource;
+import com.unionpay.mobile.android.nocard.views.w;
+
+/**
+ * 
+ * 功能描述：自定义WaitingDialog
+ *
+ * @author 徐萌阳(xumengyang)
+ *
+ * <p>修改历史：(修改人，修改时间，修改原因/内容)</p>
+ */
+public class WaitingDialog extends ProgressDialog implements OnKeyListener{
+
+	private Context mContext;
+	private Timer mTimer;
+	private int mT;
+	private MyDialogDismissListener mListener;
+	private static int TIME_OUT = 12;
+	
+	public WaitingDialog(Context context) {
+		super(context);
+		this.mContext = context;
+		init();
+	}
+	
+	public WaitingDialog(Context context, int theme) {
+		super(context, theme);
+		this.mContext = context;
+		init();
+	}
+
+	private void init(){
+		this.setCanceledOnTouchOutside(false);
+		this.setOnKeyListener(this);
+		this.setMessage(mContext.getString(AccResource.getInstance(mContext).mgp_loading));
+	}
+
+	@Override
+	public boolean onKey(DialogInterface dialog, int keyCode, KeyEvent event) {
+		
+		if(keyCode == KeyEvent.KEYCODE_BACK){
+			dismiss();
+			Activity a = (Activity)mContext;
+			if(a instanceof FragmentActivity){
+				FragmentActivity fa = (FragmentActivity)a;
+				FragmentManager fm = fa.getSupportFragmentManager();
+				if(fm.getBackStackEntryCount() == 0){
+					fa.finish();
+					return true;
+				}else{
+					fm.popBackStack();
+					return true;
+				}
+			}else{
+				a.finish();
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	public static void showWaitingDialog(WaitingDialog waitingDialog){
+		if(waitingDialog!=null){
+			waitingDialog.show();
+		}
+	}
+	
+	public static void DismissWaitingDialog(WaitingDialog waitingDialog){
+		if(waitingDialog!=null&&waitingDialog.isShowing()){
+			waitingDialog.dismiss();
+		}
+	}
+	
+	public static void DestroyWaitingDialog(WaitingDialog waitingDialog){
+		DismissWaitingDialog(waitingDialog);
+		waitingDialog=null;
+	}
+	
+	@Override
+	public void show() {
+		try {
+			super.show();
+			mT = TIME_OUT;
+			mTimer = new Timer();
+			mTimer.schedule(new TimerTask() {
+				
+				@Override
+				public void run() {
+					if(mT-- == 0){
+						mHandler.sendEmptyMessage(1);
+					};
+					
+				}
+			}, 0,1000);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+	}
+	
+	@Override
+	public void dismiss() {
+		try {
+			super.dismiss();
+			if(mTimer != null){
+				mTimer.cancel();
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+	}
+	
+	@Override
+	public void cancel() {
+		try {
+			super.cancel();
+			if(mTimer != null){
+				mTimer.cancel();
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+	}
+	
+	public interface MyDialogDismissListener{
+		public void onTimeOutDismiss();
+	}
+	
+	public void setDismissListener(int timeout,MyDialogDismissListener listener){
+		TIME_OUT = timeout + 2;
+		this.mListener = listener;
+	}
+	
+	private Handler mHandler = new Handler(){
+		public void handleMessage(android.os.Message msg) {
+			if(mListener != null){
+				mListener.onTimeOutDismiss();
+			}
+			dismiss();
+		};
+	};
+	
+}

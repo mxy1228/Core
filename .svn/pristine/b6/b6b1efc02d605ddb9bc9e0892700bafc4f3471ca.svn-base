@@ -1,0 +1,54 @@
+package com.changyou.mgp.sdk.mbi.config;
+
+/**
+ * 
+ * 功能描述：记录配置相关
+ *
+ * @author 徐萌阳(xumengyang)
+ * @date 2013-12-20下午6:04:13
+ */
+public class SDKConfig {
+
+	//Debug开关
+	public static boolean DEBUG=false;
+	//DBName
+	public static final String DB_NAME = "mgpsdk.db";
+	//DBVersion
+	public static final int DB_VERSION = 1;
+	//ImageLoader加载线程池的线程数量
+	public static final int IMAGE_LOADER_THREAD_COUNT = 5;
+	//加载网络图片的连接超时时间
+	public static final int LOAD_IMAGE_CONNECT_TIMEOUT = 10 * 1000;
+	//加载网络图片的读取超时时间
+	public static final int LOAD_IMAGE_READ_TIMEOUT = 10 * 1000;
+	
+	public static final int PAYMENT_TOP_IV_SCALE = 3;//竖向显示时商品列表顶部IV宽高比
+	
+	public static final double PAYMENT_TOP_IV_SCALE_LAND = 6.4;//横向显示时商品列表顶部IV宽高比
+	
+	public static final double PAYMENT_AD_IBTN_SCALE = 7.2;//竖向显示时商品列表广告条IBtn宽高比
+	
+	public static final double PAYMENT_AD_IBTN_SCALE_LAND = 0.65;//横向显示时商品列表广告条IBtn高宽比
+	
+	public static final double PAYMENT_GOODS_PIC_SCALE = 0.8;//商品列表商品图片宽高比 
+	
+	public static final double PAYMENT_GOODS_PIC_SCALE_IN_LAND = 0.5;//横向显示时商品图片在灰色半透明框所在的高度比例
+	
+	public static final double PAYMENT_CLOSE_SCALE = 1.5;//竖向显示时商品列表关闭按钮宽高比
+	
+	public static final double PAYMENT_RECORD_SCALE = 3;//竖向显示时充值记录按钮宽高比
+	
+	public static final double PAYMENT_CLOSE_IN_SCREEN_SCALE_LAND = 0.11;//竖向显示时关闭按钮宽度占整个屏幕宽度比例（150/1280）
+	
+	public static final double PAYMENT_CLOSE_IN_SCREEN_SCALE = 0.2;//竖向显示时关闭按钮宽度占整个屏幕宽度比例（150/720）
+	
+	public static final double PAYMENT_RECORD_IN_SCREEN_SCALE_LAND = 0.14;//竖向显示时充值记录按钮占整个屏幕宽度比例（180/720）
+	
+	public static final double PAYMENT_RECORD_IN_SCREEN_SCALE = 0.25;//竖向显示时充值记录按钮占整个屏幕宽度比例（180/720）
+	
+	
+	
+	//版本号，该值不需要每次打包手工修改，Ant脚本会读取Manifest.xml中的版本号，然后自动替换该值
+	//！！注意！该变量一定！一定！不要修改，必须保持VERSION=""，若修改为其他值后Ant无法自动替换
+	public static String VERSION="2.00.009";
+}

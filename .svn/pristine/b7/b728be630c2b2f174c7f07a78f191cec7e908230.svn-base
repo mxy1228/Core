@@ -1,0 +1,19 @@
+package com.changyou.mgp.sdk.mbi.entity;
+
+import java.util.List;
+
+public class GoodsList {
+	
+	private List<GoodsItem> data;
+
+	public List<GoodsItem> getData() {
+		return data;
+	}
+
+	public void setData(List<GoodsItem> data) {
+		this.data = data;
+	}
+	
+	
+
+}
